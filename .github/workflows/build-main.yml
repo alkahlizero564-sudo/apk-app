@@ -1,0 +1,45 @@
+name: Build APK App
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'www/**'
+      - 'assets/**'
+      - 'package.json'
+      - 'capacitor.config.json'
+      - '.github/workflows/build-main.yml'
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: sudo apt-get update && sudo apt-get install -y librsvg2-bin
+      - run: npm install
+      - run: npx cap add android
+      - name: Icon
+        continue-on-error: true
+        run: |
+          rsvg-convert -w 1024 -h 1024 assets/icon-bg.svg -o assets/icon-background.png
+          rsvg-convert -w 1024 -h 1024 assets/icon-fg.svg -o assets/icon-foreground.png
+          convert assets/icon-background.png assets/icon-foreground.png -composite assets/icon-only.png
+          npx -y @capacitor/assets generate --android
+      - run: npx cap sync android
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-app-${{ github.run_number }}
+          name: APK App ${{ github.run_number }}
+          files: android/app/build/outputs/apk/debug/app-debug.apk
