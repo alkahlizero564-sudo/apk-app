@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>آلة حاسبة</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b1220;font-family:system-ui,Arial,sans-serif}
+.calc{width:100%;max-width:360px;padding:16px}
+.screen{background:#131c31;border-radius:16px;padding:16px;margin-bottom:12px;text-align:left;direction:ltr;min-height:96px}
+.expr{color:#8fa0c4;font-size:16px;min-height:22px;word-break:break-all}
+.res{color:#fff;font-size:40px;font-weight:700;word-break:break-all}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;direction:ltr}
+button{border:0;border-radius:14px;padding:18px 0;font-size:22px;font-weight:600;background:#243557;color:#fff}
+button:active{opacity:.7}
+.op{background:#2f80ff}
+.fn{background:#3a4a6e}
+.eq{background:#ffb300;color:#222}
+.zero{grid-column:span 2}
+</style>
+</head>
+<body>
+<div class="calc">
+  <div class="screen">
+    <div class="expr" id="expr"></div>
+    <div class="res" id="res">0</div>
+  </div>
+  <div class="keys">
+    <button class="fn" onclick="clr()">C</button>
+    <button class="fn" onclick="del()">⌫</button>
+    <button class="fn" onclick="add('%')">%</button>
+    <button class="op" onclick="add('÷')">÷</button>
+
+    <button onclick="add('7')">7</button>
+    <button onclick="add('8')">8</button>
+    <button onclick="add('9')">9</button>
+    <button class="op" onclick="add('×')">×</button>
+
+    <button onclick="add('4')">4</button>
+    <button onclick="add('5')">5</button>
+    <button onclick="add('6')">6</button>
+    <button class="op" onclick="add('-')">−</button>
+
+    <button onclick="add('1')">1</button>
+    <button onclick="add('2')">2</button>
+    <button onclick="add('3')">3</button>
+    <button class="op" onclick="add('+')">+</button>
+
+    <button class="zero" onclick="add('0')">0</button>
+    <button onclick="add('.')">.</button>
+    <button class="eq" onclick="calc()">=</button>
+  </div>
+</div>
+
+<script>
+let exp = '';
+const expEl = document.getElementById('expr');
+const resEl = document.getElementById('res');
+
+function show(){
+  expEl.textContent = exp;
+  resEl.textContent = exp || '0';
+}
+function add(c){
+  const last = exp.slice(-1);
+  const ops = '+-×÷%';
+  if (ops.includes(c) && (exp === '' && c !== '-')) return;
+  if (ops.includes(c) && ops.includes(last)) exp = exp.slice(0,-1);
+  exp += c;
+  show();
+}
+function clr(){ exp = ''; expEl.textContent = ''; resEl.textContent = '0'; }
+function del(){ exp = exp.slice(0,-1); show(); }
+function calc(){
+  if (!exp) return;
+  try {
+    const js = exp.replace(/×/g,'*').replace(/÷/g,'/').replace(/(\d+\.?\d*)%/g,'($1/100)');
+    let v = Function('"use strict";return (' + js + ')')();
+    if (!isFinite(v)) throw new Error('قسمة على صفر');
+    v = Math.round(v * 1e10) / 1e10;
+    expEl.textContent = exp + ' =';
+    resEl.textContent = v;
+    exp = String(v);
+  } catch (e) {
+    resEl.textContent = 'خطأ';
+    exp = '';
+  }
+}
+</script>
+</body>
+</html>
