@@ -1,0 +1,8 @@
+{
+  "appId": "com.apkapp.builder",
+  "appName": "APK App",
+  "webDir": "www",
+  "plugins": {
+    "CapacitorHttp": { "enabled": true }
+  }
+}
