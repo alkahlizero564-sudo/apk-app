@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>APK App</title>
+<style>
+:root{--bg:#0b1220;--card:#131c31;--line:#22304f;--tx:#e8eefc;--mut:#8fa0c4;--pri:#2f80ff;--acc:#ffb300;--ok:#2ecc71;--bad:#ff5c5c}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,Tahoma,Arial,sans-serif;padding-top:env(safe-area-inset-top);padding-bottom:calc(72px + env(safe-area-inset-bottom))}
+header{padding:16px;text-align:center;font-size:20px;font-weight:700;background:linear-gradient(135deg,#0d47a1,#2f80ff);position:sticky;top:0;z-index:5}
+main{padding:12px;max-width:720px;margin:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+h2{margin:0 0 10px;font-size:18px}
+label{display:block;margin:12px 0 4px;color:var(--mut);font-size:13px}
+input,select,textarea{width:100%;background:#0e1730;color:var(--tx);border:1px solid var(--line);border-radius:10px;padding:11px;font-size:15px;font-family:inherit}
+textarea.code{height:180px;direction:ltr;text-align:left;font-family:monospace;font-size:12px;margin-top:8px}
+textarea.req{height:70px;margin-top:8px}
+input.name{font-weight:700;font-size:16px}
+iframe{width:100%;height:300px;border:1px solid var(--line);border-radius:12px;background:#fff;margin-top:8px}
+.row{display:flex;gap:8px;margin-top:8px}
+button,.btn{flex:1;background:var(--pri);color:#fff;border:0;border-radius:12px;padding:12px;font-size:15px;font-weight:600;font-family:inherit;text-align:center;text-decoration:none;display:block}
+button.sec{background:#243557}
+button.acc{background:var(--acc);color:#222}
+button.ghost{background:transparent;border:1px solid var(--line);margin-top:10px;width:100%}
+button:disabled{opacity:.5}
+.link{margin:4px 0 12px}
+.note{color:var(--mut);font-size:12px;line-height:1.7}
+.errbox{color:var(--bad);font-size:13px;margin-top:8px;white-space:pre-wrap}
+.edit[hidden]{display:none}
+.edit{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+details{margin-top:10px;color:var(--mut);font-size:13px}
+.ver{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)}
+.ver button{flex:none;padding:6px 12px;font-size:13px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#0e1730;border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{background:none;color:var(--mut);border-radius:0;padding:12px 4px;font-size:13px}
+nav button.on{color:var(--acc)}
+#sheet{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:20;align-items:flex-end}
+#sheet.on{display:flex}
+.sheetbox{background:var(--card);width:100%;max-height:85vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.step{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.step small{display:block;color:var(--mut);margin-top:2px;white-space:pre-wrap}
+.step.ok span{color:var(--ok)}.step.bad span{color:var(--bad)}.step.run span{color:var(--acc)}
+.explain{background:#0e1730;border-radius:10px;padding:10px;margin-top:10px;font-size:14px;line-height:1.8;white-space:pre-wrap}
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#243557;padding:10px 16px;border-radius:20px;z-index:30;display:none;max-width:90%;text-align:center}
+</style>
+</head>
+<body>
+<header>👷 APK App</header>
+<main id="main"></main>
+<div id="sheet"></div>
+<div id="toast"></div>
+<nav>
+  <button id="n-keys" onclick="go('keys')">🔑<br>المفاتيح</button>
+  <button id="n-code" onclick="go('code')">💻<br>الكود</button>
+  <button id="n-build" onclick="go('build')">🏗️<br>البناء</button>
+</nav>
+
+<script>
+const MODELS={gemini:'gemini-2.5-flash',claude:'claude-sonnet-5-5'};
+const $=s=>document.querySelector(s);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const newApp=n=>({name:n,code:'',versions:[],err:'',apk:''});
+function load(){try{const x=JSON.parse(localStorage.getItem('apkapp')||'null');if(x&&x.apps)return x}catch(e){}
+  return {keys:{provider:'gemini',repo:'apk-app'},apps:[newApp('التطبيق الأول'),newApp('التطبيق الثاني')]}}
+let S=load(),tab='keys';
+const save=()=>localStorage.setItem('apkapp',JSON.stringify(S));
+function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500)}
+function arErr(e){const m=String((e&&e.message)||e);
+  if(/Failed to fetch|NetworkError|network|timeout/i.test(m))return 'تعذّر الاتصال. تأكد من الإنترنت.';
+  if(/workflow/i.test(m)&&/scope|permission|allow/i.test(m))return 'مفتاح GitHub ينقصه صلاحية workflow. أنشئ مفتاحاً جديداً وفعّل repo و workflow.';
+  if(/bad credentials|unauthorized|invalid.*(key|token)|API key|401/i.test(m))return 'المفتاح غير صحيح أو انتهت صلاحيته. راجع قائمة المفاتيح.\n('+m+')';
+  return m}
+
+/* ---------- الواجهات ---------- */
+const FIELDS=[['ghToken','مفتاح GitHub (Token)','password','صلاحيات: repo + workflow'],['repo','اسم المستودع','text','apk-app'],['sbToken','مفتاح Supabase (Access Token)','password','يبدأ بـ sbp_'],['sbRef','Supabase project ref','text',''],['gemini','مفتاح Gemini API','password',''],['claude','مفتاح Claude API','password','']];
+function vKeys(){return `<div class="card"><h2>🔑 قائمة المفاتيح</h2>
+${FIELDS.map(f=>`<label>${f[1]}</label><input type="${f[2]}" value="${esc(S.keys[f[0]]||'')}" placeholder="${f[3]}" autocomplete="off" oninput="S.keys['${f[0]}']=this.value.trim();save()">`).join('')}
+<label>الذكاء الاصطناعي المستخدم في التعديل</label>
+<select onchange="S.keys.provider=this.value;save()"><option value="gemini" ${S.keys.provider!=='claude'?'selected':''}>Gemini</option><option value="claude" ${S.keys.provider==='claude'?'selected':''}>Claude</option></select>
+<p class="note">تُحفظ المفاتيح تلقائياً داخل التطبيق على جهازك.</p></div>`}
+
+function vCode(){const card=i=>{const a=S.apps[i];return `<section class="card">
+<input class="name" value="${esc(a.name)}" placeholder="اسم التطبيق" oninput="S.apps[${i}].name=this.value;save()">
+<textarea class="code" id="code${i}" placeholder="الصق كود التطبيق هنا" oninput="S.apps[${i}].code=this.value;save()">${esc(a.code)}</textarea>
+<iframe id="pv${i}" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+<div class="row"><button onclick="preview(${i})">▶ المعاينة الفعلية</button><button class="sec" onclick="toggleEdit(${i})">✏️ تعديل الكود</button></div>
+<div class="edit" id="edit${i}" hidden>
+<textarea class="req" id="req${i}" placeholder="اكتب التعديل المطلوب، مثال: غيّر لون الخلفية للأحمر"></textarea>
+<div class="row"><button class="acc" onclick="aiEdit(${i},this)">نفّذ التعديل</button><button class="sec" onclick="aiFix(${i},this)">🛠 صلّح الخطأ</button></div>
+<div class="errbox" id="err${i}">${esc(a.err)}</div>
+<details><summary>النسخ السابقة (${a.versions.length})</summary>${a.versions.map((v,j)=>`<div class="ver"><span>${esc(v.t)}</span><button class="sec" onclick="restore(${i},${j})">رجوع</button></div>`).join('')||'<p>لا توجد نسخ بعد</p>'}</details>
+</div></section>`};
+return card(0)+`<div class="link"><button class="acc" onclick="linkApps(this)">🔗 ربط التطبيقين عبر Supabase</button></div>`+card(1)}
+
+function vBuild(){return `<div class="card"><h2>🏗️ قائمة البناء</h2><p class="note">اضغط بناء وسيتم رفع الكود وبناء ملف APK تلقائياً، وتتابع المراحل هنا.</p></div>`+
+S.apps.map((a,i)=>`<div class="card"><h2>${esc(a.name)}</h2><button onclick="build(${i})">بناء ${i?'التطبيق الثاني':'التطبيق الأول'}</button>${a.apk?`<a class="btn acc" style="margin-top:8px" href="${esc(a.apk)}" target="_blank">⬇ تحميل آخر APK</a>`:''}</div>`).join('')}
+
+function go(t){tab=t;render()}
+function render(){
+  $('#main').innerHTML=tab==='keys'?vKeys():tab==='code'?vCode():vBuild();
+  ['keys','code','build'].forEach(k=>$('#n-'+k).classList.toggle('on',k===tab));
+  if(tab==='code')S.apps.forEach((a,i)=>{if(a.code.trim())preview(i)});
+  window.scrollTo(0,0)}
+function toggleEdit(i){const e=$('#edit'+i);e.hidden=!e.hidden}
+
+/* ---------- المعاينة وتجميع الأخطاء ---------- */
+const CATCH='<scr'+'ipt>window.addEventListener("error",function(e){parent.postMessage({apkErr:e.message+" (سطر "+e.lineno+")"},"*")});window.addEventListener("unhandledrejection",function(e){parent.postMessage({apkErr:String(e.reason)},"*")});<\/scr'+'ipt>';
+function pushVersion(i){const a=S.apps[i];if(a.code.trim()&&(!a.versions[0]||a.versions[0].code!==a.code)){a.versions.unshift({t:new Date().toLocaleString('ar'),code:a.code});a.versions=a.versions.slice(0,20)}save()}
+function preview(i){const a=S.apps[i];pushVersion(i);a.err='';save();
+  const el=$('#err'+i);if(el)el.textContent='';
+  const f=$('#pv'+i);if(!f)return;
+  let c=a.code;c=/<head[^>]*>/i.test(c)?c.replace(/<head[^>]*>/i,m=>m+CATCH):CATCH+c;f.srcdoc=c}
+window.addEventListener('message',e=>{if(!e.data||!e.data.apkErr)return;
+  S.apps.forEach((a,i)=>{const f=$('#pv'+i);if(f&&e.source===f.contentWindow){a.err+=(a.err?'\n':'')+e.data.apkErr;save();const el=$('#err'+i);if(el)el.textContent='⚠ '+a.err}})});
+function restore(i,j){pushVersion(i);S.apps[i].code=S.apps[i].versions[j].code;save();render();toast('تم الرجوع للنسخة')}
+
+/* ---------- الذكاء الاصطناعي ---------- */
+async function ai(prompt){const k=S.keys;
+  if(k.provider==='claude'){
+    if(!k.claude)throw new Error('أدخل مفتاح Claude في قائمة المفاتيح');
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':k.claude,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:MODELS.claude,max_tokens:16000,messages:[{role:'user',content:prompt}]})});
+    const j=await r.json();if(!r.ok)throw new Error((j.error&&j.error.message)||'فشل الاتصال بـ Claude');
+    return j.content.map(c=>c.text||'').join('')}
+  if(!k.gemini)throw new Error('أدخل مفتاح Gemini في قائمة المفاتيح');
+  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS.gemini+':generateContent?key='+encodeURIComponent(k.gemini),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+  const j=await r.json();if(!r.ok)throw new Error((j.error&&j.error.message)||'فشل الاتصال بـ Gemini');
+  return (j.candidates[0].content.parts||[]).map(p=>p.text||'').join('')}
+function clean(t){const m=t.match(/```(?:\w+)?\n([\s\S]*?)```/);return (m?m[1]:t).trim()}
+const SYS='أنت مبرمج محترف. التطبيق مكتوب بـ HTML وCSS وJavaScript في ملف واحد index.html ويعمل داخل تطبيق أندرويد. أعد الكود الكامل فقط داخل كتلة ```html بدون أي شرح.\n\n';
+async function busy(btn,fn){const t=btn.textContent;btn.disabled=true;btn.textContent='⏳ جاري العمل...';try{await fn()}catch(e){toast(arErr(e))}finally{btn.disabled=false;btn.textContent=t}}
+function setCode(i,c){pushVersion(i);S.apps[i].code=c;save();const t=$('#code'+i);if(t)t.value=c;preview(i)}
+function aiEdit(i,btn){busy(btn,async()=>{const req=$('#req'+i).value.trim();if(!req)throw new Error('اكتب التعديل المطلوب');
+  const out=await ai(SYS+'الكود الحالي:\n```html\n'+S.apps[i].code+'\n```\n\nالتعديل المطلوب: '+req);
+  setCode(i,clean(out));$('#req'+i).value='';toast('تم التعديل ✔')})}
+function aiFix(i,btn){busy(btn,async()=>{preview(i);await sleep(1500);const err=S.apps[i].err;
+  const out=await ai(SYS+'الكود الحالي:\n```html\n'+S.apps[i].code+'\n```\n\n'+(err?'الأخطاء الظاهرة عند التشغيل:\n'+err:'لم تظهر أخطاء صريحة، افحص الكود وأصلح أي مشكلة تمنع عمله.')+'\n\nأصلح الخطأ.');
+  setCode(i,clean(out));toast('تم إصلاح الكود ✔')})}
+
+/* ---------- نافذة المراحل ---------- */
+function closeSheet(){$('#sheet').classList.remove('on')}
+function progress(title,labels){const sh=$('#sheet');const st=labels.map(()=>({s:'wait',m:''}));let extra='';
+  const icon={wait:'○',run:'◔',ok:'✔',bad:'✖'};
+  function draw(){sh.innerHTML=`<div class="sheetbox"><h3>${esc(title)}</h3>${labels.map((l,i)=>`<div class="step ${st[i].s}"><span>${icon[st[i].s]}</span><div>${esc(l)}<small>${esc(st[i].m)}</small></div></div>`).join('')}<div>${extra}</div><button class="ghost" onclick="closeSheet()">إغلاق</button></div>`;sh.classList.add('on')}
+  draw();return {set(i,s,m){st[i]={s:s,m:m===undefined?st[i].m:m};draw()},extra(h){extra=h;draw()}}}
+
+/* ---------- Supabase ---------- */
+async function sb(path,opt){opt=opt||{};const r=await fetch('https://api.supabase.com'+path,Object.assign({},opt,{headers:{Authorization:'Bearer '+S.keys.sbToken,'Content-Type':'application/json'}}));
+  const t=await r.text();let j;try{j=JSON.parse(t)}catch(e){j=t}
+  if(!r.ok){if(r.status===401||r.status===403)throw new Error('مفتاح Supabase غير صحيح. استخدم Access Token من حسابك (يبدأ بـ sbp_).');throw new Error((j&&j.message)||('خطأ Supabase '+r.status))}
+  return j}
+function parseSections(t){const m=t.match(/===SQL===([\s\S]*?)===APP1===([\s\S]*?)===APP2===([\s\S]*)$/);if(!m)throw new Error('رد الذكاء الاصطناعي غير مكتمل، حاول مرة أخرى.');return {sql:clean(m[1]),a1:clean(m[2]),a2:clean(m[3])}}
+function linkApps(btn){busy(btn,async()=>{const k=S.keys;
+  if(!k.sbToken||!k.sbRef)throw new Error('أدخل مفتاح Supabase والـ project ref في قائمة المفاتيح');
+  if(!S.apps[0].code.trim()||!S.apps[1].code.trim())throw new Error('اكتب كود التطبيقين أولاً');
+  const P=progress('ربط التطبيقين عبر Supabase',['قراءة بيانات المشروع','الذكاء الاصطناعي يصمم الجداول والصلاحيات','تنفيذ الجداول في قاعدة البيانات','تعديل كود التطبيقين للاتصال']);
+  try{
+    P.set(0,'run');
+    const keys=await sb('/v1/projects/'+k.sbRef+'/api-keys');
+    const anon=(keys.find(x=>x.name==='anon')||{}).api_key;if(!anon)throw new Error('ما قدرت أجيب مفتاح المشروع. تأكد من الـ project ref.');
+    const url='https://'+k.sbRef+'.supabase.co';P.set(0,'ok');
+    const base='لديك تطبيقان (أندرويد، HTML/JS) يجب أن يتشاركا البيانات عبر Supabase.\nURL: '+url+'\nanon key: '+anon+'\n\nالمطلوب:\n1) اكتب SQL كامل يُنشئ الجداول اللازمة (create table if not exists)، ويفعّل RLS، ويضيف سياسات تسمح لـ anon بالقراءة والكتابة (drop policy if exists ثم create policy).\n2) عدّل كود التطبيقين ليقرأ ويكتب في هذه الجداول عبر REST: fetch(URL+"/rest/v1/اسم_الجدول") مع الهيدرز apikey و Authorization: Bearer anon key. لا تستخدم مكتبات خارجية، وأبقِ بقية وظائف التطبيقين كما هي.\n\nأعد الرد بهذا الشكل فقط:\n===SQL===\n```sql\n...\n```\n===APP1===\n```html\n...\n```\n===APP2===\n```html\n...\n```\n\nالتطبيق الأول:\n```html\n'+S.apps[0].code+'\n```\n\nالتطبيق الثاني:\n```html\n'+S.apps[1].code+'\n```';
+    P.set(1,'run');let parts=parseSections(await ai(base));P.set(1,'ok');
+    P.set(2,'run');
+    for(let n=0;n<2;n++){try{
+      if(/drop\s+table|truncate|delete\s+from|drop\s+schema/i.test(parts.sql)&&!confirm('الـ SQL يحتوي أمر حذف. هل تريد المتابعة؟'))throw new Error('تم إلغاء التنفيذ');
+      await sb('/v1/projects/'+k.sbRef+'/database/query',{method:'POST',body:JSON.stringify({query:parts.sql})});break}
+      catch(e){if(n===1||/تم إلغاء/.test(e.message))throw e;P.set(2,'run','حدث خطأ، جاري إصلاحه تلقائياً...');
+        parts=parseSections(await ai(base+'\n\nتنفيذ SQL السابق فشل بهذا الخطأ: '+e.message+'\nأعد الأقسام الثلاثة كاملة بعد التصحيح.'))}}
+    P.set(2,'ok');P.set(3,'run');
+    pushVersion(0);pushVersion(1);S.apps[0].code=parts.a1;S.apps[1].code=parts.a2;save();render();
+    P.set(3,'ok');P.extra('<p style="color:var(--ok)">تم الربط بنجاح ✔</p>');
+  }catch(e){const idx=[0,1,2,3].find(x=>true);P.extra('<div class="errbox">'+esc(arErr(e))+'</div>');throw e}})}
+
+/* ---------- GitHub والبناء ---------- */
+async function gh(path,opt){opt=opt||{};const r=await fetch('https://api.github.com'+path,Object.assign({},opt,{headers:{Authorization:'Bearer '+S.keys.ghToken,Accept:'application/vnd.github+json','Content-Type':'application/json'}}));
+  if(r.status===204)return {};const t=await r.text();let j;try{j=JSON.parse(t)}catch(e){j={message:t}}
+  if(!r.ok){const er=new Error(j.message||('خطأ GitHub '+r.status));er.status=r.status;throw er}return j}
+async function ghText(path){const r=await fetch('https://api.github.com'+path,{headers:{Authorization:'Bearer '+S.keys.ghToken,Accept:'application/vnd.github+json'}});return r.text()}
+async function repoFull(){let r=(S.keys.repo||'apk-app').trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'');
+  if(!r.includes('/')){const u=await gh('/user');r=u.login+'/'+r}return r}
+const b64=s=>btoa(unescape(encodeURIComponent(s)));
+async function put(repo,branch,path,content){let sha;
+  try{sha=(await gh('/repos/'+repo+'/contents/'+path+'?ref='+branch)).sha}catch(e){if(e.status!==404)throw e}
+  await gh('/repos/'+repo+'/contents/'+path,{method:'PUT',body:JSON.stringify({message:'build: '+path,content:b64(content),branch:branch,sha:sha})})}
+const WF=['name: Build App','on:','  workflow_dispatch:','    inputs:','      app:','        description: app folder','        required: true','permissions:','  contents: write','jobs:','  build:','    runs-on: ubuntu-latest','    steps:','      - uses: actions/checkout@v4','      - uses: actions/setup-node@v4','        with:','          node-version: 20','      - uses: actions/setup-java@v4','        with:','          distribution: temurin','          java-version: 21','      - name: Build','        working-directory: apps/${{ github.event.inputs.app }}','        run: |','          npm install','          npx cap add android','          npx cap sync android','          cd android','          chmod +x gradlew','          ./gradlew assembleDebug','      - uses: softprops/action-gh-release@v2','        with:','          tag_name: ${{ github.event.inputs.app }}-build-${{ github.run_number }}','          files: apps/${{ github.event.inputs.app }}/android/app/build/outputs/apk/debug/app-debug.apk'].join('\n');
+const pkg=n=>JSON.stringify({name:n,version:'1.0.0',private:true,dependencies:{'@capacitor/android':'^7.0.0','@capacitor/core':'^7.0.0'},devDependencies:{'@capacitor/cli':'^7.0.0'}},null,2);
+const cfg=(n,name)=>JSON.stringify({appId:'com.apkapp.'+n,appName:name||n,webDir:'www'},null,2);
+const LOGS={};
+
+async function build(i){const a=S.apps[i],key='app'+(i+1);
+  if(!a.code.trim())return toast('اكتب الكود أولاً');
+  if(!S.keys.ghToken)return toast('أدخل مفتاح GitHub في قائمة المفاتيح');
+  const P=progress('بناء: '+a.name,['التحقق من الحساب والمستودع','رفع الكود','تشغيل البناء','جاري بناء ملف APK','تجهيز ملف التحميل']);
+  let step=0;
+  try{
+    P.set(0,'run');const repo=await repoFull();let info;
+    try{info=await gh('/repos/'+repo)}catch(e){if(e.status===404){info=await gh('/user/repos',{method:'POST',body:JSON.stringify({name:repo.split('/')[1],auto_init:true,private:false})});await sleep(3000)}else throw e}
+    const branch=info.default_branch||'main';P.set(0,'ok','المستودع: '+repo);
+    step=1;P.set(1,'run');const dir='apps/'+key;
+    await put(repo,branch,dir+'/www/index.html',a.code);
+    await put(repo,branch,dir+'/package.json',pkg(key));
+    await put(repo,branch,dir+'/capacitor.config.json',cfg(key,a.name));
+    await put(repo,branch,'.github/workflows/build-app.yml',WF);P.set(1,'ok');
+    step=2;P.set(2,'run');const t0=Date.now();
+    for(let n=0;n<8;n++){try{await gh('/repos/'+repo+'/actions/workflows/build-app.yml/dispatches',{method:'POST',body:JSON.stringify({ref:branch,inputs:{app:key}})});break}
+      catch(e){if((e.status===404||e.status===422)&&n<7){P.set(2,'run','بانتظار تجهيز خطوات البناء...');await sleep(4000)}else throw e}}
+    P.set(2,'ok');step=3;P.set(3,'run','بانتظار الخادم...');
+    let run=null;const lim=Date.now()+30*60000;
+    while(Date.now()<lim){await sleep(6000);
+      const rs=await gh('/repos/'+repo+'/actions/workflows/build-app.yml/runs?event=workflow_dispatch&per_page=5');
+      run=rs.workflow_runs.find(x=>new Date(x.created_at).getTime()>=t0-30000)||null;
+      if(run){P.set(3,'run',run.status==='completed'?'انتهى':run.status==='queued'?'في الانتظار...':'جاري البناء... (قد يستغرق 3-6 دقائق)');if(run.status==='completed')break}}
+    if(!run||run.status!=='completed')throw new Error('انتهى وقت الانتظار. حاول مرة أخرى.');
+    if(run.conclusion!=='success'){
+      const jobs=await gh('/repos/'+repo+'/actions/runs/'+run.id+'/jobs');
+      const job=jobs.jobs.find(j=>j.conclusion==='failure')||jobs.jobs[0];
+      const fs=(job.steps||[]).find(s=>s.conclusion==='failure');
+      let log='';try{log=(await ghText('/repos/'+repo+'/actions/jobs/'+job.id+'/logs')).slice(-5000)}catch(e){}
+      LOGS[i]=log;P.set(3,'bad','فشل البناء'+(fs?' في خطوة: '+fs.name:''));
+      let ex='';
+      try{ex=await ai('اشرح بالعربي البسيط وبأقصى وضوح، في 3 أسطر كحد أقصى، سبب فشل بناء تطبيق الأندرويد هذا وما الحل. السجل:\n'+log)}catch(e){ex='السجل:\n'+log.slice(-800)}
+      P.extra('<div class="explain">'+esc(ex)+'</div><button class="acc" style="margin-top:10px" onclick="fixBuild('+i+')">🛠 صلّح تلقائياً وأعد البناء</button>');return}
+    P.set(3,'ok');step=4;P.set(4,'run');
+    const tag=key+'-build-'+run.run_number;let asset=null;
+    for(let n=0;n<8&&!asset;n++){try{const rel=await gh('/repos/'+repo+'/releases/tags/'+tag);asset=(rel.assets||[]).find(x=>/\.apk$/.test(x.name))}catch(e){}if(!asset)await sleep(3000)}
+    if(!asset)throw new Error('تم البناء لكن لم أجد ملف APK.');
+    a.apk=asset.browser_download_url;save();P.set(4,'ok');
+    P.extra('<a class="btn acc" style="margin-top:10px" href="'+esc(a.apk)+'" target="_blank">⬇ تحميل APK</a>');
+  }catch(e){P.set(step,'bad',arErr(e))}}
+
+async function fixBuild(i){closeSheet();toast('جاري إصلاح الكود...');
+  try{const out=await ai(SYS+'الكود الحالي:\n```html\n'+S.apps[i].code+'\n```\n\nفشل بناء التطبيق بهذا الخطأ:\n'+(LOGS[i]||'')+'\n\nأصلح الكود ليعمل ويُبنى بنجاح.');
+    pushVersion(i);S.apps[i].code=clean(out);save();build(i)}catch(e){toast(arErr(e))}}
+
+render();
+</script>
+</body>
+</html>
