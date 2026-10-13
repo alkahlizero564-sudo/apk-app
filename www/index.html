@@ -57,7 +57,7 @@ nav button.on{color:var(--acc)}
 </nav>
 
 <script>
-const MODELS={gemini:'gemini-2.5-flash',claude:'claude-sonnet-5-5'};
+const MODELS={gemini:'gemini-3.8-flash',claude:'claude-sonnet-5-5'};
 const $=s=>document.querySelector(s);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
