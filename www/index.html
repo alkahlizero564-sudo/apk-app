@@ -62,8 +62,9 @@ const $=s=>document.querySelector(s);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const newApp=n=>({name:n,code:'',versions:[],err:'',apk:''});
+function slugOf(n){let s=String(n||'').toLowerCase().replace(/[^a-z0-9]/g,'');if(/^[0-9]/.test(s))s='a'+s;return s}
 function load(){try{const x=JSON.parse(localStorage.getItem('apkapp')||'null');if(x&&x.apps)return x}catch(e){}
-  return {keys:{provider:'gemini',repo:'apk-app'},apps:[newApp('التطبيق الأول'),newApp('التطبيق الثاني')]}}
+  return {keys:{provider:'gemini',repo:'apk-app'},apps:[newApp('first'),newApp('second')]}}
 let S=load(),tab='keys';
 const save=()=>localStorage.setItem('apkapp',JSON.stringify(S));
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500)}
@@ -82,7 +83,8 @@ ${FIELDS.map(f=>`<label>${f[1]}</label><input type="${f[2]}" value="${esc(S.keys
 <p class="note">تُحفظ المفاتيح تلقائياً داخل التطبيق على جهازك.</p></div>`}
 
 function vCode(){const card=i=>{const a=S.apps[i];return `<section class="card">
-<input class="name" value="${esc(a.name)}" placeholder="اسم التطبيق" oninput="S.apps[${i}].name=this.value;save()">
+<input class="name" value="${esc(a.name)}" placeholder="اسم التطبيق بالإنجليزية (مثل awad)" oninput="S.apps[${i}].name=this.value;save()">
+<p class="note">اسم التطبيق يصير اسم المجلد: حروف إنجليزية وأرقام فقط</p>
 <textarea class="code" id="code${i}" placeholder="الصق كود التطبيق هنا" oninput="S.apps[${i}].code=this.value;save()">${esc(a.code)}</textarea>
 <iframe id="pv${i}" sandbox="allow-scripts allow-forms allow-modals"></iframe>
 <div class="row"><button onclick="preview(${i})">▶ المعاينة الفعلية</button><button class="sec" onclick="toggleEdit(${i})">✏️ تعديل الكود</button></div>
@@ -94,8 +96,8 @@ function vCode(){const card=i=>{const a=S.apps[i];return `<section class="card">
 </div></section>`};
 return card(0)+`<div class="link"><button class="acc" onclick="linkApps(this)">🔗 ربط التطبيقين عبر Supabase</button></div>`+card(1)}
 
-function vBuild(){return `<div class="card"><h2>🏗️ قائمة البناء</h2><p class="note">اضغط بناء وسيتم رفع الكود وبناء ملف APK تلقائياً، وتتابع المراحل هنا.</p></div>`+
-S.apps.map((a,i)=>`<div class="card"><h2>${esc(a.name)}</h2><button onclick="build(${i})">بناء ${i?'التطبيق الثاني':'التطبيق الأول'}</button>${a.apk?`<a class="btn acc" style="margin-top:8px" href="${esc(a.apk)}" target="_blank">⬇ تحميل آخر APK</a>`:''}</div>`).join('')}
+function vBuild(){return `<div class="card"><h2>🏗️ قائمة البناء</h2><p class="note">اضغط بناء وسيتم رفع الكود إلى مجلد باسم التطبيق وبناء ملف APK تلقائياً، وتتابع المراحل هنا.</p></div>`+
+S.apps.map((a,i)=>`<div class="card"><h2>${esc(a.name)}</h2><p class="note">المجلد: apps/${esc(slugOf(a.name)||'← اكتب اسماً إنجليزياً في قائمة الكود')}</p><button onclick="build(${i})">بناء ${esc(a.name)}</button>${a.apk?`<a class="btn acc" style="margin-top:8px" href="${esc(a.apk)}" target="_blank">⬇ تحميل آخر APK</a>`:''}</div>`).join('')}
 
 function go(t){tab=t;render()}
 function render(){
@@ -171,7 +173,7 @@ function linkApps(btn){busy(btn,async()=>{const k=S.keys;
     P.set(2,'ok');P.set(3,'run');
     pushVersion(0);pushVersion(1);S.apps[0].code=parts.a1;S.apps[1].code=parts.a2;save();render();
     P.set(3,'ok');P.extra('<p style="color:var(--ok)">تم الربط بنجاح ✔</p>');
-  }catch(e){const idx=[0,1,2,3].find(x=>true);P.extra('<div class="errbox">'+esc(arErr(e))+'</div>');throw e}})}
+  }catch(e){P.extra('<div class="errbox">'+esc(arErr(e))+'</div>');throw e}})}
 
 /* ---------- GitHub والبناء ---------- */
 async function gh(path,opt){opt=opt||{};const r=await fetch('https://api.github.com'+path,Object.assign({},opt,{headers:{Authorization:'Bearer '+S.keys.ghToken,Accept:'application/vnd.github+json','Content-Type':'application/json'}}));
@@ -184,25 +186,27 @@ const b64=s=>btoa(unescape(encodeURIComponent(s)));
 async function put(repo,branch,path,content){let sha;
   try{sha=(await gh('/repos/'+repo+'/contents/'+path+'?ref='+branch)).sha}catch(e){if(e.status!==404)throw e}
   await gh('/repos/'+repo+'/contents/'+path,{method:'PUT',body:JSON.stringify({message:'build: '+path,content:b64(content),branch:branch,sha:sha})})}
-const WF=['name: Build App','on:','  workflow_dispatch:','    inputs:','      app:','        description: app folder','        required: true','permissions:','  contents: write','jobs:','  build:','    runs-on: ubuntu-latest','    steps:','      - uses: actions/checkout@v4','      - uses: actions/setup-node@v4','        with:','          node-version: 20','      - uses: actions/setup-java@v4','        with:','          distribution: temurin','          java-version: 21','      - name: Build','        working-directory: apps/${{ github.event.inputs.app }}','        run: |','          npm install','          npx cap add android','          npx cap sync android','          cd android','          chmod +x gradlew','          ./gradlew assembleDebug','      - uses: softprops/action-gh-release@v2','        with:','          tag_name: ${{ github.event.inputs.app }}-build-${{ github.run_number }}','          files: apps/${{ github.event.inputs.app }}/android/app/build/outputs/apk/debug/app-debug.apk'].join('\n');
 const pkg=n=>JSON.stringify({name:n,version:'1.0.0',private:true,dependencies:{'@capacitor/android':'^7.0.0','@capacitor/core':'^7.0.0'},devDependencies:{'@capacitor/cli':'^7.0.0'}},null,2);
-const cfg=(n,name)=>JSON.stringify({appId:'com.apkapp.'+n,appName:name||n,webDir:'www'},null,2);
+const cfg=(n,name)=>JSON.stringify({appId:'com.myapps.'+n,appName:name||n,webDir:'www'},null,2);
 const LOGS={};
 
-async function build(i){const a=S.apps[i],key='app'+(i+1);
+async function build(i){const a=S.apps[i],key=slugOf(a.name);
+  if(!key)return toast('اكتب اسم التطبيق بالإنجليزية (حروف وأرقام فقط)');
+  if(S.apps.some((x,j)=>j!==i&&slugOf(x.name)===key))return toast('هذا الاسم مستخدم للتطبيق الآخر، غيّره');
   if(!a.code.trim())return toast('اكتب الكود أولاً');
   if(!S.keys.ghToken)return toast('أدخل مفتاح GitHub في قائمة المفاتيح');
-  const P=progress('بناء: '+a.name,['التحقق من الحساب والمستودع','رفع الكود','تشغيل البناء','جاري بناء ملف APK','تجهيز ملف التحميل']);
+  const P=progress('بناء: '+a.name,['التحقق من الحساب والمستودع','رفع الكود إلى apps/'+key,'تشغيل البناء','جاري بناء ملف APK','تجهيز ملف التحميل']);
   let step=0;
   try{
     P.set(0,'run');const repo=await repoFull();let info;
     try{info=await gh('/repos/'+repo)}catch(e){if(e.status===404){info=await gh('/user/repos',{method:'POST',body:JSON.stringify({name:repo.split('/')[1],auto_init:true,private:false})});await sleep(3000)}else throw e}
     const branch=info.default_branch||'main';P.set(0,'ok','المستودع: '+repo);
     step=1;P.set(1,'run');const dir='apps/'+key;
+    try{await gh('/repos/'+repo+'/contents/.github/workflows/build-app.yml?ref='+branch)}catch(e){if(e.status===404)throw new Error('ملف build-app.yml غير موجود في المستودع');throw e}
     await put(repo,branch,dir+'/www/index.html',a.code);
     await put(repo,branch,dir+'/package.json',pkg(key));
     await put(repo,branch,dir+'/capacitor.config.json',cfg(key,a.name));
-    await put(repo,branch,'.github/workflows/build-app.yml',WF);P.set(1,'ok');
+    P.set(1,'ok');
     step=2;P.set(2,'run');const t0=Date.now();
     for(let n=0;n<8;n++){try{await gh('/repos/'+repo+'/actions/workflows/build-app.yml/dispatches',{method:'POST',body:JSON.stringify({ref:branch,inputs:{app:key}})});break}
       catch(e){if((e.status===404||e.status===422)&&n<7){P.set(2,'run','بانتظار تجهيز خطوات البناء...');await sleep(4000)}else throw e}}
@@ -237,4 +241,4 @@ async function fixBuild(i){closeSheet();toast('جاري إصلاح الكود...
 render();
 </script>
 </body>
-</html>
+  </html>
