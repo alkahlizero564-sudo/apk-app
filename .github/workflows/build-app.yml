@@ -25,6 +25,25 @@ jobs:
           npm install
           npx cap add android
           npx cap sync android
+          cp "$GITHUB_WORKSPACE/keys/shared.keystore" android/app/shared.keystore
+          cat >> android/app/build.gradle <<'EOF'
+
+          android {
+              signingConfigs {
+                  shared {
+                      storeFile file("shared.keystore")
+                      storePassword "android123"
+                      keyAlias "shared"
+                      keyPassword "android123"
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.shared
+                  }
+              }
+          }
+          EOF
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
