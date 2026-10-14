@@ -1,92 +1,423 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>آلة حاسبة</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src * data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src * data: blob:;">
+<meta name="theme-color" content="#7A3E12">
+<title>حجز العيش</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%237A3E12'/%3E%3Cpath d='M12 38c0-10 8-18 20-18s20 8 20 18c0 3-2 5-5 5H17c-3 0-5-2-5-5z' fill='%23F2A94B'/%3E%3Cpath d='M23 27l4 7M33 25l4 8M43 28l3 6' stroke='%237A3E12' stroke-width='3' stroke-linecap='round'/%3E%3Crect x='14' y='44' width='36' height='5' rx='2.5' fill='%23F2A94B'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
 <style>
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0b1220;font-family:system-ui,Arial,sans-serif}
-.calc{width:100%;max-width:360px;padding:16px}
-.screen{background:#131c31;border-radius:16px;padding:16px;margin-bottom:12px;text-align:left;direction:ltr;min-height:96px}
-.expr{color:#8fa0c4;font-size:16px;min-height:22px;word-break:break-all}
-.res{color:#fff;font-size:40px;font-weight:700;word-break:break-all}
-.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;direction:ltr}
-button{border:0;border-radius:14px;padding:18px 0;font-size:22px;font-weight:600;background:#243557;color:#fff}
-button:active{opacity:.7}
-.op{background:#2f80ff}
-.fn{background:#3a4a6e}
-.eq{background:#ffb300;color:#222}
-.zero{grid-column:span 2}
+  :root {
+    --flour: #FBF5EA;
+    --crust: #7A3E12;
+    --crust-deep: #5A2A09;
+    --amber: #E08A1E;
+    --wheat: #F2C879;
+    --ink: #2B1A10;
+    --muted: #8B7355;
+    --line: #E7D8BE;
+    --card: #FFFFFF;
+    --ok: #3F7D4E;
+    --closed: #B3361F;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: "Tajawal", "Noto Naskh Arabic", system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--flour);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.6;
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  button, input { font-family: inherit; font-size: inherit; }
+  .app { max-width: 520px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; }
+
+  .net-banner {
+    display: none; background: var(--closed); color: #fff; text-align: center;
+    padding: 8px 12px; font-weight: 700; font-size: 14px;
+  }
+  .net-banner.show { display: block; }
+
+  .top {
+    background: linear-gradient(160deg, var(--crust) 0%, var(--crust-deep) 100%);
+    color: #FFF3DC;
+    padding: 22px 20px 26px;
+    border-radius: 0 0 28px 28px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .logo { width: 56px; height: 56px; flex: none; }
+  .top h1 { margin: 0; font-size: 24px; font-weight: 800; }
+  .top p { margin: 2px 0 0; font-size: 14px; color: var(--wheat); }
+
+  main { flex: 1; padding: 20px 18px 110px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .card { background: var(--card); border: 1.5px solid var(--line); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; }
+  .card h2 { margin: 0 0 4px; font-size: 20px; font-weight: 800; }
+  .card .hint { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+  label { display: block; font-weight: 700; margin: 12px 0 6px; }
+  input[type=text], input[type=tel], input[type=number] {
+    width: 100%; padding: 14px 16px; border: 2px solid var(--line); border-radius: 14px;
+    background: var(--flour); color: var(--ink); outline: none;
+  }
+  input:focus-visible { border-color: var(--amber); }
+  .amount-wrap { position: relative; }
+  .amount-wrap input { padding-inline-end: 64px; font-size: 22px; font-weight: 800; }
+  .amount-wrap span { position: absolute; inset-inline-end: 16px; top: 50%; transform: translateY(-50%); color: var(--muted); font-weight: 700; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip { border: 2px solid var(--line); background: var(--card); color: var(--crust); font-weight: 700; padding: 8px 14px; border-radius: 999px; cursor: pointer; }
+  .chip:active { background: var(--wheat); }
+
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .seg button {
+    padding: 14px; border-radius: 14px; border: 2px solid var(--line); background: var(--card);
+    font-weight: 700; color: var(--muted); cursor: pointer;
+  }
+  .seg button.on { border-color: var(--amber); background: #FFF1D6; color: var(--crust); }
+
+  .btn {
+    width: 100%; padding: 16px; border: 0; border-radius: 16px; margin-top: 18px;
+    background: var(--amber); color: #2B1500; font-weight: 800; font-size: 18px; cursor: pointer;
+    box-shadow: 0 4px 0 #A8650F;
+  }
+  .btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #A8650F; }
+  .btn:disabled { background: #D9CDB6; box-shadow: none; color: #8B7355; cursor: not-allowed; }
+  .err { color: var(--closed); font-weight: 700; margin: 10px 0 0; min-height: 1.4em; }
+
+  .closed-banner {
+    display: none; background: #FBE3DD; border: 2px solid var(--closed); color: var(--closed);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px; font-weight: 800; text-align: center; font-size: 18px;
+  }
+  .closed-banner.show { display: block; }
+
+  .order { background: var(--card); border: 1.5px solid var(--line); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .order-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .order-amount { font-size: 22px; font-weight: 800; }
+  .order-amount small { font-size: 14px; color: var(--muted); font-weight: 500; }
+  .badge { padding: 4px 12px; border-radius: 999px; font-weight: 700; font-size: 14px; }
+  .badge.new { background: #FFF1D6; color: var(--crust); }
+  .badge.received { background: #E3EEF9; color: #1F5A99; }
+  .badge.ready { background: #DDF0E2; color: var(--ok); }
+  .order-meta { color: var(--muted); font-size: 14px; margin: 4px 0 12px; }
+  .steps { display: flex; align-items: center; }
+  .step { flex: 1; text-align: center; font-size: 13px; color: var(--muted); position: relative; }
+  .step i { display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--line); margin: 0 auto 4px; position: relative; z-index: 1; }
+  .step.done { color: var(--ink); font-weight: 700; }
+  .step.done i { background: var(--ok); }
+  .step:not(:last-child)::after { content: ""; position: absolute; top: 6px; inset-inline-start: 50%; width: 100%; height: 2px; background: var(--line); }
+  .step.done:not(:last-child)::after { background: var(--ok); }
+  .empty { text-align: center; color: var(--muted); padding: 40px 10px; }
+
+  .tabs {
+    position: fixed; bottom: 0; inset-inline: 0; margin: 0 auto; max-width: 520px;
+    display: none; background: var(--card); border-top: 1.5px solid var(--line);
+    padding: 8px 12px calc(8px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+  }
+  .tabs.show { display: grid; grid-template-columns: 1fr 1fr; }
+  .tabs button {
+    border: 0; background: transparent; padding: 10px; border-radius: 14px; font-weight: 700; color: var(--muted); cursor: pointer;
+  }
+  .tabs button.on { background: #FFF1D6; color: var(--crust); }
+
+  .toast {
+    position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); inset-inline: 14px; margin: 0 auto; max-width: 480px;
+    background: var(--ink); color: #FFF3DC; padding: 14px 18px; border-radius: 16px; font-weight: 700;
+    transform: translateY(-140%); transition: transform .3s ease; z-index: 10; text-align: center;
+  }
+  .toast.show { transform: translateY(0); }
+  @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 </style>
 </head>
 <body>
-<div class="calc">
-  <div class="screen">
-    <div class="expr" id="expr"></div>
-    <div class="res" id="res">0</div>
-  </div>
-  <div class="keys">
-    <button class="fn" onclick="clr()">C</button>
-    <button class="fn" onclick="del()">⌫</button>
-    <button class="fn" onclick="add('%')">%</button>
-    <button class="op" onclick="add('÷')">÷</button>
+<div class="app">
+  <div class="net-banner" id="netBanner">لا يوجد اتصال بالإنترنت. تأكد من الشبكة وحاول مرة ثانية.</div>
 
-    <button onclick="add('7')">7</button>
-    <button onclick="add('8')">8</button>
-    <button onclick="add('9')">9</button>
-    <button class="op" onclick="add('×')">×</button>
+  <header class="top">
+    <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+      <rect width="64" height="64" rx="16" fill="#F2A94B"/>
+      <path d="M10 38c0-11 9-19 22-19s22 8 22 19c0 3-2 5-5 5H15c-3 0-5-2-5-5z" fill="#7A3E12"/>
+      <path d="M22 27l4 8M32 24l4 9M43 28l3 6" stroke="#F2C879" stroke-width="3.5" stroke-linecap="round"/>
+      <rect x="12" y="45" width="40" height="6" rx="3" fill="#7A3E12"/>
+    </svg>
+    <div>
+      <h1>حجز العيش</h1>
+      <p id="topSub">احجز عيشك طازج وجاهز</p>
+    </div>
+  </header>
 
-    <button onclick="add('4')">4</button>
-    <button onclick="add('5')">5</button>
-    <button onclick="add('6')">6</button>
-    <button class="op" onclick="add('-')">−</button>
+  <main>
+    <section id="sc-register" class="screen">
+      <div class="card">
+        <h2>أهلاً بيك</h2>
+        <p class="hint">سجّل مرة واحدة بس، وبعدها تحجز طوالي.</p>
+        <label for="name">الاسم</label>
+        <input id="name" type="text" autocomplete="name" placeholder="اكتب اسمك">
+        <label for="phone">رقم الهاتف</label>
+        <input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="مثال: 0912345678" dir="ltr" style="text-align:right">
+        <p class="err" id="regErr"></p>
+        <button class="btn" id="regBtn">سجّل وابدأ</button>
+      </div>
+    </section>
 
-    <button onclick="add('1')">1</button>
-    <button onclick="add('2')">2</button>
-    <button onclick="add('3')">3</button>
-    <button class="op" onclick="add('+')">+</button>
+    <section id="sc-book" class="screen">
+      <div class="closed-banner" id="closedBanner">الحجز مقفل حالياً</div>
+      <div class="card">
+        <h2>احجز عيشك</h2>
+        <p class="hint">اكتب المبلغ الذي تريده من العيش.</p>
+        <label for="amount">المبلغ</label>
+        <div class="amount-wrap">
+          <input id="amount" type="number" inputmode="numeric" min="1" placeholder="0">
+          <span>ج.س</span>
+        </div>
+        <div class="chips" id="chips">
+          <button class="chip" data-v="500">500</button>
+          <button class="chip" data-v="1000">1000</button>
+          <button class="chip" data-v="2000">2000</button>
+          <button class="chip" data-v="5000">5000</button>
+        </div>
+        <label>طريقة الدفع</label>
+        <div class="seg" id="pay">
+          <button data-v="cash" class="on">نقدي</button>
+          <button data-v="credit">آجل</button>
+        </div>
+        <p class="err" id="bookErr"></p>
+        <button class="btn" id="bookBtn">احجز</button>
+      </div>
+    </section>
 
-    <button class="zero" onclick="add('0')">0</button>
-    <button onclick="add('.')">.</button>
-    <button class="eq" onclick="calc()">=</button>
-  </div>
+    <section id="sc-orders" class="screen">
+      <div id="ordersList"></div>
+    </section>
+  </main>
+
+  <nav class="tabs" id="tabs">
+    <button data-s="book" class="on">حجز جديد</button>
+    <button data-s="orders">طلباتي</button>
+  </nav>
 </div>
 
-<script>
-let exp = '';
-const expEl = document.getElementById('expr');
-const resEl = document.getElementById('res');
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-function show(){
-  expEl.textContent = exp;
-  resEl.textContent = exp || '0';
+<script>
+/* ======== ضع بيانات مشروعك في Supabase هنا ======== */
+const SUPABASE_URL = "https://qlvmxnoewxzykgbneadv.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsdm14bm9ld3h6eWtnYm5lYWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDAwMjIsImV4cCI6MjEwNzIxNjAyMn0.WtsiO0PrUrwxKjpcyB3949kXSZeijtlJYySSbh0ieRk";
+/* =================================================== */
+
+const POLL_MS = 5000;
+const TIMEOUT_MS = 15000;
+const STATUS_LABEL = { new: "جديد", received: "تم الاستلام", ready: "جاهز" };
+const PAY_LABEL = { cash: "نقدي", credit: "آجل" };
+const STATUS_MSG = { received: "تم استلام طلبك ✅", ready: "طلبك جاهز 🍞 تفضّل استلمه" };
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 3 | 8)).toString(16); }));
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+let customer = store.get("bread_customer", null);
+let known = store.get("bread_status", {});
+let bookingOpen = true;
+let payType = "cash";
+let pollTimer = null;
+
+/* ---------- حالة الإنترنت ---------- */
+function updateNet() { $("netBanner").classList.toggle("show", navigator.onLine === false); }
+window.addEventListener("offline", updateNet);
+window.addEventListener("online", () => {
+  updateNet();
+  if (customer) { refreshSettings(); loadOrders(true); }
+});
+
+function netMsg(defaultMsg) {
+  return navigator.onLine === false ? "لا يوجد اتصال بالإنترنت. تأكد من الشبكة وحاول مرة ثانية." : defaultMsg;
 }
-function add(c){
-  const last = exp.slice(-1);
-  const ops = '+-×÷%';
-  if (ops.includes(c) && (exp === '' && c !== '-')) return;
-  if (ops.includes(c) && ops.includes(last)) exp = exp.slice(0,-1);
-  exp += c;
-  show();
-}
-function clr(){ exp = ''; expEl.textContent = ''; resEl.textContent = '0'; }
-function del(){ exp = exp.slice(0,-1); show(); }
-function calc(){
-  if (!exp) return;
+
+/* ---------- Supabase REST ---------- */
+async function api(path, { method = "GET", body, prefer } = {}) {
+  if (navigator.onLine === false) throw new Error("offline");
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
-    const js = exp.replace(/×/g,'*').replace(/÷/g,'/').replace(/(\d+\.?\d*)%/g,'($1/100)');
-    let v = Function('"use strict";return (' + js + ')')();
-    if (!isFinite(v)) throw new Error('قسمة على صفر');
-    v = Math.round(v * 1e10) / 1e10;
-    expEl.textContent = exp + ' =';
-    resEl.textContent = v;
-    exp = String(v);
-  } catch (e) {
-    resEl.textContent = 'خطأ';
-    exp = '';
-  }
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      method,
+      signal: ctrl.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        "Content-Type": "application/json",
+        ...(prefer ? { Prefer: prefer } : {})
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const text = await res.text();
+    if (!res.ok) throw new Error(text || res.status);
+    return text ? JSON.parse(text) : null;
+  } finally { clearTimeout(timer); }
 }
+
+/* ---------- واجهة ---------- */
+function showScreen(name) {
+  document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("active", s.id === "sc-" + name));
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.s === name));
+  $("tabs").classList.toggle("show", name !== "register");
+  if (name === "orders") loadOrders();
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 4500);
+}
+
+function alertUser(msg) {
+  toast(msg);
+  try { if (navigator.vibrate) navigator.vibrate([250, 120, 250]); } catch {}
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.value = 0.08;
+    o.start(); o.stop(ctx.currentTime + 0.25);
+  } catch {}
+}
+
+function applyBookingState() {
+  $("closedBanner").classList.toggle("show", !bookingOpen);
+  $("bookBtn").disabled = !bookingOpen;
+  $("bookBtn").textContent = bookingOpen ? "احجز" : "الحجز مقفل حالياً";
+}
+
+/* ---------- التسجيل ---------- */
+$("regBtn").onclick = async () => {
+  const name = $("name").value.trim();
+  const phone = $("phone").value.replace(/\s+/g, "");
+  const err = $("regErr");
+  err.textContent = "";
+  if (name.length < 2) { err.textContent = "اكتب اسمك كاملاً."; return; }
+  if (!/^\+?\d{9,15}$/.test(phone)) { err.textContent = "رقم الهاتف غير صحيح. اكتب أرقاماً فقط."; return; }
+  const btn = $("regBtn"); btn.disabled = true; btn.textContent = "جارٍ التسجيل...";
+  try {
+    const c = { id: uuid(), name, phone };
+    await api("customers", { method: "POST", body: c, prefer: "return=minimal" });
+    customer = c;
+    store.set("bread_customer", c);
+    enterApp();
+  } catch (e) {
+    err.textContent = netMsg("تعذّر التسجيل. تأكد من إعدادات Supabase وحاول مرة ثانية.");
+  } finally { btn.disabled = false; btn.textContent = "سجّل وابدأ"; }
+};
+
+/* ---------- الحجز ---------- */
+$("chips").onclick = (e) => { const v = e.target.dataset.v; if (v) $("amount").value = v; };
+$("pay").onclick = (e) => {
+  const v = e.target.dataset.v; if (!v) return;
+  payType = v;
+  document.querySelectorAll("#pay button").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+};
+
+$("bookBtn").onclick = async () => {
+  const err = $("bookErr"); err.textContent = "";
+  if (!bookingOpen) { err.textContent = "الحجز مقفل حالياً."; return; }
+  const amount = Number($("amount").value);
+  if (!Number.isFinite(amount) || amount <= 0) { err.textContent = "اكتب مبلغاً صحيحاً."; return; }
+  const btn = $("bookBtn"); btn.disabled = true; btn.textContent = "جارٍ الإرسال...";
+  try {
+    await refreshSettings();
+    if (!bookingOpen) { err.textContent = "الحجز مقفل حالياً."; return; }
+    const row = {
+      customer_id: customer.id, customer_name: customer.name, phone: customer.phone,
+      amount_sdg: amount, payment_type: payType, status: "new"
+    };
+    const out = await api("orders", { method: "POST", body: row, prefer: "return=representation" });
+    if (out && out[0]) { known[out[0].id] = "new"; store.set("bread_status", known); }
+    $("amount").value = "";
+    toast("تم إرسال حجزك للإدارة ✅");
+    showScreen("orders");
+  } catch (e) {
+    err.textContent = netMsg("تعذّر إرسال الحجز. حاول مرة ثانية.");
+  } finally { applyBookingState(); }
+};
+
+/* ---------- الطلبات ---------- */
+function fmtTime(iso) {
+  try { return new Date(iso).toLocaleString("ar", { dateStyle: "medium", timeStyle: "short" }); } catch { return ""; }
+}
+
+function renderOrders(list) {
+  const box = $("ordersList");
+  if (!list.length) { box.innerHTML = '<div class="empty">ما عندك طلبات لسه.<br>اضغط "حجز جديد" وابدأ.</div>'; return; }
+  const rank = { new: 0, received: 1, ready: 2 };
+  box.innerHTML = list.map((o) => {
+    const r = rank[o.status] ?? 0;
+    return `<div class="order">
+      <div class="order-head">
+        <div class="order-amount">${esc(Number(o.amount_sdg).toLocaleString("ar"))} <small>ج.س</small></div>
+        <span class="badge ${esc(o.status)}">${esc(STATUS_LABEL[o.status] || o.status)}</span>
+      </div>
+      <div class="order-meta">${esc(PAY_LABEL[o.payment_type] || "")} • ${esc(fmtTime(o.created_at))}</div>
+      <div class="steps">
+        <div class="step ${r >= 0 ? "done" : ""}"><i></i>جديد</div>
+        <div class="step ${r >= 1 ? "done" : ""}"><i></i>تم الاستلام</div>
+        <div class="step ${r >= 2 ? "done" : ""}"><i></i>جاهز</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function loadOrders(notify) {
+  if (!customer) return;
+  try {
+    const list = await api(`orders?customer_id=eq.${encodeURIComponent(customer.id)}&order=created_at.desc&limit=50`);
+    for (const o of list) {
+      const prev = known[o.id];
+      if (notify && prev && prev !== o.status && STATUS_MSG[o.status]) alertUser(STATUS_MSG[o.status]);
+      known[o.id] = o.status;
+    }
+    store.set("bread_status", known);
+    renderOrders(list);
+  } catch (e) {}
+}
+
+async function refreshSettings() {
+  try {
+    const s = await api("settings?id=eq.1&select=booking_open");
+    bookingOpen = s && s[0] ? s[0].booking_open !== false : true;
+  } catch (e) {}
+  applyBookingState();
+}
+
+function startPolling() {
+  clearInterval(pollTimer);
+  const tick = () => { refreshSettings(); loadOrders(true); };
+  tick();
+  pollTimer = setInterval(tick, POLL_MS);
+}
+
+/* ---------- تشغيل ---------- */
+function enterApp() {
+  $("topSub").textContent = "أهلاً " + customer.name;
+  showScreen("book");
+  startPolling();
+}
+
+document.querySelectorAll("#tabs button").forEach((b) => b.onclick = () => showScreen(b.dataset.s));
+
+updateNet();
+if (customer) enterApp(); else showScreen("register");
 </script>
 </body>
 </html>
