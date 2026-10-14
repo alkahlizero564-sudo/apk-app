@@ -19,50 +19,16 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - name: Find app folder
-        id: find
-        run: |
-          NAME=$(echo "${{ github.event.inputs.app }}" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
-          DIR=$(find apps -mindepth 1 -maxdepth 1 -type d | while read d; do
-            n=$(basename "$d" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
-            [ "$n" = "$NAME" ] && echo "$d" && break
-          done)
-          if [ -z "$DIR" ]; then
-            echo "Folder not found. Existing folders:"
-            ls apps
-            exit 1
-          fi
-          echo "dir=$DIR" >> $GITHUB_OUTPUT
-          echo "name=$(basename "$DIR")" >> $GITHUB_OUTPUT
       - name: Build
-        working-directory: ${{ steps.find.outputs.dir }}
+        working-directory: apps/${{ github.event.inputs.app }}
         run: |
           npm install
           npx cap add android
           npx cap sync android
-          cp "$GITHUB_WORKSPACE/keys/shared.keystore" android/app/shared.keystore
-          cat >> android/app/build.gradle <<'EOF'
-
-          android {
-              signingConfigs {
-                  shared {
-                      storeFile file("shared.keystore")
-                      storePassword "android123"
-                      keyAlias "shared"
-                      keyPassword "android123"
-                  }
-              }
-              buildTypes {
-                  debug {
-                      signingConfig signingConfigs.shared
-                  }
-              }
-          }
-          EOF
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
       - uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.find.outputs.name }}-build-${{ github.run_number }}
-          files: ${{ steps.find.outputs.dir }}/android/app/build/outputs/apk/debug/app-debug.apk
+          tag_name: ${{ github.event.inputs.app }}-build-${{ github.run_number }}
+          files: apps/${{ github.event.inputs.app }}/android/app/build/outputs/apk/debug/app-debug.apk
