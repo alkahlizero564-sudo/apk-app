@@ -19,40 +19,6 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-
-      - name: Set unique appId from folder name
-        working-directory: apps/${{ github.event.inputs.app }}
-        env:
-          APP_FOLDER: ${{ github.event.inputs.app }}
-        run: |
-          node -e "
-          const fs = require('fs');
-          const slug = process.env.APP_FOLDER.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const c = JSON.parse(fs.readFileSync('capacitor.config.json', 'utf8'));
-          c.appId = 'com.apkapp.app' + slug;
-          fs.writeFileSync('capacitor.config.json', JSON.stringify(c, null, 2));
-          console.log('appId =', c.appId);
-          "
-
-      - name: Use the same signing key every build
-        run: |
-          mkdir -p ~/.android
-          if [ -f signing/debug.keystore ]; then
-            cp signing/debug.keystore ~/.android/debug.keystore
-          else
-            keytool -genkeypair -keystore ~/.android/debug.keystore \
-              -storepass android -alias androiddebugkey -keypass android \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
-            mkdir -p signing
-            cp ~/.android/debug.keystore signing/debug.keystore
-            git config user.name "github-actions"
-            git config user.email "actions@github.com"
-            git add -f signing/debug.keystore
-            git commit -m "Add stable debug keystore"
-            git push
-          fi
-
       - name: Build
         working-directory: apps/${{ github.event.inputs.app }}
         run: |
@@ -62,7 +28,6 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
-
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.app }}-build-${{ github.run_number }}
