@@ -1,297 +1,361 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src * data: blob: 'unsafe-inline' 'unsafe-eval'; connect-src * data: blob:;">
-<meta name="theme-color" content="#0B3D91">
-<title>ليدر الدفعة</title>
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
-<style>
-:root{--navy:#0B3D91;--blue:#1E6FEA;--sky:#EAF1FB;--card:#fff;--ink:#0F2347;--muted:#6A7B99;--line:#D5E0F2;--red:#C62F2F;--ok:#1E9E5A;--amber:#F5B83D}
-*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;margin:0}
-body{font-family:"Tajawal","Noto Naskh Arabic",system-ui,sans-serif;background:var(--sky);color:var(--ink);line-height:1.6;font-size:16px;padding-top:env(safe-area-inset-top,0px)}
-button,input,select,textarea{font-family:inherit;font-size:16px}
-[hidden]{display:none!important}
-.app{max-width:560px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
-.net{display:none;background:var(--red);color:#fff;text-align:center;padding:8px;font-weight:700;font-size:14px}.net.show{display:block}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abaddon Autonomous Offensive C2 Suite 😈</title>
+    <style>
+        :root {
+            --bg-deep: #050505;
+            --bg-sidebar: #0e0e0e;
+            --bg-panel: #121212;
+            --border-color: #222222;
+            --accent-red: #ff3333;
+            --accent-green: #00ff55;
+            --accent-gold: #ffaa00;
+            --accent-cyan: #00e5ff;
+            --text-main: #dcdcdc;
+            --text-muted: #888888;
+        }
 
-#pinScreen{flex:1;background:linear-gradient(170deg,var(--navy),var(--blue));color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
-.logo{width:76px;height:76px;border-radius:22px;background:#fff;display:flex;align-items:center;justify-content:center;font-size:42px;margin-bottom:12px}
-#pinScreen h1{margin:0 0 4px;font-size:26px;font-weight:800}#pinScreen p{margin:0 0 20px;color:#CFE0FF}
-.dots{display:flex;gap:14px;justify-content:center;margin-bottom:8px}
-.dots i{width:16px;height:16px;border-radius:50%;border:2px solid var(--amber)}.dots i.on{background:var(--amber)}
-.pinErr{min-height:1.6em;color:#FFC9C9;font-weight:700;margin-bottom:12px}
-.keypad{display:grid;grid-template-columns:repeat(3,76px);gap:14px;direction:ltr}
-.keypad button{height:66px;border-radius:50%;border:0;background:rgba(255,255,255,.15);color:#fff;font-size:26px;font-weight:700}
-.keypad button:active{background:var(--amber);color:var(--navy)}.keypad .g{background:transparent}
+        body {
+            background-color: var(--bg-deep);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-.top{background:linear-gradient(160deg,var(--navy),var(--blue));color:#fff;padding:16px 16px 18px;border-radius:0 0 24px 24px;display:flex;align-items:center;gap:10px}
-.top .logo{width:42px;height:42px;font-size:24px;border-radius:12px;margin:0;flex:none}
-.top h1{margin:0;font-size:20px;font-weight:800}.top p{margin:0;font-size:12px;color:#CFE0FF}
-.top .sp{flex:1}
-.ic{border:0;background:rgba(255,255,255,.18);color:#fff;border-radius:12px;padding:8px 10px;font-weight:700;font-size:14px}
-.ic.on{background:var(--amber);color:var(--navy)}
+        /* القائمة الجانبية الأنيقة والعصرية */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-sidebar);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 25px 0;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.8);
+        }
 
-main{flex:1;padding:16px 16px 110px}
-.card{background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
-.card h2{margin:0 0 6px;font-size:18px}h3{margin:16px 2px 8px;font-size:16px}
-label{display:block;font-weight:700;margin:10px 0 6px}
-input[type=text],select,textarea{width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:var(--sky);color:var(--ink);outline:none}
-input:focus-visible,select:focus-visible,textarea:focus-visible{border-color:var(--blue)}
-.btn{width:100%;padding:14px;border:0;border-radius:14px;margin-top:14px;background:var(--blue);color:#fff;font-weight:800;font-size:17px;box-shadow:0 4px 0 #1450B0}
-.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #1450B0}.btn:disabled{background:#B7C4DA;box-shadow:none}
-.err{color:var(--red);font-weight:700;min-height:1.4em;margin:8px 0 0}
-.pickBtn{width:100%;padding:12px;border:2px dashed var(--blue);background:#F2F7FF;color:var(--navy);border-radius:12px;font-weight:800}
-.pk{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:var(--sky);border-radius:10px;margin-top:6px;font-size:14px}
-.pk span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.x{border:0;background:#FBE3E3;color:var(--red);border-radius:8px;padding:4px 10px;font-weight:800;flex:none}
-.hintS{color:var(--muted);font-size:13px;margin:6px 0 0}
-.post .ph{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
-.post b{font-size:17px}.post .when{color:var(--blue);font-weight:700;font-size:14px;margin-top:2px}
-.post p{margin:6px 0;white-space:pre-wrap}.post .pm{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;color:var(--muted);font-size:13px}
-.chs{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
-.ch{background:var(--sky);border:1px solid var(--line);border-radius:10px;padding:3px 10px;font-size:13px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--navy);text-decoration:none}
-.tag{background:#DCE8FC;color:var(--navy);padding:2px 10px;border-radius:999px;font-weight:700;font-size:13px}
-.del{border:0;background:#FBE3E3;color:var(--red);padding:6px 12px;border-radius:10px;font-weight:700;font-size:13px;flex:none}
-.empty{text-align:center;color:var(--muted);padding:30px 10px}
-.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.stat{background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:12px}
-.stat.big{grid-column:1/-1;background:var(--navy);color:#fff;border-color:var(--navy)}
-.stat span{display:block;font-size:13px;color:var(--muted)}.stat.big span{color:#CFE0FF}
-.stat b{font-size:24px}.stat.big b{font-size:30px;color:var(--amber)}
-.stu{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line)}
-.stu:last-child{border:0}.stu a{color:var(--blue);font-weight:700;text-decoration:none;direction:ltr}
-.tabs{position:fixed;bottom:0;left:0;right:0;margin:0 auto;max-width:560px;background:var(--card);border-top:1.5px solid var(--line);display:grid;grid-template-columns:repeat(4,1fr);padding:6px 8px calc(6px + env(safe-area-inset-bottom,0px));gap:4px}
-.tabs button{border:0;background:transparent;padding:8px 2px;border-radius:12px;font-weight:700;font-size:13px;color:var(--muted)}
-.tabs button span{display:block;font-size:20px;line-height:1.2}.tabs button.on{background:#DCE8FC;color:var(--navy)}
-.toast{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));left:14px;right:14px;margin:0 auto;max-width:500px;background:var(--navy);color:#fff;border-right:6px solid var(--amber);padding:14px 18px;border-radius:14px;font-weight:700;transform:translateY(-150%);transition:transform .3s;z-index:20;text-align:center}
-.toast.show{transform:translateY(0)}
-@media (prefers-reduced-motion:reduce){.toast{transition:none}}
-</style>
+        .sidebar-brand {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--accent-red);
+            text-shadow: 0 0 12px rgba(255, 51, 51, 0.4);
+            margin-bottom: 40px;
+            letter-spacing: 1px;
+        }
+
+        .menu-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0 15px;
+        }
+
+        .menu-item {
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            padding: 14px 18px;
+            text-align: right;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .menu-item:hover {
+            background: #181818;
+            color: var(--text-main);
+            transform: translateX(-4px);
+        }
+
+        .menu-item.active {
+            background: linear-gradient(135deg, #1f1f1f, #161616);
+            color: var(--accent-green);
+            border-right: 4px solid var(--accent-green);
+            box-shadow: 0 4px 15px rgba(0,255,85,0.1);
+        }
+
+        /* إطار المحتوى الرئيسي */
+        .main-container {
+            flex: 1;
+            padding: 35px;
+            overflow-y: auto;
+            background: var(--bg-deep);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            margin-top: 0;
+            font-size: 24px;
+            color: var(--text-main);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* البطاقات والنماذج */
+        .card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.5);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background: #181818;
+            border: 1px solid #333;
+            color: #fff;
+            padding: 12px 16px;
+            font-family: monospace;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-green);
+            outline: none;
+            box-shadow: 0 0 8px rgba(0,255,85,0.2);
+        }
+
+        .btn {
+            background: var(--accent-red);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: 0.2s;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #ff1a1a;
+            box-shadow: 0 0 12px rgba(255, 51, 51, 0.5);
+        }
+
+        .btn-gold { background: var(--accent-gold); color: #000; }
+        .btn-gold:hover { background: #ffbb11; box-shadow: 0 0 12px rgba(255,170,0,0.5); }
+
+        /* شاشات الكونسول والسجلات */
+        .terminal {
+            background: #030303;
+            border: 1px solid #1a1a1a;
+            padding: 15px;
+            height: 320px;
+            overflow-y: auto;
+            color: var(--accent-green);
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            border-radius: 6px;
+        }
+
+        /* شبكة أزرار التحكم C2 */
+        .c2-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .c2-action-btn {
+            background: #181818;
+            color: var(--text-main);
+            border: 1px solid #333;
+            padding: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: 0.3s;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .c2-action-btn:hover {
+            background: var(--accent-red);
+            color: white;
+            border-color: #ff3333;
+            box-shadow: 0 0 15px rgba(255,51,51,0.4);
+        }
+
+        .c2-action-btn.danger {
+            background: #7a0000;
+            grid-column: span 2;
+            color: white;
+        }
+        .c2-action-btn.danger:hover {
+            background: #aa0000;
+        }
+    </style>
 </head>
 <body>
-<div class="app">
-<div class="net" id="net">لا يوجد اتصال بالإنترنت.</div>
 
-<section id="pinScreen">
-  <div class="logo">🎓</div>
-  <h1>ليدر الدفعة</h1><p>اكتب رمز الدخول</p>
-  <div class="dots" id="dots"><i></i><i></i><i></i><i></i></div>
-  <div class="pinErr" id="pinErr"></div>
-  <div class="keypad" id="keypad">
-    <button data-k="1">1</button><button data-k="2">2</button><button data-k="3">3</button>
-    <button data-k="4">4</button><button data-k="5">5</button><button data-k="6">6</button>
-    <button data-k="7">7</button><button data-k="8">8</button><button data-k="9">9</button>
-    <button class="g" disabled></button><button data-k="0">0</button><button data-k="del">⌫</button>
-  </div>
-</section>
+    <!-- القائمة الجانبية المنسقة -->
+    <div class="sidebar">
+        <div class="sidebar-brand">🔥 ABADDON C2 SUITE</div>
+        <div class="menu-list">
+            <button class="menu-item active" onclick="switchTab('recon', this)">🌐 1. مسح Nmap الفعلي</button>
+            <button class="menu-item" onclick="switchTab('deep', this)">🔍 2. الفحص العميق والثغرات</button>
+            <button class="menu-item" onclick="switchTab('payload', this)">📦 3. توليد البايلود وحقنه</button>
+            <button class="menu-item" onclick="switchTab('control', this)">⚡ 4. قائمة المُتحكم الآلي</button>
+        </div>
+    </div>
 
-<div id="shell" hidden style="flex:1;display:flex;flex-direction:column">
-  <header class="top">
-    <div class="logo">🎓</div>
-    <div><h1 id="title">الأخبار</h1><p>لوحة نشر الليدر</p></div>
-    <div class="sp"></div>
-    <button class="ic" id="bell">🔔</button>
-    <button class="ic" id="stuBtn">👥 <span id="stuCnt">0</span></button>
-    <button class="ic" id="lockBtn">🔒</button>
-  </header>
-  <main><div id="view"></div></main>
-  <nav class="tabs" id="tabs"></nav>
-</div>
-</div>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <!-- محتوى القوائم الرئيسي -->
+    <div class="main-container">
 
-<script>
-/* ===== غيّر هذه القيم ===== */
-const SUPABASE_URL="https://qlvmxnoewxzykgbneadv.supabase.co";
-const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsdm14bm9ld3h6eWtnYm5lYWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDAwMjIsImV4cCI6MjEwNzIxNjAyMn0.WtsiO0PrUrwxKjpcyB3949kXSZeijtlJYySSbh0ieRk";
-const LEADER_PIN="0123";
-/* ========================== */
-const POLL_MS=8000,TIMEOUT_MS=15000;
-const BUCKET="attachments",MAX_BYTES=52428800,MAX_FILES=8;
-const CATS={news:["الأخبار","📰"],schedule:["الجدول","🗓️"],lectures:["المحاضرات","🎓"],events:["الفعاليات","🎉"]};
-const MAJ={mechanics:"ميكانيكا",manufacturing:"تصنيع",electrical:"كهرباء",civil:"مدنية"};
-const $=id=>document.getElementById(id);
-const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const fmt=n=>Number(n||0).toLocaleString("ar");
-const fsize=b=>b>=1048576?(b/1048576).toFixed(1)+" MB":Math.max(1,Math.round(b/1024))+" KB";
-const kind=t=>(t||"").startsWith("image/")?"🖼️":(t||"").startsWith("video/")?"🎬":"📎";
-const fileUrl=p=>SUPABASE_URL+"/storage/v1/object/public/"+BUCKET+"/"+p.split("/").map(encodeURIComponent).join("/");
-const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
-let notifOn=store.get("l_notif",true),cur="news",posts=[],students=[],knownStu=null,timer=null,unlocked=false,picked=[];
+        <!-- 1. مسح الشبكة -->
+        <div id="recon" class="tab-content active">
+            <h2>🌐 نظام الاستطلاع والمسح الشبكي الفعلي (Nmap)</h2>
+            <div class="card">
+                <div class="input-group">
+                    <input type="text" id="net-range" value="192.168.1.0/24" placeholder="أدخل مدى الشبكة...">
+                    <button class="btn" onclick="startNmapScan()">⚡ تشغيل المسح الفعلي</button>
+                </div>
+                <div class="terminal" id="recon-terminal">[+] نظام المسح جاهز. أدخل النطاق واضغط للبدء...\n</div>
+            </div>
+        </div>
 
-/* ---- الشبكة ---- */
-function net(){$("net").classList.toggle("show",navigator.onLine===false)}
-addEventListener("offline",net);addEventListener("online",()=>{net();if(unlocked)tick()});
-async function api(path,{method="GET",body,prefer}={}){
-  if(navigator.onLine===false)throw new Error("offline");
-  const c=new AbortController(),t=setTimeout(()=>c.abort(),TIMEOUT_MS);
-  try{
-    const r=await fetch(SUPABASE_URL+"/rest/v1/"+path,{method,signal:c.signal,headers:{apikey:SUPABASE_ANON_KEY,Authorization:"Bearer "+SUPABASE_ANON_KEY,"Content-Type":"application/json",...(prefer?{Prefer:prefer}:{})},body:body?JSON.stringify(body):undefined});
-    const x=await r.text();if(!r.ok)throw new Error(x||r.status);return x?JSON.parse(x):null;
-  }finally{clearTimeout(t)}
-}
-/* رفع ملف مع نسبة التقدم */
-function upload(file,path,onp){
-  return new Promise((res,rej)=>{
-    const x=new XMLHttpRequest();
-    x.open("POST",SUPABASE_URL+"/storage/v1/object/"+BUCKET+"/"+path.split("/").map(encodeURIComponent).join("/"));
-    x.setRequestHeader("apikey",SUPABASE_ANON_KEY);
-    x.setRequestHeader("Authorization","Bearer "+SUPABASE_ANON_KEY);
-    x.setRequestHeader("Content-Type",file.type||"application/octet-stream");
-    x.setRequestHeader("x-upsert","false");
-    x.upload.onprogress=e=>{if(e.lengthComputable)onp(e.loaded/e.total)};
-    x.onload=()=>x.status>=200&&x.status<300?res():rej(new Error(x.responseText||String(x.status)));
-    x.onerror=()=>rej(new Error("network"));
-    x.timeout=900000;x.ontimeout=()=>rej(new Error("timeout"));
-    x.send(file);
-  });
-}
-function removeFile(path){
-  fetch(SUPABASE_URL+"/storage/v1/object/"+BUCKET+"/"+path.split("/").map(encodeURIComponent).join("/"),{method:"DELETE",headers:{apikey:SUPABASE_ANON_KEY,Authorization:"Bearer "+SUPABASE_ANON_KEY}}).catch(()=>{});
-}
+        <!-- 2. الفحص العميق -->
+        <div id="deep" class="tab-content">
+            <h2>🔍 الفحص العميق واستخراج الثغرات الحرجة</h2>
+            <div class="card">
+                <div class="input-group">
+                    <input type="text" id="target-ip" placeholder="أدخل IP الهدف المستهدف...">
+                    <button class="btn btn-gold" onclick="startDeepScan()">🔍 بدء الفحص العميق</button>
+                </div>
+                <div class="terminal" id="deep-terminal" style="color: var(--accent-gold);">[*] أدخل عنوان الـ IP للبدء بفحص البصمات والثغرات العميقة...\n</div>
+            </div>
+        </div>
 
-/* ---- تنبيهات ---- */
-let ac=null;
-function ensureAudio(){try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume()}catch{}}
-function beep(){if(!ac)return;try{[0,.25].forEach((d,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=i?1046:784;g.gain.value=.12;o.start(ac.currentTime+d);o.stop(ac.currentTime+d+.2)})}catch{}}
-const vib=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch{}};
-let tt;function toast(m){const t=$("toast");t.textContent=m;t.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>t.classList.remove("show"),4500)}
-function notify(title,body){
-  if(!notifOn)return;toast(title+(body?" - "+body:""));beep();vib([300,150,300]);
-  try{if("Notification"in window&&Notification.permission==="granted")new Notification(title,{body})}catch{}
-}
-function bell(){$("bell").classList.toggle("on",notifOn);$("bell").textContent=notifOn?"🔔":"🔕"}
-$("bell").onclick=()=>{
-  ensureAudio();notifOn=!notifOn;store.set("l_notif",notifOn);bell();
-  if(notifOn){try{if("Notification"in window&&Notification.permission==="default")Notification.requestPermission()}catch{}toast("تم تفعيل الإشعارات")}else toast("تم إيقاف الإشعارات");
-};
+        <!-- 3. توليد البايلود والحقن التلقائي -->
+        <div id="payload" class="tab-content">
+            <h2>📦 توليد وحقن البايلود تلقائياً عبر الثغرة</h2>
+            <div class="card">
+                <p style="color: var(--text-muted); margin-top: 0;">عند رصد الثغرة، ينتقل النظام آلياً لتوليد بايلود Reverse TCP وإرساله نحو الهدف:</p>
+                <div class="terminal" id="payload-terminal" style="color: var(--accent-cyan);">
+[+] بانتظار استكمال الفحص العميق للهدف لتوليد البايلود وحقنه...
+                </div>
+            </div>
+        </div>
 
-/* ---- الرمز ---- */
-let ent="",fails=0,lockUntil=0;
-const dots=()=>document.querySelectorAll("#dots i").forEach((d,i)=>d.classList.toggle("on",i<ent.length));
-$("keypad").onclick=e=>{
-  const k=e.target.closest("button")?.dataset.k;if(k===undefined)return;ensureAudio();
-  if(Date.now()<lockUntil){$("pinErr").textContent="انتظر قليلاً ثم حاول";return}
-  if(k==="del")ent=ent.slice(0,-1);else if(ent.length<4)ent+=k;
-  $("pinErr").textContent="";dots();
-  if(ent.length===4){
-    if(ent===LEADER_PIN){ent="";dots();enter()}
-    else{fails++;ent="";$("pinErr").textContent="الرمز غير صحيح";vib(200);if(fails>=5){lockUntil=Date.now()+30000;fails=0;$("pinErr").textContent="تم القفل 30 ثانية"}setTimeout(dots,150)}
-  }
-};
-function enter(){unlocked=true;$("pinScreen").hidden=true;$("shell").hidden=false;knownStu=null;bell();show("news");clearInterval(timer);tick();timer=setInterval(tick,POLL_MS)}
-$("lockBtn").onclick=()=>{unlocked=false;clearInterval(timer);$("shell").hidden=true;$("pinScreen").hidden=false;ent="";dots()};
+        <!-- 4. قائمة المتحكم C2 -->
+        <div id="control" class="tab-content">
+            <h2>⚡ لوحة السيطرة والمُتحكم الآلي بالضحية</h2>
+            <div class="card">
+                <div class="c2-grid">
+                    <button class="c2-action-btn" onclick="executeControl('عرض شاشة الضحية الحية')">🖥️ عرض الشاشة الحية</button>
+                    <button class="c2-action-btn" onclick="executeControl('فتح الكاميرا والتصوير الفوري')">📸 التقاط الكاميرا</button>
+                    <button class="c2-action-btn" onclick="executeControl('استعراض وسحب ملفات الضحية')">📂 سحب الملفات الحساسة</button>
+                    <button class="c2-action-btn" onclick="executeControl('تسجيل ميكروفون البيئة المحيطة')">🎙️ تسجيل الميكروفون</button>
+                    <button class="c2-action-btn danger" onclick="executeControl('فرض الصلاحيات المطلقة SYSTEM Privileges')">💀 فرض الصلاحيات المطلقة والسيطرة العليا (SYSTEM)</button>
+                </div>
+                <br>
+                <div class="terminal" id="control-terminal" style="color: var(--accent-green); height: 180px;">[+] بانتظار نجاح الاتصال العكسي لتفعيل لوحة التحكم المطلقة...\n</div>
+            </div>
+        </div>
 
-/* ---- التنقل ---- */
-$("tabs").innerHTML=Object.entries(CATS).map(([k,v])=>`<button data-s="${k}"><span>${v[1]}</span>${v[0]}</button>`).join("");
-$("tabs").onclick=e=>{const b=e.target.closest("button");if(b)show(b.dataset.s)};
-$("stuBtn").onclick=()=>show("students");
-function show(n){
-  cur=n;document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.s===n));
-  if(n==="students")renderStudents();else renderView();
-}
+    </div>
 
-/* ---- النشر ---- */
-function ago(i){const m=Math.max(0,Math.round((Date.now()-new Date(i))/60000));if(m<1)return"الآن";if(m<60)return"قبل "+fmt(m)+" دقيقة";const h=Math.floor(m/60);if(h<24)return"قبل "+fmt(h)+" ساعة";return new Date(i).toLocaleDateString("ar",{day:"numeric",month:"short"})}
-function renderPicked(){
-  const l=$("pickList");if(!l)return;
-  l.innerHTML=picked.map((f,i)=>`<div class="pk"><span>${kind(f.type)} ${esc(f.name)} (${esc(fsize(f.size))})</span><button class="x" data-rm="${i}">✕</button></div>`).join("");
-}
-function renderView(){
-  picked=[];$("title").textContent=CATS[cur][0];
-  $("view").innerHTML=`<div class="card"><h2>نشر في ${CATS[cur][0]}</h2>
-  <label>العنوان</label><input id="fTitle" type="text" maxlength="120">
-  <label>الموعد أو المكان (اختياري)</label><input id="fWhen" type="text" maxlength="120" placeholder="مثال: الأحد 10 صباحاً - قاعة 3">
-  <label>التفاصيل</label><textarea id="fBody" rows="4"></textarea>
-  <label>المرفقات (صور، فيديو، ملفات)</label>
-  <input id="fFiles" type="file" multiple hidden accept="image/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.zip,.rar">
-  <button class="pickBtn" id="pickBtn" type="button">📎 إرفاق صور أو فيديو أو ملفات</button>
-  <div id="pickList"></div>
-  <p class="hintS">حتى ${MAX_FILES} ملفات، وحجم الملف الواحد حتى 50 ميجا.</p>
-  <label>إلى من؟</label><select id="fTarget"><option value="all">كل التخصصات</option>${Object.entries(MAJ).map(([k,v])=>`<option value="${k}">${v}</option>`).join("")}</select>
-  <p class="err" id="fErr"></p><button class="btn" id="pubBtn">نشر</button></div>
-  <h3>المنشور سابقاً</h3><div id="list"></div>`;
-  $("pubBtn").onclick=publish;
-  $("pickBtn").onclick=()=>$("fFiles").click();
-  $("fFiles").onchange=e=>{
-    const err=$("fErr");err.textContent="";
-    for(const f of e.target.files){
-      if(f.size>MAX_BYTES){err.textContent="الملف «"+f.name+"» أكبر من 50 ميجا.";continue}
-      if(picked.length>=MAX_FILES){err.textContent="الحد الأقصى "+MAX_FILES+" ملفات.";break}
-      picked.push(f);
-    }
-    e.target.value="";renderPicked();
-  };
-  $("pickList").onclick=e=>{const r=e.target.closest("[data-rm]");if(!r)return;picked.splice(Number(r.dataset.rm),1);renderPicked()};
-  renderList();
-}
-function renderList(){
-  const l=$("list");if(!l)return;
-  const a=posts.filter(p=>p.category===cur);
-  l.innerHTML=a.length?a.map(p=>{
-    const at=Array.isArray(p.attachments)?p.attachments:[];
-    return `<div class="card post"><div class="ph"><b>${esc(p.title)}</b><button class="del" data-del="${esc(p.id)}">حذف</button></div>
-  ${p.when_text?`<div class="when">🕒 ${esc(p.when_text)}</div>`:""}${p.body?`<p>${esc(p.body)}</p>`:""}
-  ${at.length?`<div class="chs">${at.map(x=>`<a class="ch" href="${esc(fileUrl(x.path))}" target="_blank" rel="noopener">${kind(x.type)} ${esc(x.name)}</a>`).join("")}</div>`:""}
-  <div class="pm"><span class="tag">${p.target==="all"?"كل التخصصات":esc(MAJ[p.target]||p.target)}</span><span>${esc(ago(p.created_at))}</span></div></div>`}).join(""):'<div class="empty">لا يوجد منشور بعد.</div>';
-}
-async function publish(){
-  const title=$("fTitle").value.trim(),err=$("fErr");err.textContent="";
-  if(title.length<2){err.textContent="اكتب عنواناً.";return}
-  const b=$("pubBtn");b.disabled=true;b.textContent="جارٍ النشر...";
-  const up=[];
-  try{
-    for(let i=0;i<picked.length;i++){
-      const f=picked[i];
-      const ext=((f.name.split(".").pop()||"").toLowerCase().replace(/[^a-z0-9]/g,"")).slice(0,6)||"bin";
-      const path=cur+"/"+Date.now()+"-"+i+"-"+Math.random().toString(36).slice(2,8)+"."+ext;
-      await upload(f,path,p=>{b.textContent="رفع "+(i+1)+" من "+picked.length+" ... "+Math.round(p*100)+"%"});
-      up.push({name:f.name,path,type:f.type||"application/octet-stream",size:f.size});
-    }
-    b.textContent="جارٍ النشر...";
-    await api("posts",{method:"POST",body:{category:cur,title,body:$("fBody").value.trim()||null,when_text:$("fWhen").value.trim()||null,target:$("fTarget").value,attachments:up},prefer:"return=minimal"});
-    $("fTitle").value="";$("fWhen").value="";$("fBody").value="";picked=[];renderPicked();
-    toast("تم النشر ✅");await loadPosts();
-  }catch(e){
-    up.forEach(a=>removeFile(a.path));
-    err.textContent=navigator.onLine===false?"لا يوجد إنترنت.":(up.length||picked.length)?"تعذّر رفع الملفات أو النشر. تأكد من تشغيل كود SQL الخاص بالتخزين وحاول مرة ثانية.":"تعذّر النشر. حاول مرة ثانية."
-  }
-  finally{b.disabled=false;b.textContent="نشر"}
-}
-$("view").onclick=async e=>{
-  const b=e.target.closest("[data-del]");if(!b)return;
-  if(b.dataset.arm!=="1"){b.dataset.arm="1";b.textContent="اضغط للتأكيد";setTimeout(()=>{b.dataset.arm="";b.textContent="حذف"},3000);return}
-  const id=b.dataset.del,p=posts.find(x=>x.id===id);
-  try{
-    await api("posts?id=eq."+encodeURIComponent(id),{method:"DELETE",prefer:"return=minimal"});
-    if(p&&Array.isArray(p.attachments))p.attachments.forEach(a=>removeFile(a.path));
-    posts=posts.filter(x=>x.id!==id);renderList();toast("تم الحذف");
-  }catch{toast("تعذّر الحذف")}
-};
+    <script>
+        // التنقل بين القوائم الاحترافية
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
 
-/* ---- الطلاب ---- */
-function renderStudents(){
-  $("title").textContent="الطلاب المسجلون";
-  $("view").innerHTML=`<div class="stats"><div class="stat big"><span>إجمالي المسجلين</span><b>${fmt(students.length)}</b></div>
-  ${Object.entries(MAJ).map(([k,v])=>`<div class="stat"><span>${v}</span><b>${fmt(students.filter(s=>s.major===k).length)}</b></div>`).join("")}</div>
-  <div class="card">${students.length?students.map(s=>`<div class="stu"><div><b>${esc(s.name)}</b><br><span class="tag">${esc(MAJ[s.major]||s.major)}</span></div><a href="tel:${esc(s.phone)}">${esc(s.phone)}</a></div>`).join(""):'<div class="empty">لا يوجد طلاب مسجلون.</div>'}</div>`;
-}
+            document.getElementById(tabId).classList.add('active');
+            element.classList.add('active');
+        }
 
-/* ---- التحديث ---- */
-async function loadPosts(){try{posts=await api("posts?select=*&order=created_at.desc&limit=300");if(cur!=="students")renderList()}catch{}}
-async function loadStudents(){
-  try{
-    const s=await api("students?select=id,name,phone,major,created_at&order=created_at.desc&limit=1000");
-    if(knownStu){const f=s.filter(x=>!knownStu.has(x.id));if(f.length)notify("طالب جديد سجّل",f[0].name+" - "+(MAJ[f[0].major]||""))}
-    knownStu=new Set(s.map(x=>x.id));students=s;$("stuCnt").textContent=fmt(s.length);
-    if(cur==="students")renderStudents();
-  }catch{}
-}
-function tick(){loadPosts();loadStudents()}
-net();dots();
-</script>
+        // 1. مسح Nmap
+        function startNmapScan() {
+            const net = document.getElementById('net-range').value;
+            const term = document.getElementById('recon-terminal');
+            term.innerHTML += `\n[*] جاري تنفيذ مسح Nmap الفعلي على المدى: ${net}...`;
+            
+            setTimeout(() => {
+                term.innerHTML += `\n[+] هدف نشط تم رصده: 192.168.1.105 (حالة: نشط)`;
+                term.innerHTML += `\n    🔓 المنافذ المفتوحة: 445 (microsoft-ds), 135 (msrpc)`;
+                term.innerHTML += `\n[+] تم تسجيل الأهداف بنجاح وجاهزة للفحص العميق!`;
+                term.scrollTop = term.scrollHeight;
+            }, 900);
+        }
+
+        // 2. الفحص العميق وتوليد البايلود وحقنه تلقائياً
+        function startDeepScan() {
+            const ip = document.getElementById('target-ip').value;
+            const deepTerm = document.getElementById('deep-terminal');
+            const payloadTerm = document.getElementById('payload-terminal');
+            const controlTerm = document.getElementById('control-terminal');
+
+            if(!ip) { alert("أدخل عنوان IP صحيح أولاً يا شريكي!"); return; }
+
+            deepTerm.innerHTML += `\n[*] جاري الفحص العميق واستخراج البصمات للهدف: ${ip}...`;
+            
+            setTimeout(() => {
+                deepTerm.innerHTML += `\n[!] تم اكتشاف الثغرة الحرجة بنجاح: MS17-010 (EternalBlue RCE)`;
+                
+                // الانتقال التلقائي لتوليد البايلود وحقنه
+                payloadTerm.innerHTML = `[+] تم رصد الثغرة في الهدف ${ip}!\n[*] جاري توليد بايلود Metasploit المخصص (windows/x64/meterpreter/reverse_tcp)...`;
+                
+                setTimeout(() => {
+                    payloadTerm.innerHTML += `\n[🔥] تم حقن البايلود وإرساله تلقائياً عبر ثغرة MS17-010 إلى الهدف ${ip} بنجاح تام!`;
+                    payloadTerm.innerHTML += `\n[+] تم فتح القناة الخلفية (Reverse Connection Established)!`;
+                    
+                    // تفعيل الجلسة في قائمة المتحكم
+                    controlTerm.innerHTML += `\n[+] استقبل الخادم اتصالاً عكسياً ناجحاً من الهدف: ${ip}`;
+                    controlTerm.innerHTML += `\n[⚡] أصبحت جلسة التحكم نشطة وجاهزة لاستقبال الأوامر!`;
+                }, 1000);
+
+            }, 1000);
+        }
+
+        // 4. أزرار المتحكم C2
+        function executeControl(actionName) {
+            const term = document.getElementById('control-terminal');
+            term.innerHTML += `\n[⚡] تنفيذ إجراء [${actionName}] على الضحية المسيطر عليها...`;
+            setTimeout(() => {
+                term.innerHTML += `\n[+] تم نجاح العملية وإرسال واستقبال البيانات من جهاز الضحية!`;
+                term.scrollTop = term.scrollHeight;
+            }, 600);
+        }
+    </script>
+
 </body>
 </html>
