@@ -1,2551 +1,538 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>صانع فيديو أوتوميشن بالذكاء الاصطناعي التوليدي</title>
-    <style>
-        :root {
-            --primary: #4f46e5;
-            --primary-dark: #4338ca;
-            --primary-light: #eef2ff;
-            --accent: #06b6d4;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --bg: #0f172a;
-            --card-bg: #1e293b;
-            --card-surface: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: #334155;
-            --radius-lg: 18px;
-            --radius-md: 14px;
-            --radius-sm: 8px;
-            --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
-            --shadow-lg: 0 10px 30px -3px rgba(0, 0, 0, 0.6);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-        }
-
-        input, textarea, select {
-            user-select: text;
-        }
-
-        body {
-            background-color: var(--bg);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-            padding-bottom: 75px;
-        }
-
-        header {
-            background: linear-gradient(135deg, #1e1b4b, #312e81, #4f46e5);
-            color: white;
-            padding: 16px 20px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .header-title {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .header-title h1 {
-            font-size: 1.25rem;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-        }
-
-        .engine-pill {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(8px);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #10b981;
-            box-shadow: 0 0 8px #10b981;
-            animation: pulseDot 1.5s infinite;
-        }
-
-        @keyframes pulseDot {
-            0% { transform: scale(0.9); opacity: 0.7; }
-            50% { transform: scale(1.2); opacity: 1; }
-            100% { transform: scale(0.9); opacity: 0.7; }
-        }
-
-        nav.bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: #1e293b;
-            display: flex;
-            border-top: 1px solid var(--border);
-            height: 65px;
-            z-index: 1000;
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.3);
-        }
-
-        .nav-item {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 0.8rem;
-            font-weight: 600;
-            border: none;
-            background: none;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-
-        .nav-item.active {
-            color: #818cf8;
-        }
-
-        .nav-icon {
-            font-size: 1.35rem;
-            margin-bottom: 2px;
-        }
-
-        main {
-            padding: 16px;
-            flex: 1;
-            max-width: 650px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .page {
-            display: none;
-            animation: fadeIn 0.25s ease;
-        }
-
-        .page.active {
-            display: block;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .info-card {
-            background: var(--card-bg);
-            border-radius: var(--radius-md);
-            padding: 18px;
-            box-shadow: var(--shadow);
-            margin-bottom: 16px;
-            border: 1px solid var(--border);
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            color: #cbd5e1;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 13px;
-            border-radius: var(--radius-sm);
-            border: 1.5px solid var(--border);
-            font-size: 0.95rem;
-            outline: none;
-            background: #0f172a;
-            color: #f8fafc;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .form-control:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
-        }
-
-        .chips-container {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding-bottom: 10px;
-            margin-bottom: 12px;
-            scrollbar-width: none;
-        }
-
-        .chips-container::-webkit-scrollbar {
-            display: none;
-        }
-
-        .chip {
-            background: #0f172a;
-            border: 1px solid var(--border);
-            padding: 8px 14px;
-            border-radius: 20px;
-            font-size: 0.82rem;
-            font-weight: 600;
-            color: var(--text-muted);
-            white-space: nowrap;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            transition: all 0.2s;
-        }
-
-        .chip:hover {
-            border-color: #6366f1;
-            color: #f8fafc;
-        }
-
-        .chip.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        .btn-submit {
-            width: 100%;
-            background: linear-gradient(135deg, #4f46e5, #6366f1);
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: var(--radius-md);
-            font-size: 1.05rem;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 4px 18px rgba(79, 70, 229, 0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: transform 0.1s, opacity 0.2s;
-        }
-
-        .btn-submit:active {
-            transform: scale(0.98);
-        }
-
-        .btn-secondary {
-            background: #334155;
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            padding: 13px;
-            border-radius: var(--radius-md);
-            font-size: 0.95rem;
-            font-weight: bold;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            width: 100%;
-            transition: background 0.2s;
-        }
-
-        .btn-secondary:active {
-            background: #475569;
-        }
-
-        .video-box-wrapper {
-            position: relative;
-            background: #000;
-            border-radius: var(--radius-md);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 16px;
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow-lg);
-        }
-
-        #videoCanvas {
-            width: 100%;
-            max-height: 440px;
-            display: block;
-            background: #000;
-            object-fit: contain;
-        }
-
-        .video-controls {
-            width: 100%;
-            background: rgba(15, 23, 42, 0.98);
-            padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: white;
-            border-top: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .ctrl-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            font-size: 1.1rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            transition: transform 0.1s;
-        }
-
-        .ctrl-btn:active {
-            transform: scale(0.92);
-        }
-
-        .progress-bar-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .custom-slider {
-            width: 100%;
-            accent-color: var(--primary);
-            cursor: pointer;
-        }
-
-        .time-label {
-            font-size: 0.75rem;
-            color: #94a3b8;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .story-badge {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: rgba(79, 70, 229, 0.85);
-            color: white;
-            font-size: 0.75rem;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-weight: bold;
-            backdrop-filter: blur(6px);
-            z-index: 5;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-
-        .toast-notification {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            right: 20px;
-            background: #1e1b4b;
-            border: 1px solid #4f46e5;
-            color: white;
-            padding: 14px 18px;
-            border-radius: var(--radius-md);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            z-index: 9999;
-            transform: translateY(-150%);
-            transition: transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
-        }
-
-        .toast-notification.show {
-            transform: translateY(0);
-        }
-
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 8px;
-        }
-
-        .style-select-card {
-            border: 2px solid var(--border);
-            border-radius: var(--radius-sm);
-            padding: 10px 6px;
-            text-align: center;
-            cursor: pointer;
-            background: #0f172a;
-            transition: all 0.2s;
-        }
-
-        .style-select-card.selected {
-            border-color: #818cf8;
-            background: rgba(79, 70, 229, 0.15);
-            color: #a5b4fc;
-            font-weight: bold;
-        }
-
-        .history-card {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md);
-            padding: 14px;
-            margin-bottom: 12px;
-            box-shadow: var(--shadow);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-muted);
-        }
-
-        .spinner {
-            display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .meta-tag {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid var(--border);
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>صانع فيديو أوتوميشن بالذكاء الاصطناعي</title>
+<style>
+:root{--pr:#4f46e5;--bg:#0f172a;--card:#1e293b;--tx:#f8fafc;--mu:#94a3b8;--bd:#334155;--r:14px}
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-tap-highlight-color:transparent;user-select:none}
+input,textarea,select{user-select:text}
+body{background:var(--bg);color:var(--tx);min-height:100vh;display:flex;flex-direction:column;padding-bottom:75px}
+header{background:linear-gradient(135deg,#1e1b4b,#312e81,#4f46e5);padding:14px 18px;position:sticky;top:0;z-index:100;display:flex;justify-content:space-between;align-items:center;gap:8px}
+header h1{font-size:1.05rem;font-weight:800}
+header small{font-size:.72rem;opacity:.85}
+.pill{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);padding:6px 12px;border-radius:20px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 8px #10b981}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);display:flex;border-top:1px solid var(--bd);height:65px;z-index:1000}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--mu);font-size:.7rem;font-weight:600;border:0;background:none;cursor:pointer}
+.nav-item.active{color:#818cf8}
+.nav-icon{font-size:1.3rem;margin-bottom:2px}
+main{padding:16px;flex:1;max-width:650px;margin:0 auto;width:100%}
+.page{display:none}.page.active{display:block}
+.info-card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:16px;border:1px solid var(--bd)}
+.fg{margin-bottom:14px}
+.lbl{display:block;margin-bottom:6px;font-weight:600;font-size:.88rem;color:#cbd5e1}
+.fc{width:100%;padding:12px;border-radius:8px;border:1.5px solid var(--bd);font-size:.95rem;outline:0;background:var(--bg);color:var(--tx)}
+.fc:focus{border-color:var(--pr)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;scrollbar-width:none}
+.chip{background:var(--bg);border:1px solid var(--bd);padding:8px 14px;border-radius:20px;font-size:.8rem;font-weight:600;color:var(--mu);white-space:nowrap;cursor:pointer}
+.chip.active{background:var(--pr);color:#fff;border-color:var(--pr)}
+.btn{width:100%;background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;border:0;padding:13px;border-radius:var(--r);font-size:.98rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn.gem{background:linear-gradient(135deg,#0284c7,#2563eb,#7c3aed);margin-bottom:14px}
+.btn.sec{background:#334155;border:1px solid var(--bd)}
+.btn:disabled{opacity:.6}
+.btn:active{transform:scale(.98)}
+.vbox{background:#000;border-radius:var(--r);overflow:hidden;margin-bottom:14px;border:1px solid var(--bd);position:relative}
+#videoCanvas{width:100%;max-height:440px;display:block;object-fit:contain;background:#000}
+.vctl{background:#0f172a;padding:10px 14px;display:flex;align-items:center;gap:10px}
+.cb{background:var(--pr);color:#fff;border:0;width:40px;height:40px;border-radius:50%;font-size:1.1rem;cursor:pointer;flex-shrink:0}
+.pbar{flex:1}
+.pbar input{width:100%;accent-color:var(--pr)}
+.tl{font-size:.72rem;color:var(--mu);display:flex;justify-content:space-between}
+.badge{position:absolute;top:10px;right:10px;background:rgba(79,70,229,.85);font-size:.72rem;padding:4px 10px;border-radius:20px;font-weight:700;z-index:2}
+#toast{position:fixed;top:16px;left:16px;right:16px;background:#1e1b4b;border:1px solid var(--pr);padding:12px 16px;border-radius:var(--r);display:flex;gap:12px;align-items:center;z-index:9999;transform:translateY(-160%);transition:transform .3s}
+#toast.show{transform:none}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.sc{border:2px solid var(--bd);border-radius:8px;padding:10px 4px;text-align:center;cursor:pointer;background:var(--bg);font-size:.78rem}
+.sc b{display:block;font-size:.78rem}.sc small{color:var(--mu);font-size:.64rem}.sc i{font-style:normal;font-size:1.3rem;display:block}
+.sc.selected{border-color:#818cf8;background:rgba(79,70,229,.18);color:#a5b4fc}
+.hc{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:12px;margin-bottom:10px}
+.empty{text-align:center;padding:30px;color:var(--mu)}
+.spin{display:inline-block;width:16px;height:16px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
 </head>
 <body>
+<div id="toast"><span id="tIcon" style="font-size:1.4rem">⚡</span><div><div id="tTitle" style="font-weight:700"></div><div id="tMsg" style="font-size:.85rem;color:#cbd5e1"></div></div></div>
 
-    <div id="toast" class="toast-notification">
-        <span id="toastIcon" style="font-size: 1.5rem;">⚡</span>
-        <div>
-            <div id="toastTitle" style="font-weight: bold; font-size: 0.95rem;">توليد الشخصيات</div>
-            <div id="toastMsg" style="font-size: 0.85rem; color: #cbd5e1;"></div>
-        </div>
+<header>
+  <div><h1>🎭 أوتوميشن تصميم الشخصيات</h1><small>حوّل وصف الشخصية إلى حركة ورسم كامل</small></div>
+  <div class="pill" onclick="switchPage('settings',4)"><span class="dot" id="sDot"></span><span id="sTxt">المحرك جاهز</span></div>
+</header>
+
+<main>
+<section id="page-generator" class="page active">
+  <div class="vbox">
+    <span class="badge" id="resBadge">📱 9:16</span>
+    <canvas id="videoCanvas" width="720" height="1280"></canvas>
+    <div class="vctl">
+      <button class="cb" id="playBtn" onclick="togglePlay()">▶</button>
+      <div class="pbar"><input type="range" id="tline" min="0" max="100" step="0.1" value="0" oninput="seekVideo(this.value)">
+        <div class="tl"><span id="curT">00:00</span><span id="totT">00:09</span></div></div>
+      <button class="cb" style="background:#0284c7" onclick="restartVideo()">🔄</button>
     </div>
-
-    <header>
-        <div class="header-title">
-            <span style="font-size: 1.8rem;">🎭</span>
-            <div>
-                <h1>أوتوميشن تصميم وتوليد الشخصيات</h1>
-                <small style="font-size: 0.75rem; opacity: 0.85;">تحويل وصف مظهر وسلوك الشخصيات إلى حركة ورسم مرئي كامل</small>
-            </div>
-        </div>
-        <div class="engine-pill">
-            <span class="status-dot"></span>
-            <span>المحرك متزامن حياً</span>
-        </div>
-    </header>
-
-    <main>
-        <section id="page-generator" class="page active">
-            <div class="video-box-wrapper">
-                <span class="story-badge" id="videoResolutionBadge">📱 9:16 ستوري / ريلز</span>
-                <canvas id="videoCanvas" width="720" height="1280"></canvas>
-                <div class="video-controls">
-                    <button class="ctrl-btn" id="playPauseBtn" onclick="togglePlayVideo()">▶</button>
-                    <div class="progress-bar-container">
-                        <input type="range" id="videoTimeline" class="custom-slider" min="0" max="100" value="0" oninput="seekVideo(this.value)">
-                        <div class="time-label">
-                            <span id="currentTimeDisplay">00:00</span>
-                            <span id="totalTimeDisplay">00:09</span>
-                        </div>
-                    </div>
-                    <button class="ctrl-btn" style="background:#0284c7;" title="إعادة التشغيل" onclick="restartVideo()">🔄</button>
-                </div>
-            </div>
-
-            <div class="grid-2" style="margin-bottom: 16px;">
-                <button class="btn-submit" id="exportVideoBtn" style="margin-top:0;" onclick="exportRealVideo()">
-                    <span id="exportIcon">⬇️</span>
-                    <span id="exportText">تصدير وتحميل فيديو (MP4/WebM)</span>
-                </button>
-                <button class="btn-secondary" onclick="shareVideoDetails()">
-                    <span>📤</span> مشاركة تصميم الشخصيات
-                </button>
-            </div>
-
-            <div class="info-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <h3 style="font-size: 1.1rem; font-weight: 700;">👤 صف الشخصيات، مظهرها، حركتها، وما تحمله بيديها</h3>
-                    <span style="font-size:0.75rem; color:#818cf8; font-weight:bold;">توليد فوري للشخصية ⚡</span>
-                </div>
-
-                <div class="chips-container">
-                    <button class="chip" onclick="applyQuickPrompt('رائد فضاء يرتدي خوذة زرقاء وبدلة فضائية يقفز ويحمل صاروخاً صغيراً ومعه رائد أحمر يلوح بيده!')">🚀 رواد فضاء وبدلات</button>
-                    <button class="chip" onclick="applyQuickPrompt('محارب نينجا يرتدي درعاً أسود وقناعاً أحمر يحمل سيفاً طاقياً يقاتل وحشاً فضائياً أزرق!')">⚔️ مقاتل نينجا ووحش</button>
-                    <button class="chip" onclick="applyQuickPrompt('طباخ مبتسم يرتدي قبعة طهاة بيضاء يحمل فنجان قهوة ساخن ويقدم وجبة شهية بسعادة!')">👨‍🍳 شيف وطعام</button>
-                    <button class="chip" onclick="applyQuickPrompt('شخصية روبوت ذكي بعيون نيون خضراء وجسد أصفر يقفز بحماس ويحمل هاتفاً متطوراً!')">🤖 روبوت وذكاء اصطناعي</button>
-                    <button class="chip" onclick="applyQuickPrompt('معلم عجوز بنظارات دائرية وشعر أبيض يحمل كتاباً ودفتر علمي ويشرح بحماس!')">🧑‍🏫 معلم وعالم أبحاث</button>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">أسلوب وطبيعة تجسيد الشخصيات *</label>
-                    <div class="grid-3" id="automationTypeSelector">
-                        <div class="style-select-card selected" onclick="selectAutomationType('talking_shapes', this)">
-                            <div style="font-size:1.3rem;">🏃‍♂️</div>
-                            <div style="font-size:0.8rem; font-weight:bold;">كرتون أطراف تفاعلي</div>
-                            <div style="font-size:0.65rem; color:var(--text-muted);">أيدي وأرجل وملامح مرسومة</div>
-                        </div>
-                        <div class="style-select-card" onclick="selectAutomationType('action', this)">
-                            <div style="font-size:1.3rem;">⚔️</div>
-                            <div style="font-size:0.8rem; font-weight:bold;">مقاتلو سايبر وأكشن</div>
-                            <div style="font-size:0.65rem; color:var(--text-muted);">أقنعة ودروع وأسلحة طاقة</div>
-                        </div>
-                        <div class="style-select-card" onclick="selectAutomationType('educational', this)">
-                            <div style="font-size:1.3rem;">🧑‍🏫</div>
-                            <div style="font-size:0.8rem; font-weight:bold;">معلم وشخصية إرشاد</div>
-                            <div style="font-size:0.65rem; color:var(--text-muted);">نظارة وعصا تأشير وحركات هادئة</div>
-                        </div>
-                        <div class="style-select-card" onclick="selectAutomationType('promotional', this)">
-                            <div style="font-size:1.3rem;">🎁</div>
-                            <div style="font-size:0.8rem; font-weight:bold;">شخصية استعراض وهدايا</div>
-                            <div style="font-size:0.65rem; color:var(--text-muted);">حمل جوائز وعروض وترويج</div>
-                        </div>
-                        <div class="style-select-card" onclick="selectAutomationType('kinetic', this)">
-                            <div style="font-size:1.3rem;">⚡</div>
-                            <div style="font-size:0.8rem; font-weight:bold;">شخصيات خيال وأضواء</div>
-                            <div style="font-size:0.65rem; color:var(--text-muted);">تأثيرات جسدية وجزيئات حولها</div>
-                        </div>
-                        <div class="style-select-card" onclick="selectAutomationType('news', this)">
-                            <div style="font-size:1.3rem;">🎙️</div>
-                            <div style="font-size:0.8rem; font-weight:bold;">مقدم برامج ومذيع</div>
-                            <div style="font-size:0.65rem; color:var(--text-muted);">حركات حديث يدوي وإيماءات</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">وصف مظهر، ألوان، ملابس، وحركات الشخصيات (حي وتوليدي) *</label>
-                    <textarea id="promptInput" class="form-control" rows="4" oninput="onLivePromptChange()" placeholder="صف الشخصيات هنا: ملابسها (بدلة، قبعة، درع، نظارة)، لون جسدها (أحمر، أزرق، أصفر، أخضر)، أسلوب حركتها (تقفز، تلوح، تقاتل)، وما تحمله بيديها (سيف، كتاب، قهوة، سيارة، هاتف)..."></textarea>
-                </div>
-
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label class="form-label">اسم الشخصية / العمل</label>
-                        <input type="text" id="brandInput" class="form-control" oninput="onLivePromptChange()" placeholder="مثال: البطل كابتن نيون، فيفي وكوكو...">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">معلومات وتفاصيل إضافية</label>
-                        <input type="text" id="contactInput" class="form-control" oninput="onLivePromptChange()" placeholder="شعار الشخصية، مهاراتها، أو رابط المتابعة">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">أبعاد ومقاس الفيديو</label>
-                    <div class="grid-3" id="formatSelector">
-                        <div class="style-select-card selected" onclick="selectVideoFormat('9:16', this)">
-                            <div style="font-size:1.3rem;">📱</div>
-                            <div style="font-size:0.8rem;">9:16 ريلز / ستوري</div>
-                        </div>
-                        <div class="style-select-card" onclick="selectVideoFormat('1:1', this)">
-                            <div style="font-size:1.3rem;">🟦</div>
-                            <div style="font-size:0.8rem;">1:1 مربع منشور</div>
-                        </div>
-                        <div class="style-select-card" onclick="selectVideoFormat('16:9', this)">
-                            <div style="font-size:1.3rem;">🖥️</div>
-                            <div style="font-size:0.8rem;">16:9 شاشة عريضة</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">بيئة وألوان الإضاءة الخلفية</label>
-                    <div class="grid-3" id="themeSelector">
-                        <div class="style-select-card selected" onclick="selectVideoTheme('indigo', this)">
-                            <div style="font-size:1.3rem;">🌌</div>
-                            <div style="font-size:0.8rem;">نيلي ليلي</div>
-                        </div>
-                        <div class="style-select-card" onclick="selectVideoTheme('cyber', this)">
-                            <div style="font-size:1.3rem;">⚡</div>
-                            <div style="font-size:0.8rem;">سايبر نيون</div>
-                        </div>
-                        <div class="style-select-card" onclick="selectVideoTheme('sunset', this)">
-                            <div style="font-size:1.3rem;">🔥</div>
-                            <div style="font-size:0.8rem;">غروب دافئ</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">مدة حركة واستعراض الشخصيات</label>
-                    <select id="videoDuration" class="form-control" onchange="generateVideoFromPrompt()">
-                        <option value="6">استعراض حركي سريع (6 ثوانٍ - 3 مشاهد)</option>
-                        <option value="9" selected>استعراض متكامل للشخصيات (9 ثوانٍ - 3 مشاهد)</option>
-                        <option value="12">سيناريو حركي شامل (12 ثانية - 4 مشاهد)</option>
-                    </select>
-                </div>
-
-                <button class="btn-submit" onclick="generateVideoFromPrompt()">
-                    <span>✨</span> توليد وتحديث الشخصيات فوراً من الوصف
-                </button>
-            </div>
-        </section>
-
-        <section id="page-scenes" class="page">
-            <div class="info-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <h3 style="font-size: 1.15rem; font-weight: 700;">🎞️ حركات وهيئات الشخصية عبر المشاهد</h3>
-                    <button class="chip active" onclick="regenerateScenesAuto()">إعادة تحليل وصف الشخصيات 🪄</button>
-                </div>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
-                    يتم استخراج خصائص الشخصية (اللون، الإكسسوار، الرداء، الحركة) وتوزيعها على المشاهد؛ يمكنك تعديل وصف كل مشهد بدقة:
-                </p>
-
-                <div id="scenesEditorList"></div>
-
-                <button class="btn-submit" onclick="applyCustomScenesAndPreview()">
-                    <span>💾</span> حفظ تعديلات الشخصيات وتحديث العرض
-                </button>
-            </div>
-        </section>
-
-        <section id="page-templates" class="page">
-            <div class="info-card">
-                <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 8px;">💡 نماذج شخصيات جاهزة ومبتكرة</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
-                    انقر على أي شخصية لتحميل مظهرها وملابسها وحركاتها ومحاكاتها فوراً:
-                </p>
-                <div id="templatesListContainer"></div>
-            </div>
-        </section>
-
-        <section id="page-history" class="page">
-            <div class="info-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <h3 style="font-size: 1.15rem; font-weight: 700;">📂 سجل فيديوهات الشخصيات المصدرة</h3>
-                    <button class="chip" onclick="clearLocalHistory()">مسح السجل</button>
-                </div>
-                <div id="historyListContainer"></div>
-            </div>
-        </section>
-    </main>
-
-    <nav class="bottom-nav">
-        <button class="nav-item active" onclick="switchPage('generator', this)">
-            <span class="nav-icon">🎭</span>
-            <span>توليد الشخصيات</span>
-        </button>
-        <button class="nav-item" onclick="switchPage('scenes', this)">
-            <span class="nav-icon">🎬</span>
-            <span>المشاهد والحركات</span>
-        </button>
-        <button class="nav-item" onclick="switchPage('templates', this)">
-            <span class="nav-icon">💡</span>
-            <span>شخصيات جاهزة</span>
-        </button>
-        <button class="nav-item" onclick="switchPage('history', this)">
-            <span class="nav-icon">📑</span>
-            <span>المحفوظات</span>
-        </button>
-    </nav>
-
-    <script>
-        let videoDuration = 9;
-        let currentAspect = '9:16';
-        let currentTheme = 'indigo';
-        let currentAutomationType = 'talking_shapes';
-        let isPlaying = false;
-        let currentTime = 0;
-        let animationFrameId = null;
-        let lastTimestamp = 0;
-        let isExporting = false;
-        let generatedScenes = [];
-        let particles = [];
-        let savedHistory = [];
-        let audioCtx = null;
-        let lastFifiSpeechStep = -1;
-        let liveDebounce = null;
-
-        const canvas = document.getElementById('videoCanvas');
-        const ctx = canvas.getContext('2d');
-
-        const THEMES = {
-            indigo: {
-                bgGradient: ['#1e1b4b', '#0f172a', '#312e81'],
-                accent: '#818cf8',
-                accent2: '#38bdf8',
-                textMain: '#ffffff',
-                textSub: '#cbd5e1',
-                cardBg: 'rgba(30, 27, 75, 0.75)',
-                cardBorder: '#6366f1'
-            },
-            cyber: {
-                bgGradient: ['#020617', '#090d16', '#0f172a'],
-                accent: '#06b6d4',
-                accent2: '#f43f5e',
-                textMain: '#ffffff',
-                textSub: '#bae6fd',
-                cardBg: 'rgba(15, 23, 42, 0.85)',
-                cardBorder: '#0ea5e9'
-            },
-            sunset: {
-                bgGradient: ['#431407', '#1c0a00', '#7c2d12'],
-                accent: '#fb923c',
-                accent2: '#facc15',
-                textMain: '#ffffff',
-                textSub: '#fed7aa',
-                cardBg: 'rgba(67, 20, 7, 0.8)',
-                cardBorder: '#ea580c'
-            }
-        };
-
-        const READY_TEMPLATES = [
-            {
-                title: 'شخصية مرحة صفراء بقبعة وقفازات بيضاء تلوح وتقفز',
-                badge: 'كرتون مرح',
-                autoType: 'talking_shapes',
-                desc: 'شخصية صفراء دائرية ترتدي قبعة حمراء وقفازات بيضاء وحذاءً أحمر، تقفز بحماس عالي وتلوح بيدها اليسرى بسعادة مع رفيق أزرق لطيف',
-                brand: 'فيفي المرح وكوكو',
-                contact: 'مغامرات كرتونية تفاعلية'
-            },
-            {
-                title: 'رائد فضاء بخوذة زجاجية وبدلة فضاء يحمل صاروخاً',
-                badge: 'فضاء وخيال',
-                autoType: 'talking_shapes',
-                desc: 'رائد فضاء يرتدي بدلة بيضاء كاملة مع خوذة فضاء دائرية عاكسة، يطفو في الفضاء بحركة انعدام وزن ويحمل بيده مجسماً لصاروخ فضائي',
-                brand: 'رواد الفضاء المستكشفون',
-                contact: 'استكشاف الكواكب والمجرات'
-            },
-            {
-                title: 'مقاتل نينجا سايبر بقناع ودروع يحمل سيفاً طاقياً مشعاً',
-                badge: 'أكشن وسايبر',
-                autoType: 'action',
-                desc: 'مقاتل نينجا آلي يرتدي درعاً معدنياً داكناً وقناعاً إلكترونياً بأعين ليزر متوهجة، يوجه ضربات سريعة بسيف ضوئي نيون متوهج',
-                brand: 'فرقة المحارب السيبراني',
-                contact: 'معارك المستقبل والخيال العلمي'
-            },
-            {
-                title: 'معلم حكيم بنظارة طبية وبدلة رسمية يحمل عصا الإشارة وكتاباً',
-                badge: 'إرشاد وتعليم',
-                autoType: 'educational',
-                desc: 'معلم وقور بنظارة طبية زرقاء وبدلة كحلية وشعر فضي، يقف بثقة ويؤشر بعصا خشبية ذهبية ويحمل بيده الأخرى كتاب العلوم المفيد',
-                brand: 'المعلم الذكي',
-                contact: 'شروحات علمية وتفاعلية'
-            },
-            {
-                title: 'شيف طهاة بقبعة بيضاء ومريلة خضراء يحمل كوب قهوة ساخن',
-                badge: 'طعام وضيافة',
-                autoType: 'promotional',
-                desc: 'طباخ بشوش يرتدي قبعة طهاة شاهقة ومريلة مطبخ نظيفة، يقفز فرحاً ويحمل بيده فنجان قهوة تفوح منه سحب البخار الدافئة',
-                brand: 'الشيف الماهر',
-                contact: 'فنون الضيافة والطهي اللذيذ'
-            }
-        ];
-
-        document.addEventListener('DOMContentLoaded', () => {
-            initParticles();
-            loadLocalHistory();
-            renderTemplatesList();
-            setDefaultPromptAndRender();
-        });
-
-        function onLivePromptChange() {
-            clearTimeout(liveDebounce);
-            liveDebounce = setTimeout(() => {
-                const prompt = document.getElementById('promptInput').value.trim();
-                const brand = document.getElementById('brandInput').value.trim();
-                const contact = document.getElementById('contactInput').value.trim();
-                videoDuration = parseFloat(document.getElementById('videoDuration').value) || 9;
-                generatedScenes = parsePromptToScenes(prompt || 'شخصية كرتونية متحركة بأطراف كاملة', brand, contact, videoDuration);
-                renderVideoFrame(currentTime);
-            }, 120);
-        }
-
-        function selectAutomationType(typeKey, el) {
-            currentAutomationType = typeKey;
-            document.querySelectorAll('#automationTypeSelector .style-select-card').forEach(c => c.classList.remove('selected'));
-            el.classList.add('selected');
-            lastFifiSpeechStep = -1;
-            renderVideoFrame(currentTime);
-            showToast('هيئة الشخصيات 🎭', `تم التبديل إلى: ${getAutomationTypeName(typeKey)}`);
-        }
-
-        function getAutomationTypeName(key) {
-            const names = {
-                talking_shapes: 'كرتون أطراف تفاعلي (أيدي وأرجل وملامح مرسومة)',
-                action: 'مقاتلو سايبر وأكشن (أقنعة ودروع وأسلحة)',
-                educational: 'معلم وشخصية إرشاد (نظارة وعصا تأشير)',
-                promotional: 'شخصية استعراض وهدايا (حمل جوائز وعروض)',
-                kinetic: 'شخصيات خيال وأضواء (تأثيرات جسدية وجزيئات)',
-                news: 'مقدم برامج ومذيع (حركات وإيماءات تفاعلية)'
-            };
-            return names[key] || 'شخصية مخصصة';
-        }
-
-        function initParticles() {
-            particles = [];
-            for (let i = 0; i < 45; i++) {
-                particles.push({
-                    x: Math.random() * canvas.width,
-                    y: Math.random() * canvas.height,
-                    radius: Math.random() * 4 + 1.2,
-                    vx: (Math.random() - 0.5) * 1.6,
-                    vy: (Math.random() - 0.5) * 1.6,
-                    alpha: Math.random() * 0.6 + 0.2
-                });
-            }
-        }
-
-        function renderTemplatesList() {
-            const container = document.getElementById('templatesListContainer');
-            container.innerHTML = READY_TEMPLATES.map((tmpl, idx) => `
-                <div style="background:#0f172a; border:1px solid var(--border); border-radius:var(--radius-sm); padding:14px; margin-bottom:12px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                        <strong style="color:var(--text-main); font-size:0.95rem;">${tmpl.title}</strong>
-                        <span class="meta-tag" style="color:#818cf8; border-color:#4f46e5;">${tmpl.badge}</span>
-                    </div>
-                    <p style="font-size:0.83rem; color:var(--text-muted); line-height:1.5; margin-bottom:10px;">${tmpl.desc}</p>
-                    <button class="chip active" style="width:100%; justify-content:center; padding:9px;" onclick="loadTemplateByIndex(${idx})">
-                        ⚡ تطبيق مواصفات هذه الشخصية ورسمها
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        function loadTemplateByIndex(idx) {
-            const tmpl = READY_TEMPLATES[idx];
-            if (!tmpl) return;
-
-            document.getElementById('promptInput').value = tmpl.desc;
-            document.getElementById('brandInput').value = tmpl.brand;
-            document.getElementById('contactInput').value = tmpl.contact;
-
-            if (tmpl.autoType) {
-                const targetCard = Array.from(document.querySelectorAll('#automationTypeSelector .style-select-card')).find(c => {
-                    const attr = c.getAttribute('onclick') || '';
-                    return attr.includes(`'${tmpl.autoType}'`);
-                });
-                if (targetCard) selectAutomationType(tmpl.autoType, targetCard);
-            }
-
-            switchPage('generator', document.querySelector('.bottom-nav .nav-item:first-child'));
-            generateVideoFromPrompt();
-        }
-
-        function applyQuickPrompt(text) {
-            document.getElementById('promptInput').value = text;
-            generateVideoFromPrompt();
-        }
-
-        function selectVideoFormat(ratio, el) {
-            currentAspect = ratio;
-            document.querySelectorAll('#formatSelector .style-select-card').forEach(c => c.classList.remove('selected'));
-            el.classList.add('selected');
-
-            const badge = document.getElementById('videoResolutionBadge');
-            if (ratio === '9:16') {
-                canvas.width = 720;
-                canvas.height = 1280;
-                badge.innerText = '📱 9:16 ستوري / ريلز';
-            } else if (ratio === '1:1') {
-                canvas.width = 1080;
-                canvas.height = 1080;
-                badge.innerText = '🟦 1:1 مربع منشور';
-            } else {
-                canvas.width = 1280;
-                canvas.height = 720;
-                badge.innerText = '🖥️ 16:9 شاشة عريضة';
-            }
-            initParticles();
-            renderVideoFrame(currentTime);
-        }
-
-        function selectVideoTheme(themeKey, el) {
-            currentTheme = themeKey;
-            document.querySelectorAll('#themeSelector .style-select-card').forEach(c => c.classList.remove('selected'));
-            el.classList.add('selected');
-            renderVideoFrame(currentTime);
-        }
-
-        function setDefaultPromptAndRender() {
-            document.getElementById('promptInput').value = 'شخصية كرتونية صفراء لطيفة ترتدي قبعة حمراء وقفازات بيضاء، تقفز بحماس وتلوح بيديها وتحمل بيديها فنجان قهوة ساخن، وبجانبها صديق أزرق يرتدي نظارة!';
-            document.getElementById('brandInput').value = 'أصدقاء المغامرة الكرتونية';
-            document.getElementById('contactInput').value = 'تابع حلقات وتصاميم الشخصيات أسبوعياً';
-            generateVideoFromPrompt();
-        }
-
-        // ==========================================
-        // محرك تحليل مظهر، أزياء وسلوك الشخصيات من الوصف
-        // ==========================================
-        function detectActionIntent(text) {
-            const t = (text || '').toLowerCase();
-
-            // لون جسد الشخصية الأساسية
-            let charColor = '#facc15'; // أصفر افتراضي
-            if (/أحمر|حمراء|red/.test(t)) charColor = '#ef4444';
-            else if (/أزرق|زرقاء|blue/.test(t)) charColor = '#0284c7';
-            else if (/أخضر|خضراء|green/.test(t)) charColor = '#10b981';
-            else if (/بنفسجي|أرجواني|purple/.test(t)) charColor = '#8b5cf6';
-            else if (/برتقالي|orange/.test(t)) charColor = '#f97316';
-            else if (/أبيض|بيضاء|white/.test(t)) charColor = '#f8fafc';
-            else if (/أسود|داكن|black|dark/.test(t)) charColor = '#334155';
-            else if (/وردي|pink/.test(t)) charColor = '#ec4899';
-
-            // لون جسد الشخصية المرافقة (الصديق / الخصم)
-            let companionColor = '#6366f1';
-            if (/أحمر|حمراء/.test(t) && charColor !== '#ef4444') companionColor = '#ef4444';
-            else if (/أخضر|خضراء/.test(t) && charColor !== '#10b981') companionColor = '#10b981';
-            else if (/أصفر|صفراء/.test(t) && charColor !== '#facc15') companionColor = '#facc15';
-
-            // نوع ملابس ورداء الشخصية
-            let outfitType = 'classic'; // عادي كرتوني
-            let headgear = 'none'; // غطاء الرأس
-
-            if (/خوذة|فضاء|بدلة فضاء|رائد فضاء|astronaut|helmet/.test(t)) {
-                headgear = 'space_helmet';
-                outfitType = 'spacesuit';
-            } else if (/قبعة طهاة|شيف|طباخ|chef/.test(t)) {
-                headgear = 'chef_hat';
-                outfitType = 'apron';
-            } else if (/قبعة|كاب|طاقية|hat|cap/.test(t)) {
-                headgear = 'cap';
-            } else if (/تاج|ملك|أمير|crown|king/.test(t)) {
-                headgear = 'crown';
-            } else if (/قناع|نينجا|كمامة|mask|ninja/.test(t)) {
-                headgear = 'mask';
-                outfitType = 'armor';
-            }
-
-            // إكسسوارات الوجه والعيون
-            const hasGlasses = /نظارة|نظارات|glasses/.test(t);
-            const hasBeard = /لحية|شعر أبيض|عجوز|beard/.test(t);
-            const isRobot = /روبوت|آلي|معدن|إلكتروني|robot|cyborg/.test(t);
-
-            // أسلوب حركة وسلوك الشخصية
-            const isJumping = /قفز|طيران|فوق|أعلى|حماس|يطير|انطلاق|jump|bounce|fly/.test(t);
-            const isWaving = /لوح|يلوح|أهل|مرحب|سلام|يد|باي|wave|hello/.test(t);
-            const isFighting = /سيف|درع|قتال|ضرب|ليزر|مقاتل|هجوم|حرب|fight|attack/.test(t);
-            const isTeaching = /معلم|يشرح|عصا|سبورة|أستاذ|نصيحة|teach|explain/.test(t);
-
-            // ما تحمله الشخصية بيدها (Holdable Item)
-            let heldItem = null;
-            let heldEmoji = '✨';
-
-            if (/قهوة|كافيه|شاي|كوب|فنجان|coffee|cup/.test(t)) {
-                heldItem = 'coffee'; heldEmoji = '☕';
-            } else if (/سيف|سلاح|خنجر|sword|blade/.test(t)) {
-                heldItem = 'sword'; heldEmoji = '⚔️';
-            } else if (/كتاب|دفتر|مصحف|علم|book/.test(t)) {
-                heldItem = 'book'; heldEmoji = '📚';
-            } else if (/هاتف|جوال|موبايل|شاشة|phone/.test(t)) {
-                heldItem = 'phone'; heldEmoji = '📱';
-            } else if (/صاروخ|مركبة|مكوك|rocket/.test(t)) {
-                heldItem = 'rocket'; heldEmoji = '🚀';
-            } else if (/سيارة|عربة|مركبة|car/.test(t)) {
-                heldItem = 'car'; heldEmoji = '🏎️';
-            } else if (/هدية|علبة|صندوق|gift|box/.test(t)) {
-                heldItem = 'gift'; heldEmoji = '🎁';
-            } else if (/مال|نقود|دولار|فلوس|money/.test(t)) {
-                heldItem = 'money'; heldEmoji = '💰';
-            } else if (/ميكروفون|مايك|تسجيل|mic/.test(t)) {
-                heldItem = 'mic'; heldEmoji = '🎙️';
-            }
-
-            // بيئة ظهور الشخصية
-            let bgStyle = 'default';
-            if (/فضاء|كوكب|نجوم|مجرة|space|stars/.test(t)) bgStyle = 'space';
-            else if (/مدينة|شارع|طريق|ليل|city|street/.test(t)) bgStyle = 'city';
-            else if (/طبيعة|حديقة|غابة|أشجار|nature|park/.test(t)) bgStyle = 'nature';
-            else if (/سايبر|مختبر|تقنية|cyber|lab/.test(t)) bgStyle = 'cyber';
-
-            return {
-                rawText: t,
-                charColor,
-                companionColor,
-                headgear,
-                outfitType,
-                hasGlasses,
-                hasBeard,
-                isRobot,
-                isJumping,
-                isWaving,
-                isFighting,
-                isTeaching,
-                heldItem,
-                heldEmoji,
-                bgStyle
-            };
-        }
-
-        function parsePromptToScenes(promptText, brandName, contactText, duration) {
-            const cleanText = promptText.trim().replace(/\n+/g, ' ');
-            let segments = cleanText.split(/[\.\!\؟\:\،\؛\-\—\|]+/).map(s => s.trim()).filter(s => s.length > 2);
-            if (segments.length === 0) {
-                segments = [cleanText || 'شخصية أوتوميشن حية ومتحركة'];
-            }
-
-            const sceneCount = duration >= 12 ? 4 : 3;
-            const sceneDuration = duration / sceneCount;
-            const scenes = [];
-
-            for (let i = 0; i < sceneCount; i++) {
-                const sStart = i * sceneDuration;
-                const sEnd = (i + 1) * sceneDuration;
-                let sTitle = segments[i] || segments[0] || 'حركة وتفاعل الشخصية';
-                let sSub = segments[i + 1] || segments[i] || cleanText;
-
-                const sIntent = detectActionIntent(sTitle + ' ' + sSub + ' ' + cleanText);
-
-                // وصف حركة وهيئة الشخصية في هذا المشهد
-                let charStateDesc = 'حركة واستعراض الشخصية';
-                if (sIntent.isJumping) charStateDesc = 'قفز وحركة حماسية علوية';
-                else if (sIntent.isWaving) charStateDesc = 'تلويح وترحيب بالأيدي';
-                else if (sIntent.isFighting) charStateDesc = 'وضعية قتالية وحركة سريعة';
-                else if (sIntent.isTeaching) charStateDesc = 'تأشير وشرح تفاعلي';
-
-                scenes.push({
-                    id: i + 1,
-                    sceneName: `المشهد الحركي ${i + 1}`,
-                    startTime: sStart,
-                    endTime: sEnd,
-                    tag: sIntent.heldItem ? sIntent.heldItem.toUpperCase() : 'CHARACTER ACTION',
-                    title: sTitle,
-                    subtitle: sSub.slice(0, 90),
-                    badge: `${sIntent.heldEmoji} ${charStateDesc}`,
-                    icon: sIntent.heldEmoji,
-                    intent: sIntent
-                });
-            }
-
-            return scenes;
-        }
-
-        function generateVideoFromPrompt() {
-            const prompt = document.getElementById('promptInput').value.trim() || 'شخصية كرتونية متحركة بأطراف كاملة وملامح تفاعلية';
-            const brand = document.getElementById('brandInput').value.trim();
-            const contact = document.getElementById('contactInput').value.trim();
-            videoDuration = parseFloat(document.getElementById('videoDuration').value) || 9;
-            document.getElementById('totalTimeDisplay').innerText = formatTime(videoDuration);
-
-            generatedScenes = parsePromptToScenes(prompt, brand, contact, videoDuration);
-
-            renderScenesEditorUI();
-            restartVideo();
-            playAutomationSoundEffect('generate');
-            showToast('تم تجسيد الشخصيات 🎨', 'تم تحويل وصف الشخصيات وهيئتها وملابسها بنجاح!');
-        }
-
-        function renderScenesEditorUI() {
-            const container = document.getElementById('scenesEditorList');
-            container.innerHTML = generatedScenes.map((sc, idx) => `
-                <div style="background:#0f172a; border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; margin-bottom:12px;">
-                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-weight:bold; font-size:0.85rem; color:#818cf8;">
-                        <span>${sc.sceneName} (${sc.startTime.toFixed(1)} ث - ${sc.endTime.toFixed(1)} ث)</span>
-                        <span class="meta-tag" style="background:rgba(79, 70, 229, 0.2); color:#a5b4fc; border-color:#4f46e5;">${sc.badge}</span>
-                    </div>
-
-                    <div class="form-group" style="margin-bottom:8px;">
-                        <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:2px;">وصف مظهر وحركة الشخصية في هذا المشهد:</label>
-                        <input type="text" id="sceneTitle_${idx}" class="form-control" value="${sc.title}" style="padding:8px 10px; font-size:0.88rem;">
-                    </div>
-
-                    <div class="form-group" style="margin-bottom:8px;">
-                        <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:2px;">تفاصيل السلوك والأدوات المحمولة:</label>
-                        <input type="text" id="sceneSub_${idx}" class="form-control" value="${sc.subtitle}" style="padding:8px 10px; font-size:0.88rem;">
-                    </div>
-
-                    <div class="form-group" style="margin-bottom:0;">
-                        <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:2px;">شارة هيئة الشخصية:</label>
-                        <input type="text" id="sceneBadge_${idx}" class="form-control" value="${sc.badge}" style="padding:8px 10px; font-size:0.88rem;">
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function applyCustomScenesAndPreview() {
-            generatedScenes.forEach((sc, idx) => {
-                const t = document.getElementById(`sceneTitle_${idx}`);
-                const s = document.getElementById(`sceneSub_${idx}`);
-                const b = document.getElementById(`sceneBadge_${idx}`);
-                if (t) sc.title = t.value;
-                if (s) sc.subtitle = s.value;
-                if (b) sc.badge = b.value;
-                sc.intent = detectActionIntent(sc.title + ' ' + sc.subtitle);
-            });
-
-            switchPage('generator', document.querySelector('.bottom-nav .nav-item:first-child'));
-            restartVideo();
-            showToast('تم الحفظ', 'تم تحديث مظهر وحركات الشخصية عبر المشاهد فوراً.');
-        }
-
-        function regenerateScenesAuto() {
-            generateVideoFromPrompt();
-        }
-
-        // ==========================================
-        // راسم بيئات ظهور الشخصيات (خلفية حية متفاعلة)
-        // ==========================================
-        function drawAdaptiveBackground(ctx, width, height, intent, time) {
-            if (intent.bgStyle === 'space') {
-                ctx.fillStyle = '#050515';
-                ctx.fillRect(0, 0, width, height);
-
-                ctx.fillStyle = '#ffffff';
-                for (let i = 0; i < 35; i++) {
-                    const sx = (i * 37 + time * 12) % width;
-                    const sy = (i * 73) % height;
-                    const r = (i % 3) + 1;
-                    ctx.beginPath();
-                    ctx.arc(sx, sy, r, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-
-                const pGrad = ctx.createRadialGradient(width * 0.85, height * 0.2, 10, width * 0.85, height * 0.2, width * 0.35);
-                pGrad.addColorStop(0, '#f97316');
-                pGrad.addColorStop(0.8, '#c2410c');
-                pGrad.addColorStop(1, 'transparent');
-                ctx.fillStyle = pGrad;
-                ctx.beginPath();
-                ctx.arc(width * 0.85, height * 0.2, width * 0.35, 0, Math.PI * 2);
-                ctx.fill();
-
-            } else if (intent.bgStyle === 'city') {
-                const sky = ctx.createLinearGradient(0, 0, 0, height);
-                sky.addColorStop(0, '#090d16');
-                sky.addColorStop(0.65, '#1e1b4b');
-                sky.addColorStop(1, '#0f172a');
-                ctx.fillStyle = sky;
-                ctx.fillRect(0, 0, width, height);
-
-                ctx.fillStyle = '#090a15';
-                for (let b = 0; b < 12; b++) {
-                    const bw = width * 0.12;
-                    const bh = height * 0.35 + (b % 5) * 35;
-                    const bx = b * (bw * 0.8);
-                    ctx.fillRect(bx, height * 0.75 - bh, bw, bh);
-                    ctx.fillStyle = (b % 2 === 0) ? '#facc15' : '#06b6d4';
-                    for (let w = 0; w < 4; w++) {
-                        ctx.fillRect(bx + 10, height * 0.75 - bh + 25 + (w * 22), 6, 8);
-                    }
-                    ctx.fillStyle = '#090a15';
-                }
-
-                ctx.fillStyle = '#0f172a';
-                ctx.fillRect(0, height * 0.75, width, height * 0.25);
-                ctx.strokeStyle = '#facc15';
-                ctx.lineWidth = 4;
-                ctx.setLineDash([25, 25]);
-                const dashShift = (time * 180) % 50;
-                ctx.beginPath();
-                ctx.moveTo(-dashShift, height * 0.86);
-                ctx.lineTo(width + 50, height * 0.86);
-                ctx.stroke();
-                ctx.setLineDash([]);
-
-            } else if (intent.bgStyle === 'nature') {
-                const sky = ctx.createLinearGradient(0, 0, 0, height);
-                sky.addColorStop(0, '#38bdf8');
-                sky.addColorStop(0.5, '#bae6fd');
-                sky.addColorStop(0.51, '#22c55e');
-                sky.addColorStop(1, '#15803d');
-                ctx.fillStyle = sky;
-                ctx.fillRect(0, 0, width, height);
-
-                ctx.fillStyle = '#facc15';
-                ctx.beginPath();
-                ctx.arc(width * 0.85, height * 0.15, width * 0.12, 0, Math.PI * 2);
-                ctx.fill();
-
-                ctx.fillStyle = '#16a34a';
-                ctx.beginPath();
-                ctx.arc(width * 0.3, height * 0.95, width * 0.6, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#15803d';
-                ctx.beginPath();
-                ctx.arc(width * 0.8, height * 0.95, width * 0.5, 0, Math.PI * 2);
-                ctx.fill();
-
-            } else if (intent.bgStyle === 'cyber') {
-                ctx.fillStyle = '#020617';
-                ctx.fillRect(0, 0, width, height);
-
-                ctx.strokeStyle = 'rgba(6, 182, 212, 0.2)';
-                ctx.lineWidth = 1.5;
-                for (let x = 0; x < width; x += 40) {
-                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
-                }
-                for (let y = 0; y < height; y += 40) {
-                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
-                }
-            } else {
-                const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
-                bgGrad.addColorStop(0, '#1e1b4b');
-                bgGrad.addColorStop(0.5, '#0f172a');
-                bgGrad.addColorStop(1, '#312e81');
-                ctx.fillStyle = bgGrad;
-                ctx.fillRect(0, 0, width, height);
-            }
-        }
-
-        // ==========================================
-        // راسم أزياء، أغطية رأس وملامح الشخصية وفق الوصف
-        // ==========================================
-        function drawCharacterAccessories(ctx, x, y, r, intent, time) {
-            ctx.save();
-
-            // 1. خوذة الفضاء
-            if (intent.headgear === 'space_helmet') {
-                ctx.strokeStyle = '#38bdf8';
-                ctx.lineWidth = 6;
-                ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
-                ctx.beginPath();
-                ctx.arc(x, y, r * 1.32, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-
-                // لمعان زجاج الخوذة
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-                ctx.lineWidth = 4;
-                ctx.beginPath();
-                ctx.arc(x, y, r * 1.15, -Math.PI * 0.7, -Math.PI * 0.3);
-                ctx.stroke();
-
-            // 2. قبعة الطهاة (Chef Hat)
-            } else if (intent.headgear === 'chef_hat') {
-                ctx.fillStyle = '#ffffff';
-                ctx.strokeStyle = '#cbd5e1';
-                ctx.lineWidth = 3;
-                const hatY = y - r - 35;
-                drawRoundRect(ctx, x - r * 0.7, y - r - 8, r * 1.4, 16, 4);
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.beginPath();
-                ctx.arc(x - r * 0.45, hatY, 20, 0, Math.PI * 2);
-                ctx.arc(x, hatY - 10, 24, 0, Math.PI * 2);
-                ctx.arc(x + r * 0.45, hatY, 20, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-
-            // 3. قبعة كاب رياضية
-            } else if (intent.headgear === 'cap') {
-                ctx.fillStyle = '#dc2626';
-                ctx.beginPath();
-                ctx.arc(x, y - r * 0.6, r * 0.95, Math.PI, 0, false);
-                ctx.fill();
-                // حافة الكاب
-                ctx.fillRect(x - r * 0.2, y - r * 0.65, r * 1.25, 8);
-
-            // 4. تاج ملكي ذهبي
-            } else if (intent.headgear === 'crown') {
-                ctx.fillStyle = '#facc15';
-                ctx.strokeStyle = '#eab308';
-                ctx.lineWidth = 3;
-                const cw = r * 1.2;
-                const ch = 28;
-                const cx = x - cw / 2;
-                const cy = y - r - ch + 4;
-                ctx.beginPath();
-                ctx.moveTo(cx, cy + ch);
-                ctx.lineTo(cx, cy);
-                ctx.lineTo(cx + cw * 0.25, cy + ch * 0.5);
-                ctx.lineTo(cx + cw * 0.5, cy);
-                ctx.lineTo(cx + cw * 0.75, cy + ch * 0.5);
-                ctx.lineTo(cx + cw, cy);
-                ctx.lineTo(cx + cw, cy + ch);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-
-            // 5. قناع نينجا / محارب
-            } else if (intent.headgear === 'mask') {
-                ctx.fillStyle = '#0f172a';
-                ctx.beginPath();
-                ctx.ellipse(x, y + r * 0.2, r * 0.9, r * 0.65, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.strokeStyle = '#ef4444';
-                ctx.lineWidth = 3;
-                ctx.stroke();
-            }
-
-            // نظارات طبية
-            if (intent.hasGlasses) {
-                ctx.strokeStyle = '#0284c7';
-                ctx.lineWidth = 3.5;
-                ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                ctx.beginPath();
-                ctx.arc(x - 16, y - 10, 13, 0, Math.PI * 2);
-                ctx.arc(x + 16, y - 10, 13, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.stroke();
-                ctx.beginPath();
-                ctx.moveTo(x - 3, y - 10);
-                ctx.lineTo(x + 3, y - 10);
-                ctx.stroke();
-            }
-
-            // لحية بيضاء
-            if (intent.hasBeard) {
-                ctx.fillStyle = '#f8fafc';
-                ctx.beginPath();
-                ctx.arc(x, y + r * 0.8, r * 0.6, 0, Math.PI);
-                ctx.fill();
-            }
-
-            ctx.restore();
-        }
-
-        // ==========================================
-        // راسم أيدي وأرجل الشخصية الكرتونية
-        // ==========================================
-        function drawCartoonArm(context, startX, startY, angle, length, armColor, gloveColor) {
-            context.save();
-            context.translate(startX, startY);
-            context.rotate(angle);
-
-            context.lineWidth = 8;
-            context.lineCap = 'round';
-            context.strokeStyle = armColor;
-            context.beginPath();
-            context.moveTo(0, 0);
-            context.lineTo(0, length);
-            context.stroke();
-
-            context.fillStyle = gloveColor;
-            context.strokeStyle = '#0f172a';
-            context.lineWidth = 2.5;
-            context.beginPath();
-            context.arc(0, length + 4, 10, 0, Math.PI * 2);
-            context.fill();
-            context.stroke();
-
-            context.restore();
-        }
-
-        function drawCartoonLeg(context, startX, startY, angle, length, legColor, shoeColor) {
-            context.save();
-            context.translate(startX, startY);
-            context.rotate(angle);
-
-            context.lineWidth = 9;
-            context.lineCap = 'round';
-            context.strokeStyle = legColor;
-            context.beginPath();
-            context.moveTo(0, 0);
-            context.lineTo(0, length);
-            context.stroke();
-
-            context.fillStyle = shoeColor;
-            context.strokeStyle = '#0f172a';
-            context.lineWidth = 2.5;
-            context.beginPath();
-            context.ellipse(3, length + 5, 13, 7, 0, 0, Math.PI * 2);
-            context.fill();
-            context.stroke();
-
-            context.restore();
-        }
-
-        // ==========================================
-        // راسم الكائن المحمول بيد الشخصية
-        // ==========================================
-        function drawHeldItemVisual(ctx, x, y, intent, time) {
-            if (!intent.heldItem) return;
-
-            ctx.save();
-            ctx.translate(x, y);
-
-            if (intent.heldItem === 'coffee') {
-                ctx.strokeStyle = 'rgba(255,255,255,0.6)';
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(-5, -20);
-                ctx.quadraticCurveTo(-12, -35, -5, -45);
-                ctx.stroke();
-
-                ctx.fillStyle = '#ea580c';
-                ctx.fillRect(-14, -14, 28, 26);
-                ctx.fillStyle = '#451a03';
-                ctx.beginPath();
-                ctx.ellipse(0, -14, 14, 4, 0, 0, Math.PI * 2);
-                ctx.fill();
-
-            } else if (intent.heldItem === 'sword') {
-                ctx.rotate(0.35 + Math.sin(time * 8) * 0.1);
-                ctx.fillStyle = '#64748b';
-                ctx.fillRect(-4, 0, 8, 16);
-                ctx.fillStyle = '#facc15';
-                ctx.fillRect(-14, -2, 28, 6);
-                ctx.fillStyle = '#38bdf8';
-                ctx.shadowColor = '#06b6d4';
-                ctx.shadowBlur = 12;
-                ctx.beginPath();
-                ctx.moveTo(-5, -2);
-                ctx.lineTo(0, -65);
-                ctx.lineTo(5, -2);
-                ctx.closePath();
-                ctx.fill();
-
-            } else if (intent.heldItem === 'book') {
-                ctx.fillStyle = '#0284c7';
-                ctx.fillRect(-16, -20, 32, 40);
-                ctx.fillStyle = '#ffffff';
-                ctx.fillRect(-12, -18, 24, 36);
-                ctx.fillStyle = '#ea580c';
-                ctx.fillRect(-16, -20, 6, 40);
-
-            } else if (intent.heldItem === 'phone') {
-                ctx.fillStyle = '#0f172a';
-                ctx.strokeStyle = '#6366f1';
-                ctx.lineWidth = 2.5;
-                drawRoundRect(ctx, -12, -22, 24, 44, 5);
-                ctx.fill();
-                ctx.stroke();
-                ctx.fillStyle = '#38bdf8';
-                ctx.fillRect(-9, -17, 18, 34);
-
-            } else if (intent.heldItem === 'rocket') {
-                ctx.rotate(-0.4);
-                ctx.fillStyle = '#f8fafc';
-                ctx.beginPath();
-                ctx.moveTo(0, -35);
-                ctx.lineTo(12, 10);
-                ctx.lineTo(-12, 10);
-                ctx.closePath();
-                ctx.fill();
-                ctx.fillStyle = '#ef4444';
-                ctx.fillRect(-14, 6, 28, 6);
-
-            } else {
-                ctx.font = '36px system-ui';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(intent.heldEmoji, 0, 0);
-            }
-
-            ctx.restore();
-        }
-
-        // ==========================================
-        // CANVAS VIDEO RENDERER DISPATCHER
-        // ==========================================
-        function renderVideoFrame(time) {
-            const width = canvas.width;
-            const height = canvas.height;
-            const theme = THEMES[currentTheme] || THEMES.indigo;
-            const brand = document.getElementById('brandInput').value.trim() || 'فيديو أوتوميشن الشخصيات';
-            const contact = document.getElementById('contactInput').value.trim() || 'صُنع بواسطة محرك توليد الشخصيات الذكي';
-
-            let currentScene = generatedScenes.find(s => time >= s.startTime && time < s.endTime);
-            if (!currentScene && generatedScenes.length > 0) {
-                currentScene = generatedScenes[generatedScenes.length - 1];
-            }
-            const sceneProgress = currentScene 
-                ? (time - currentScene.startTime) / (currentScene.endTime - currentScene.startTime)
-                : 0.5;
-
-            switch (currentAutomationType) {
-                case 'talking_shapes':
-                    renderAutomationTalkingShapesWithLimbs(time, width, height, theme, brand, contact, currentScene, sceneProgress);
-                    break;
-                case 'action':
-                    renderAutomationProgrammingAction(time, width, height, theme, brand, contact, currentScene, sceneProgress);
-                    break;
-                case 'educational':
-                    renderAutomationInteractiveTeacher(time, width, height, theme, brand, contact, currentScene, sceneProgress);
-                    break;
-                case 'promotional':
-                    renderAutomationPromotional(time, width, height, theme, brand, contact, currentScene, sceneProgress);
-                    break;
-                case 'news':
-                    renderAutomationNews(time, width, height, theme, brand, contact, currentScene, sceneProgress);
-                    break;
-                case 'kinetic':
-                default:
-                    renderAutomationKinetic(time, width, height, theme, brand, contact, currentScene, sceneProgress);
-                    break;
-            }
-
-            ctx.save();
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.fillRect(0, 0, width, 5);
-            ctx.fillStyle = theme.accent;
-            ctx.fillRect(0, 0, (time / videoDuration) * width, 5);
-            ctx.restore();
-        }
-
-        // ==========================================
-        // 1. شخصيات متحركة بأطراف وملابس وألوان الوصف
-        // ==========================================
-        function renderAutomationTalkingShapesWithLimbs(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
-            const charDesc = currentScene ? currentScene.intent : detectActionIntent('');
-
-            drawAdaptiveBackground(ctx, width, height, charDesc, time);
-
-            const speechStep = Math.floor(time * 5.5);
-            if (isPlaying && speechStep !== lastFifiSpeechStep) {
-                lastFifiSpeechStep = speechStep;
-                playFifiWhistleChirp(speechStep);
-            }
-
-            const walkCycle = time * 7;
-            const isJumping = charDesc.isJumping || charDesc.isFighting;
-            const jumpOffset = isJumping ? Math.abs(Math.sin(time * 6)) * 48 : 0;
-            const bodyBob = Math.sin(time * 8) * 8 - jumpOffset;
-
-            // ----------------------------------------------------
-            // الشخصية الأساسية المتولدة من الوصف
-            // ----------------------------------------------------
-            const mainCharX = width * 0.35;
-            const baseCharY = height * 0.62;
-            const mainCharY = baseCharY + bodyBob;
-            const charR = width * 0.12;
-
-            // ظل الشخصية الأساسية
-            ctx.fillStyle = 'rgba(0,0,0,0.25)';
-            ctx.beginPath();
-            const shadowScale = Math.max(0.35, 1 - (jumpOffset / 70));
-            ctx.ellipse(mainCharX, height * 0.77, charR * 0.9 * shadowScale, 14 * shadowScale, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // أرجل الشخصية الأساسية
-            const legLeftAngle = Math.sin(walkCycle) * 0.5;
-            const legRightAngle = -Math.sin(walkCycle) * 0.5;
-            drawCartoonLeg(ctx, mainCharX - charR * 0.35, mainCharY + charR * 0.8, legLeftAngle, width * 0.12, charDesc.charColor, '#dc2626');
-            drawCartoonLeg(ctx, mainCharX + charR * 0.35, mainCharY + charR * 0.8, legRightAngle, width * 0.12, charDesc.charColor, '#dc2626');
-
-            // جسد ورأس الشخصية الأساسية باللون الموصوف
-            ctx.fillStyle = charDesc.charColor;
-            ctx.beginPath();
-            ctx.arc(mainCharX, mainCharY, charR, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = '#0f172a';
-            ctx.stroke();
-
-            // رداء ومريلة أو هوائي إن وجد
-            if (charDesc.outfitType === 'apron') {
-                ctx.fillStyle = '#22c55e';
-                ctx.fillRect(mainCharX - charR * 0.6, mainCharY + 2, charR * 1.2, charR * 0.85);
-            } else if (charDesc.isRobot) {
-                ctx.beginPath();
-                ctx.moveTo(mainCharX, mainCharY - charR);
-                ctx.lineTo(mainCharX, mainCharY - charR - 22);
-                ctx.strokeStyle = '#06b6d4';
-                ctx.lineWidth = 5;
-                ctx.stroke();
-                ctx.fillStyle = '#f43f5e';
-                ctx.beginPath();
-                ctx.arc(mainCharX, mainCharY - charR - 26, 8, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            // أذرع الشخصية تنفذ الحركة الموصوفة
-            let armLeftAngle = -0.5 + Math.sin(time * 5) * 0.2;
-            let armRightAngle = 0.5 - Math.cos(time * 5) * 0.2;
-
-            if (charDesc.isWaving) {
-                armRightAngle = -2.3 + Math.sin(time * 12) * 0.7;
-            }
-            if (charDesc.isJumping) {
-                armLeftAngle = 2.2 - Math.cos(time * 12) * 0.6;
-                armRightAngle = -2.2 + Math.sin(time * 12) * 0.6;
-            }
-
-            drawCartoonArm(ctx, mainCharX - charR * 0.85, mainCharY + 8, armLeftAngle, width * 0.11, charDesc.charColor, '#ffffff');
-            drawCartoonArm(ctx, mainCharX + charR * 0.85, mainCharY + 8, armRightAngle, width * 0.11, charDesc.charColor, '#ffffff');
-
-            // الكائن المحمول بيد الشخصية مباشرة
-            drawHeldItemVisual(ctx, mainCharX + charR * 1.05 + 10, mainCharY + 10, charDesc, time);
-
-            // أزياء الرأس والوجه الموصوفة (خوذة، قبعة، نظارة، لحية)
-            drawCharacterAccessories(ctx, mainCharX, mainCharY, charR, charDesc, time);
-
-            // عيون وفم الشخصية
-            const isBlink = Math.sin(time * 4) > 0.94;
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(mainCharX - 16, mainCharY - 12, 12, 0, Math.PI * 2);
-            ctx.arc(mainCharX + 16, mainCharY - 12, 12, 0, Math.PI * 2);
-            ctx.fill();
-
-            if (!isBlink) {
-                ctx.fillStyle = charDesc.isRobot ? '#06b6d4' : '#0f172a';
-                ctx.beginPath();
-                ctx.arc(mainCharX - 14, mainCharY - 12, 6, 0, Math.PI * 2);
-                ctx.arc(mainCharX + 14, mainCharY - 12, 6, 0, Math.PI * 2);
-                ctx.fill();
-            }
-
-            const mouthPulse = Math.abs(Math.sin(time * 16));
-            ctx.fillStyle = '#991b1b';
-            ctx.beginPath();
-            ctx.ellipse(mainCharX, mainCharY + 16, 13, 4 + mouthPulse * 12, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // ----------------------------------------------------
-            // الشخصية المرافقة (الصديق أو الخصم وفق الوصف)
-            // ----------------------------------------------------
-            const friendX = width * 0.74;
-            const friendW = width * 0.17;
-            const friendH = width * 0.17;
-            const friendBaseY = height * 0.63;
-            const friendY = friendBaseY + Math.cos(time * 8) * 8 - (isJumping ? Math.abs(Math.cos(time * 6)) * 32 : 0);
-
-            ctx.fillStyle = 'rgba(0,0,0,0.25)';
-            ctx.beginPath();
-            ctx.ellipse(friendX + friendW / 2, height * 0.77, friendW * 0.65, 12, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            drawCartoonLeg(ctx, friendX + friendW * 0.3, friendY + friendH, -legRightAngle, width * 0.11, charDesc.companionColor, '#0f172a');
-            drawCartoonLeg(ctx, friendX + friendW * 0.7, friendY + friendH, -legLeftAngle, width * 0.11, charDesc.companionColor, '#0f172a');
-
-            ctx.fillStyle = charDesc.companionColor;
-            drawRoundRect(ctx, friendX, friendY, friendW, friendH, 16);
-            ctx.fill();
-            ctx.lineWidth = 3.5;
-            ctx.strokeStyle = '#0f172a';
-            ctx.stroke();
-
-            const friendArmLeft = (charDesc.isWaving ? -1.9 + Math.sin(time * 10) * 0.5 : 0.6);
-            const friendArmRight = (charDesc.isWaving ? 1.9 - Math.cos(time * 10) * 0.5 : -0.6);
-            drawCartoonArm(ctx, friendX, friendY + friendH * 0.4, friendArmLeft, width * 0.09, charDesc.companionColor, '#ffffff');
-            drawCartoonArm(ctx, friendX + friendW, friendY + friendH * 0.4, friendArmRight, width * 0.09, charDesc.companionColor, '#ffffff');
-
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.arc(friendX + friendW * 0.35, friendY + friendH * 0.36, 9, 0, Math.PI * 2);
-            ctx.arc(friendX + friendW * 0.65, friendY + friendH * 0.36, 9, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#0f172a';
-            ctx.beginPath();
-            ctx.arc(friendX + friendW * 0.35, friendY + friendH * 0.36, 5, 0, Math.PI * 2);
-            ctx.arc(friendX + friendW * 0.65, friendY + friendH * 0.36, 5, 0, Math.PI * 2);
-            ctx.fill();
-
-            // ----------------------------------------------------
-            // بطاقة رأسية لتعريف الشخصية وسلوكها الحالي
-            // ----------------------------------------------------
-            const cardW = width * 0.88;
-            const cardH = height * 0.20;
-            const cardX = (width - cardW) / 2;
-            const cardY = height * 0.10;
-
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-            ctx.strokeStyle = charDesc.charColor;
-            ctx.lineWidth = 3;
-            drawRoundRect(ctx, cardX, cardY, cardW, cardH, 18);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = charDesc.charColor;
-            drawRoundRect(ctx, cardX + 16, cardY - 14, width * 0.50, 28, 14);
-            ctx.fill();
-            ctx.fillStyle = '#0f172a';
-            ctx.font = `bold ${Math.round(width * 0.030)}px system-ui`;
-            ctx.textAlign = 'center';
-            ctx.fillText(`${charDesc.heldEmoji} تجسيد الشخصية حياً`, cardX + 16 + (width * 0.25), cardY + 5);
-
-            ctx.font = `bold ${Math.round(width * 0.046)}px system-ui, Arial`;
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'center';
-            ctx.fillText(brand, width / 2, cardY + height * 0.08);
-
-            ctx.font = `${Math.round(width * 0.032)}px system-ui, Arial`;
-            ctx.fillStyle = '#cbd5e1';
-            const stateString = `الحالة: ${charDesc.isJumping ? 'قفز نشط 🚀' : (charDesc.isWaving ? 'تلويح وترحيب 👋' : 'استعراض حركي ✨')} | الرداء: ${charDesc.headgear}`;
-            ctx.fillText(stateString, width / 2, cardY + height * 0.14);
-
-            // تذييل الشاشة
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-            ctx.fillRect(0, height * 0.87, width, height * 0.13);
-
-            ctx.font = `bold ${Math.round(width * 0.036)}px system-ui, Arial`;
-            ctx.fillStyle = '#facc15';
-            ctx.textAlign = 'center';
-            ctx.fillText(brand, width / 2, height * 0.925);
-
-            ctx.font = `${Math.round(width * 0.027)}px system-ui, Arial`;
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillText(contact, width / 2, height * 0.965);
-        }
-
-        // ==========================================
-        // 2. مقاتلو سايبر وأكشن بدروع وأسلحة
-        // ==========================================
-        function renderAutomationProgrammingAction(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
-            const charDesc = currentScene ? currentScene.intent : detectActionIntent('');
-
-            drawAdaptiveBackground(ctx, width, height, charDesc, time);
-
-            const shake = charDesc.isFighting ? Math.sin(time * 30) * 4 : 0;
-            ctx.save();
-            ctx.translate(shake, 0);
-
-            // شخصية المقاتل الأيمن بدروعه ولونه الموصوف
-            const heroX = width * 0.30;
-            const heroY = height * 0.58 + Math.sin(time * 8) * 8;
-            const heroSize = width * 0.15;
-
-            // درع الشخصية
-            ctx.fillStyle = charDesc.charColor;
-            ctx.strokeStyle = '#38bdf8';
-            ctx.lineWidth = 4;
-            drawRoundRect(ctx, heroX - heroSize * 0.5, heroY - heroSize * 0.5, heroSize, heroSize, 14);
-            ctx.fill();
-            ctx.stroke();
-
-            // قناع النينجا / السايبر
-            drawCharacterAccessories(ctx, heroX, heroY - 5, heroSize * 0.6, charDesc, time);
-
-            // عيون إلكترونية
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 13px monospace';
-            ctx.textAlign = 'center';
-            ctx.fillText('>_<', heroX, heroY + 2);
-
-            // سلاح المقاتل أو الكائن المحمول
-            drawHeldItemVisual(ctx, heroX + heroSize * 0.65, heroY, charDesc, time);
-
-            // طاقة السيف أو الليزر
-            const targetX = width * 0.74;
-            const targetY = height * 0.58;
-
-            ctx.save();
-            ctx.strokeStyle = charDesc.charColor;
-            ctx.lineWidth = 6 + Math.sin(time * 20) * 4;
-            ctx.shadowColor = charDesc.charColor;
-            ctx.shadowBlur = 18;
-            ctx.beginPath();
-            ctx.moveTo(heroX + heroSize * 0.5, heroY);
-            ctx.lineTo(targetX, targetY);
-            ctx.stroke();
-            ctx.restore();
-
-            // الخصم المقابل بلونه الموصوف
-            ctx.fillStyle = charDesc.companionColor;
-            ctx.strokeStyle = '#ef4444';
-            ctx.lineWidth = 4;
-            drawRoundRect(ctx, targetX - heroSize * 0.5, targetY - heroSize * 0.5, heroSize, heroSize, 12);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#dc2626';
-            ctx.fillRect(targetX - heroSize * 0.35, targetY - heroSize * 0.2, heroSize * 0.7, heroSize * 0.2);
-
-            ctx.restore();
-
-            // بطاقة تفاصيل مظهر المحارب
-            const cardW = width * 0.88;
-            const cardH = height * 0.20;
-            const cardX = (width - cardW) / 2;
-            const cardY = height * 0.12;
-
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-            ctx.strokeStyle = charDesc.charColor;
-            ctx.lineWidth = 3;
-            drawRoundRect(ctx, cardX, cardY, cardW, cardH, 16);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#dc2626';
-            drawRoundRect(ctx, cardX + 16, cardY - 14, width * 0.52, 28, 8);
-            ctx.fill();
-            ctx.fillStyle = '#ffffff';
-            ctx.font = `bold ${Math.round(width * 0.032)}px system-ui`;
-            ctx.textAlign = 'center';
-            ctx.fillText(`${charDesc.heldEmoji} هيئة المحارب القتالي`, cardX + 16 + (width * 0.26), cardY + 6);
-
-            ctx.font = `900 ${Math.round(width * 0.046)}px system-ui, Arial`;
-            ctx.fillStyle = '#38bdf8';
-            ctx.fillText(brand, width / 2, cardY + height * 0.08);
-
-            ctx.font = `bold ${Math.round(width * 0.032)}px system-ui, Arial`;
-            ctx.fillStyle = '#e2e8f0';
-            ctx.fillText(`السلاح: ${charDesc.heldItem || 'طاقة'} | الدرع: ${charDesc.headgear}`, width / 2, cardY + height * 0.14);
-
-            // تذييل
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, height * 0.87, width, height * 0.13);
-            ctx.font = `bold ${Math.round(width * 0.036)}px system-ui, Arial`;
-            ctx.fillStyle = charDesc.charColor;
-            ctx.textAlign = 'center';
-            ctx.fillText(brand, width / 2, height * 0.925);
-
-            ctx.font = `${Math.round(width * 0.028)}px system-ui, Arial`;
-            ctx.fillStyle = '#f8fafc';
-            ctx.fillText(contact, width / 2, height * 0.965);
-        }
-
-        // ==========================================
-        // 3. معلم وشخصية إرشادية بنظارة وعصا
-        // ==========================================
-        function renderAutomationInteractiveTeacher(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
-            const charDesc = currentScene ? currentScene.intent : detectActionIntent('');
-
-            drawAdaptiveBackground(ctx, width, height, charDesc, time);
-
-            // السبورة الإرشادية
-            const boardW = width * 0.60;
-            const boardH = height * 0.44;
-            const boardX = width * 0.06;
-            const boardY = height * 0.18;
-
-            ctx.fillStyle = '#1e293b';
-            ctx.strokeStyle = charDesc.charColor;
-            ctx.lineWidth = 3;
-            drawRoundRect(ctx, boardX, boardY, boardW, boardH, 16);
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = '#0284c7';
-            drawRoundRect(ctx, boardX + 12, boardY + 12, boardW * 0.65, 26, 8);
-            ctx.fill();
-            ctx.font = `bold ${Math.round(width * 0.028)}px system-ui`;
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${charDesc.heldEmoji} إيماءات المعلم`, boardX + 12 + (boardW * 0.32), boardY + 30);
-
-            ctx.font = `bold ${Math.round(width * 0.040)}px system-ui, Arial`;
-            ctx.fillStyle = '#f8fafc';
-            ctx.fillText(brand, boardX + boardW / 2, boardY + height * 0.14);
-
-            ctx.font = `${Math.round(width * 0.032)}px system-ui, Arial`;
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillText(`الرداء: ${charDesc.headgear}`, boardX + boardW / 2, boardY + height * 0.22);
-            ctx.fillText(`الأداة: ${charDesc.heldItem || 'عصا الإشارة'}`, boardX + boardW / 2, boardY + height * 0.30);
-
-            // شخصية المعلم
-            const teacherX = width * 0.80;
-            const teacherBaseY = height * 0.48;
-            const teacherBob = Math.sin(time * 6) * 5;
-            const teacherY = teacherBaseY + teacherBob;
-            const teacherR = width * 0.11;
-
-            drawCartoonLeg(ctx, teacherX - teacherR * 0.3, teacherY + teacherR * 1.4, Math.sin(time * 4) * 0.15, width * 0.14, '#1e293b', '#0f172a');
-            drawCartoonLeg(ctx, teacherX + teacherR * 0.3, teacherY + teacherR * 1.4, -Math.sin(time * 4) * 0.15, width * 0.14, '#1e293b', '#0f172a');
-
-            // بدلة المعلم
-            ctx.fillStyle = '#4338ca';
-            drawRoundRect(ctx, teacherX - teacherR * 0.7, teacherY + teacherR * 0.5, teacherR * 1.4, width * 0.15, 12);
-            ctx.fill();
-
-            // رأس المعلم
-            ctx.fillStyle = charDesc.charColor;
-            ctx.beginPath();
-            ctx.arc(teacherX, teacherY, teacherR, 0, Math.PI * 2);
-            ctx.fill();
-
-            // نظارة، لحية وقبعة المعلم
-            charDesc.hasGlasses = true;
-            drawCharacterAccessories(ctx, teacherX, teacherY, teacherR, charDesc, time);
-
-            // فم المعلم وهو يشرح
-            ctx.fillStyle = '#991b1b';
-            ctx.beginPath();
-            ctx.ellipse(teacherX, teacherY + 16, 8, 4 + Math.abs(Math.sin(time * 12)) * 8, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // عصا التأشير
-            const stickAngle = -2.3 + Math.sin(time * 4) * 0.15;
-            ctx.save();
-            ctx.translate(teacherX - teacherR * 0.6, teacherY + teacherR * 0.6);
-            ctx.rotate(stickAngle);
-            ctx.lineWidth = 4.5;
-            ctx.strokeStyle = '#facc15';
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(0, width * 0.28);
-            ctx.stroke();
-            ctx.restore();
-
-            drawHeldItemVisual(ctx, teacherX + teacherR * 0.7, teacherY + teacherR * 0.6, charDesc, time);
-
-            // تذييل
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, height * 0.87, width, height * 0.13);
-            ctx.font = `bold ${Math.round(width * 0.034)}px system-ui, Arial`;
-            ctx.fillStyle = '#38bdf8';
-            ctx.textAlign = 'center';
-            ctx.fillText(brand, width / 2, height * 0.925);
-
-            ctx.font = `${Math.round(width * 0.027)}px system-ui, Arial`;
-            ctx.fillStyle = '#94a3b8';
-            ctx.fillText(contact, width / 2, height * 0.965);
-        }
-
-        // ==========================================
-        // 4. شخصية استعراض وهدايا
-        // ==========================================
-        function renderAutomationPromotional(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
-            const charDesc = currentScene ? currentScene.intent : detectActionIntent('');
-
-            drawAdaptiveBackground(ctx, width, height, charDesc, time);
-
-            // شخصية مستعرضة تقفز بوسط الشاشة
-            const starScale = 1 + Math.sin(time * 6) * 0.06;
-            const charX = width / 2;
-            const charY = height * 0.40;
-            const charR = width * 0.14;
-
-            ctx.save();
-            ctx.translate(charX, charY);
-            ctx.scale(starScale, starScale);
-
-            // الأرجل
-            drawCartoonLeg(ctx, -charR * 0.35, charR * 0.8, Math.sin(time * 8) * 0.3, width * 0.12, charDesc.charColor, '#ef4444');
-            drawCartoonLeg(ctx, charR * 0.35, charR * 0.8, -Math.sin(time * 8) * 0.3, width * 0.12, charDesc.charColor, '#ef4444');
-
-            // الجسد
-            ctx.fillStyle = charDesc.charColor;
-            ctx.beginPath();
-            ctx.arc(0, 0, charR, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = '#0f172a';
-            ctx.stroke();
-
-            // الأذرع وهي تحمل العرض أو الهدية
-            drawCartoonArm(ctx, -charR * 0.8, 0, 1.8, width * 0.11, charDesc.charColor, '#ffffff');
-            drawCartoonArm(ctx, charR * 0.8, 0, -1.8, width * 0.11, charDesc.charColor, '#ffffff');
-
-            drawCharacterAccessories(ctx, 0, 0, charR, charDesc, time);
-
-            // العيون المبتسمة
-            ctx.fillStyle = '#0f172a';
-            ctx.beginPath();
-            ctx.arc(-16, -10, 6, 0, Math.PI * 2);
-            ctx.arc(16, -10, 6, 0, Math.PI * 2);
-            ctx.fill();
-
-            // فم سعيد
-            ctx.fillStyle = '#dc2626';
-            ctx.beginPath();
-            ctx.arc(0, 14, 15, 0, Math.PI);
-            ctx.fill();
-
-            ctx.restore();
-
-            // الكائن المحمول فوق رأس الشخصية
-            drawHeldItemVisual(ctx, width / 2, height * 0.22, charDesc, time);
-
-            // لوحة تعريف العرض
-            const cardW = width * 0.88;
-            const cardH = height * 0.22;
-            const cardX = (width - cardW) / 2;
-            const cardY = height * 0.60;
-
-            ctx.fillStyle = '#ffffff';
-            drawRoundRect(ctx, cardX, cardY, cardW, cardH, 20);
-            ctx.fill();
-
-            ctx.fillStyle = charDesc.charColor;
-            drawRoundRect(ctx, cardX + cardW * 0.15, cardY - 16, cardW * 0.70, 32, 16);
-            ctx.fill();
-            ctx.font = `900 ${Math.round(width * 0.032)}px system-ui, Arial`;
-            ctx.fillStyle = '#0f172a';
-            ctx.textAlign = 'center';
-            ctx.fillText(`🎉 شخصية الترويج والاستعراض 🎉`, width / 2, cardY + 5);
-
-            ctx.font = `900 ${Math.round(width * 0.046)}px system-ui, Arial`;
-            ctx.fillStyle = '#1e1b4b';
-            ctx.fillText(brand, width / 2, cardY + height * 0.08);
-
-            ctx.font = `bold ${Math.round(width * 0.032)}px system-ui, Arial`;
-            ctx.fillStyle = '#475569';
-            ctx.fillText(`الرداء: ${charDesc.headgear} | الهدية: ${charDesc.heldItem || 'مفاجأة'}`, width / 2, cardY + height * 0.15);
-
-            // تذييل
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, height * 0.87, width, height * 0.13);
-            ctx.font = `bold ${Math.round(width * 0.036)}px system-ui, Arial`;
-            ctx.fillStyle = '#ffffff';
-            ctx.textAlign = 'center';
-            ctx.fillText(brand, width / 2, height * 0.925);
-
-            ctx.font = `${Math.round(width * 0.028)}px system-ui, Arial`;
-            ctx.fillStyle = '#fef08a';
-            ctx.fillText(contact, width / 2, height * 0.965);
-        }
-
-        // ==========================================
-        // 5. شخصيات خيال وأضواء
-        // ==========================================
-        function renderAutomationKinetic(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
-            const charDesc = currentScene ? currentScene.intent : detectActionIntent('');
-
-            drawAdaptiveBackground(ctx, width, height, charDesc, time);
-
-            // جزيئات طاقة تدور حول الشخصية
-            particles.forEach((p, idx) => {
-                p.x += p.vx; p.y += p.vy;
-                if (p.x < 0) p.x = width; if (p.x > width) p.x = 0;
-                if (p.y < 0) p.y = height; if (p.y > height) p.y = 0;
-
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                ctx.fillStyle = charDesc.charColor;
-                ctx.globalAlpha = p.alpha;
-                ctx.fill();
-                ctx.restore();
-            });
-
-            // تجسيد الشخصية في المركز بأطراف مشعة
-            const cx = width / 2;
-            const cy = height * 0.48;
-            const cr = width * 0.14;
-
-            ctx.save();
-            ctx.shadowColor = charDesc.charColor;
-            ctx.shadowBlur = 25;
-
-            drawCartoonLeg(ctx, cx - cr * 0.35, cy + cr * 0.8, Math.sin(time * 6) * 0.25, width * 0.13, charDesc.charColor, '#ffffff');
-            drawCartoonLeg(ctx, cx + cr * 0.35, cy + cr * 0.8, -Math.sin(time * 6) * 0.25, width * 0.13, charDesc.charColor, '#ffffff');
-
-            ctx.fillStyle = charDesc.charColor;
-            ctx.beginPath();
-            ctx.arc(cx, cy, cr, 0, Math.PI * 2);
-            ctx.fill();
-
-            drawCartoonArm(ctx, cx - cr * 0.8, cy, 0.8, width * 0.11, charDesc.charColor, '#ffffff');
-            drawCartoonArm(ctx, cx + cr * 0.8, cy, -0.8, width * 0.11, charDesc.charColor, '#ffffff');
-
-            drawCharacterAccessories(ctx, cx, cy, cr, charDesc, time);
-            drawHeldItemVisual(ctx, cx + cr * 1.05, cy, charDesc, time);
-
-            ctx.restore();
-
-            // معلومات الشخصية
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-            ctx.fillRect(0, height * 0.88, width, height * 0.12);
-
-            ctx.font = `bold ${Math.round(width * 0.038)}px system-ui, Arial`;
-            ctx.fillStyle = theme.accent2;
-            ctx.textAlign = 'center';
-            ctx.fillText(brand, width / 2, height * 0.932);
-
-            ctx.font = `${Math.round(width * 0.026)}px system-ui, Arial`;
-            ctx.fillStyle = '#cbd5e1';
-            ctx.fillText(contact.slice(0, 52), width / 2, height * 0.965);
-        }
-
-        // ==========================================
-        // 6. مقدم برامج ومذيع
-        // ==========================================
-        function renderAutomationNews(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
-            const charDesc = currentScene ? currentScene.intent : detectActionIntent('');
-
-            drawAdaptiveBackground(ctx, width, height, charDesc, time);
-
-            // طاولة الاستوديو
-            ctx.fillStyle = '#1e293b';
-            ctx.beginPath();
-            ctx.ellipse(width / 2, height * 0.65, width * 0.45, height * 0.08, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#dc2626';
-            ctx.stroke();
-
-            // شخصية المذيع خلف الطاولة
-            const anchorX = width / 2;
-            const anchorY = height * 0.44 + Math.sin(time * 5) * 4;
-            const anchorR = width * 0.12;
-
-            // بدلة رسمية
-            ctx.fillStyle = '#1e1b4b';
-            drawRoundRect(ctx, anchorX - anchorR * 0.8, anchorY + anchorR * 0.5, anchorR * 1.6, width * 0.16, 12);
-            ctx.fill();
-
-            // كرافتة حمراء
-            ctx.fillStyle = '#dc2626';
-            ctx.beginPath();
-            ctx.moveTo(anchorX, anchorY + anchorR * 0.5);
-            ctx.lineTo(anchorX + 8, anchorY + anchorR * 0.9);
-            ctx.lineTo(anchorX, anchorY + anchorR * 1.2);
-            ctx.lineTo(anchorX - 8, anchorY + anchorR * 0.9);
-            ctx.closePath();
-            ctx.fill();
-
-            // رأس الشخصية
-            ctx.fillStyle = charDesc.charColor;
-            ctx.beginPath();
-            ctx.arc(anchorX, anchorY, anchorR, 0, Math.PI * 2);
-            ctx.fill();
-
-            drawCharacterAccessories(ctx, anchorX, anchorY, anchorR, charDesc, time);
-
-            // أذرع وإيماءات المذيع
-            drawCartoonArm(ctx, anchorX - anchorR * 0.8, anchorY + anchorR * 0.5, -0.6 + Math.sin(time * 6) * 0.2, width * 0.10, '#1e1b4b', '#ffffff');
-            drawCartoonArm(ctx, anchorX + anchorR * 0.8, anchorY + anchorR * 0.5, 0.6 - Math.cos(time * 6) * 0.2, width * 0.10, '#1e1b4b', '#ffffff');
-
-            // مايك المذيع
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(anchorX - 10, height * 0.58, 20, 24);
-            ctx.fillStyle = '#ef4444';
-            ctx.beginPath();
-            ctx.arc(anchorX, height * 0.58, 12, 0, Math.PI * 2);
-            ctx.fill();
-
-            // شريط عاجل
-            const tickerH = height * 0.10;
-            const tickerY = height * 0.77;
-            ctx.fillStyle = '#b91c1c';
-            ctx.fillRect(0, tickerY, width, tickerH);
-
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(width * 0.72, tickerY, width * 0.28, tickerH);
-            ctx.fillStyle = '#ffffff';
-            ctx.font = `900 ${Math.round(width * 0.034)}px system-ui, Arial`;
-            ctx.textAlign = 'center';
-            ctx.fillText('🔴 بث مباشر', width * 0.86, tickerY + tickerH * 0.58);
-
-            ctx.save();
-            ctx.rect(0, tickerY, width * 0.72, tickerH);
-            ctx.clip();
-            const tickerFullText = `الشخصية: ${brand} • الرداء: ${charDesc.headgear} • الأداة: ${charDesc.heldItem || 'ميكروفون'} • ${contact}`;
-            const shiftX = (time * 120) % (width * 1.5);
-            ctx.font = `bold ${Math.round(width * 0.030)}px system-ui, Arial`;
-            ctx.fillStyle = '#fef08a';
-            ctx.textAlign = 'right';
-            ctx.fillText(tickerFullText, width * 0.70 + shiftX, tickerY + tickerH * 0.60);
-            ctx.fillText(tickerFullText, width * 0.70 + shiftX - width, tickerY + tickerH * 0.60);
-            ctx.restore();
-
-            ctx.fillStyle = '#030712';
-            ctx.fillRect(0, height * 0.87, width, height * 0.13);
-            ctx.font = `bold ${Math.round(width * 0.031)}px system-ui, Arial`;
-            ctx.fillStyle = '#94a3b8';
-            ctx.textAlign = 'center';
-            ctx.fillText(contact, width / 2, height * 0.94);
-        }
-
-        function drawRoundRect(ctx, x, y, width, height, radius) {
-            ctx.beginPath();
-            ctx.moveTo(x + radius, y);
-            ctx.lineTo(x + width - radius, y);
-            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-            ctx.lineTo(x + width, y + height - radius);
-            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-            ctx.lineTo(x + radius, y + height);
-            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-            ctx.lineTo(x, y + radius);
-            ctx.quadraticCurveTo(x, y, x + radius, y);
-            ctx.closePath();
-        }
-
-        function playFifiWhistleChirp(step) {
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-
-                const now = audioCtx.currentTime;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-
-                const whistlePitches = [950, 1100, 1300, 1500, 1250, 1600, 1400, 1750];
-                const baseFreq = whistlePitches[step % whistlePitches.length];
-
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(baseFreq, now);
-                osc.frequency.exponentialRampToValueAtTime(baseFreq + 180, now + 0.12);
-
-                gain.gain.setValueAtTime(0.08, now);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
-
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                osc.start(now);
-                osc.stop(now + 0.14);
-            } catch (e) {}
-        }
-
-        // ==========================================
-        // CONTROLS & TIMELINE
-        // ==========================================
-        function togglePlayVideo() {
-            if (isPlaying) {
-                pauseVideo();
-            } else {
-                playVideo();
-            }
-        }
-
-        function playVideo() {
-            isPlaying = true;
-            document.getElementById('playPauseBtn').innerText = '⏸';
-            lastTimestamp = performance.now();
-            requestAnimationFrame(videoLoop);
-            playAutomationSoundEffect('beat');
-        }
-
-        function pauseVideo() {
-            isPlaying = false;
-            document.getElementById('playPauseBtn').innerText = '▶';
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        }
-
-        function restartVideo() {
-            currentTime = 0;
-            lastFifiSpeechStep = -1;
-            updateTimelineUI();
-            renderVideoFrame(currentTime);
-            playVideo();
-        }
-
-        function seekVideo(val) {
-            currentTime = (val / 100) * videoDuration;
-            lastFifiSpeechStep = -1;
-            updateTimelineUI();
-            renderVideoFrame(currentTime);
-        }
-
-        function videoLoop(timestamp) {
-            if (!isPlaying) return;
-
-            const delta = (timestamp - lastTimestamp) / 1000;
-            lastTimestamp = timestamp;
-
-            currentTime += delta;
-
-            if (currentTime >= videoDuration) {
-                currentTime = 0;
-                lastFifiSpeechStep = -1;
-            }
-
-            updateTimelineUI();
-            renderVideoFrame(currentTime);
-
-            animationFrameId = requestAnimationFrame(videoLoop);
-        }
-
-        function updateTimelineUI() {
-            document.getElementById('currentTimeDisplay').innerText = formatTime(currentTime);
-            const slider = document.getElementById('videoTimeline');
-            slider.value = (currentTime / videoDuration) * 100;
-        }
-
-        function formatTime(sec) {
-            const m = Math.floor(sec / 60);
-            const s = Math.floor(sec % 60);
-            return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
-        }
-
-        function playAutomationSoundEffect(type) {
-            try {
-                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-
-                const now = audioCtx.currentTime;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-
-                if (type === 'generate') {
-                    osc.type = 'triangle';
-                    osc.frequency.setValueAtTime(440, now);
-                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.25);
-                    gain.gain.setValueAtTime(0.18, now);
-                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start(now);
-                    osc.stop(now + 0.35);
-                } else if (type === 'beat') {
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(520, now);
-                    gain.gain.setValueAtTime(0.1, now);
-                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
-                    osc.connect(gain);
-                    gain.connect(audioCtx.destination);
-                    osc.start(now);
-                    osc.stop(now + 0.2);
-                }
-            } catch (e) {}
-        }
-
-        // ==========================================
-        // EXPORT ENGINE
-        // ==========================================
-        async function exportRealVideo() {
-            if (isExporting) return;
-            isExporting = true;
-            pauseVideo();
-
-            const exportIcon = document.getElementById('exportIcon');
-            const exportText = document.getElementById('exportText');
-
-            exportIcon.innerHTML = '<span class="spinner"></span>';
-            exportText.innerText = 'جارٍ معالجة وتصدير فيديو الشخصيات...';
-            showToast('بدء التصدير 🎭', 'يقوم المحرك الآن برسم الشخصيات بدقة إطاراً بإطار.');
-
-            try {
-                if (!audioCtx) {
-                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-                const audioDest = audioCtx.createMediaStreamDestination();
-
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(320, audioCtx.currentTime);
-                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
-                osc.connect(gain);
-                gain.connect(audioDest);
-                osc.start();
-
-                const canvasStream = canvas.captureStream(30);
-                const tracks = [...canvasStream.getVideoTracks(), ...audioDest.stream.getAudioTracks()];
-                const combinedStream = new MediaStream(tracks);
-
-                let mimeType = 'video/webm;codecs=vp9';
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    mimeType = 'video/webm';
-                    if (!MediaRecorder.isTypeSupported(mimeType)) {
-                        mimeType = '';
-                    }
-                }
-
-                const recorder = new MediaRecorder(combinedStream, mimeType ? { mimeType } : undefined);
-                const recordedChunks = [];
-
-                recorder.ondataavailable = (e) => {
-                    if (e.data && e.data.size > 0) {
-                        recordedChunks.push(e.data);
-                    }
-                };
-
-                recorder.onstop = () => {
-                    try { osc.stop(); } catch(e) {}
-
-                    const blob = new Blob(recordedChunks, { type: recorder.mimeType || 'video/webm' });
-                    const videoUrl = URL.createObjectURL(blob);
-                    
-                    const a = document.createElement('a');
-                    const fileName = `character_automation_${Date.now()}.webm`;
-                    a.href = videoUrl;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-
-                    saveToHistory({
-                        id: Date.now(),
-                        title: generatedScenes[0]?.title || 'فيديو تصميم الشخصيات',
-                        duration: videoDuration,
-                        format: currentAspect,
-                        type: currentAutomationType,
-                        date: new Date().toLocaleDateString('ar-SA') + ' ' + new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute:'2-digit' }),
-                        url: videoUrl,
-                        fileName: fileName
-                    });
-
-                    exportIcon.innerText = '✅';
-                    exportText.innerText = 'تم التصدير والتحميل بنجاح!';
-                    showToast('اكتمل الفيديو 🎉', 'تم حفظ فيديو الشخصيات على جهازك بنجاح.');
-
-                    setTimeout(() => {
-                        exportIcon.innerText = '⬇️';
-                        exportText.innerText = 'تصدير وتحميل فيديو (MP4/WebM)';
-                        isExporting = false;
-                        restartVideo();
-                    }, 3000);
-                };
-
-                recorder.start();
-
-                let recordTime = 0;
-                const fps = 30;
-                const frameInterval = 1 / fps;
-                const totalFrames = Math.ceil(videoDuration * fps);
-                let currentFrame = 0;
-
-                function recordStep() {
-                    if (currentFrame < totalFrames) {
-                        recordTime = currentFrame * frameInterval;
-                        renderVideoFrame(recordTime);
-                        currentFrame++;
-                        setTimeout(recordStep, 1000 / fps);
-                    } else {
-                        recorder.stop();
-                    }
-                }
-
-                recordStep();
-
-            } catch (err) {
-                exportIcon.innerText = '❌';
-                exportText.innerText = 'تعذر التصدير التلقائي';
-                isExporting = false;
-                alert('تنبيه: ' + err.message);
-                restartVideo();
-            }
-        }
-
-        function saveToHistory(item) {
-            savedHistory.unshift(item);
-            if (savedHistory.length > 25) savedHistory.pop();
-            try {
-                localStorage.setItem('automation_video_history', JSON.stringify(savedHistory));
-            } catch(e) {}
-            renderHistoryUI();
-        }
-
-        function loadLocalHistory() {
-            try {
-                const data = localStorage.getItem('automation_video_history');
-                if (data) {
-                    savedHistory = JSON.parse(data);
-                }
-            } catch (e) {
-                savedHistory = [];
-            }
-            renderHistoryUI();
-        }
-
-        function renderHistoryUI() {
-            const container = document.getElementById('historyListContainer');
-            if (!savedHistory || savedHistory.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div style="font-size:3rem; margin-bottom:8px;">📁</div>
-                        <h4>لا توجد فيديوهات شخصيات مصدرة مسبقاً</h4>
-                        <p style="font-size:0.85rem; margin-top:4px;">ستظهر جميع الفيديوهات التي تنشئها هنا لإعادة تحميلها أو مشاركتها في أي وقت.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = savedHistory.map(item => `
-                <div class="history-card">
-                    <div class="history-header">
-                        <strong style="color:var(--text-main); font-size:0.95rem;">${item.title}</strong>
-                        <span class="meta-tag" style="color:#818cf8; border-color:#4f46e5;">
-                            ${item.format} • ${item.duration} ث
-                        </span>
-                    </div>
-                    <div style="font-size:0.78rem; color:var(--text-muted);">📅 التاريخ: ${item.date}</div>
-                    <div style="display:flex; gap:8px; margin-top:4px;">
-                        <button class="chip active" style="font-size:0.8rem; padding:6px 12px; flex:1; justify-content:center;" onclick="downloadHistoryBlob('${item.url}', '${item.fileName}')">
-                            ⬇️ تحميل مجدداً
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function downloadHistoryBlob(url, fileName) {
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName || 'character_video.webm';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
-
-        function clearLocalHistory() {
-            if (confirm('هل تريد مسح سجل الفيديوهات المحفوظة؟')) {
-                savedHistory = [];
-                try { localStorage.removeItem('automation_video_history'); } catch(e) {}
-                renderHistoryUI();
-                showToast('تم المسح', 'تم تفريغ السجل بنجاح.');
-            }
-        }
-
-        function shareVideoDetails() {
-            const prompt = document.getElementById('promptInput').value;
-            const brand = document.getElementById('brandInput').value || 'شخصية أوتوميشن';
-            const contact = document.getElementById('contactInput').value;
-            const text = `🎭 تصميم فيديو الشخصيات:\nالنمط: ${getAutomationTypeName(currentAutomationType)}\nاسم الشخصية: ${brand}\nمواصفات المظهر والسلوك: ${prompt}\nالتفاصيل: ${contact}`;
-            
-            if (navigator.share) {
-                navigator.share({ title: brand, text }).catch(() => {});
-            } else {
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast('تم النسخ', 'تم نسخ وصف وتصميم الشخصيات للحافظة.');
-                });
-            }
-        }
-
-        function switchPage(pageKey, btnElement) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-
-            document.getElementById(`page-${pageKey}`).classList.add('active');
-            if (btnElement) btnElement.classList.add('active');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-
-            if (pageKey === 'generator') {
-                restartVideo();
-            } else {
-                pauseVideo();
-            }
-
-            if (pageKey === 'history') {
-                renderHistoryUI();
-            }
-        }
-
-        let toastTimeout = null;
-        function showToast(title, msg) {
-            const toast = document.getElementById('toast');
-            document.getElementById('toastTitle').innerText = title;
-            document.getElementById('toastMsg').innerText = msg;
-
-            toast.classList.add('show');
-            clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3500);
-        }
-    </script>
+  </div>
+  <div class="g2" style="margin-bottom:14px">
+    <button class="btn" id="expBtn" onclick="exportRealVideo()"><span id="expTxt">⬇️ تصدير فيديو</span></button>
+    <button class="btn sec" onclick="shareVideoDetails()">📤 مشاركة</button>
+  </div>
+
+  <div class="info-card">
+    <h3 style="font-size:1rem;margin-bottom:10px">👤 صف الشخصية: مظهرها وحركتها وما تحمله</h3>
+    <div class="chips" id="quickChips"></div>
+    <div class="fg"><label class="lbl">أسلوب الشخصية</label><div class="g3" id="typeSel"></div></div>
+    <div class="fg"><label class="lbl">وصف الشخصية وحركاتها *</label>
+      <textarea id="promptInput" class="fc" rows="4" oninput="onLive()" placeholder="ألوانها، ملابسها، أدواتها، حركتها..."></textarea></div>
+    <button class="btn gem" id="gemBtn" onclick="generateWithGemini()"><span id="gemIcon">✨</span><span id="gemTxt">تطوير السيناريو بذكاء Gemini</span></button>
+    <div class="g2">
+      <div class="fg"><label class="lbl">اسم الشخصية</label><input id="brandInput" class="fc" oninput="onLive()" placeholder="مثال: كابتن نيون"></div>
+      <div class="fg"><label class="lbl">شعار أو تفاصيل</label><input id="contactInput" class="fc" oninput="onLive()" placeholder="جملة قصيرة"></div>
+    </div>
+    <div class="fg"><label class="lbl">أبعاد الفيديو</label><div class="g3" id="fmtSel"></div></div>
+    <div class="fg"><label class="lbl">الخلفية والإضاءة</label><div class="g3" id="thSel"></div></div>
+    <div class="fg"><label class="lbl">المدة</label>
+      <select id="durSel" class="fc" onchange="onDuration(this.value)">
+        <option value="6">6 ثوانٍ (3 مشاهد)</option>
+        <option value="9" selected>9 ثوانٍ (3 مشاهد)</option>
+        <option value="12">12 ثانية (4 مشاهد)</option>
+        <option value="30">30 ثانية (4 مشاهد)</option>
+        <option value="60">دقيقة (60 ثانية - 8 مشاهد)</option>
+        <option value="90">دقيقة ونصف (90 ثانية - 11 مشهداً)</option>
+        <option value="120">دقيقتان (120 ثانية - 12 مشهداً)</option>
+        <option value="180">3 دقائق (180 ثانية - 12 مشهداً)</option></select>
+      <small style="color:var(--mu);font-size:.74rem;display:block;margin-top:6px">التصدير يسجّل في الوقت الفعلي: فيديو الدقيقة يحتاج دقيقة. أبقِ الشاشة مفتوحة أثناء التسجيل.</small></div>
+    <button class="btn" onclick="generateVideoFromPrompt()">🎨 رسم الشخصيات وتشغيل</button>
+  </div>
+</section>
+
+<section id="page-scenes" class="page">
+  <div class="info-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="font-size:1.05rem">🎞️ مشاهد الشخصية</h3>
+      <button class="chip active" onclick="regenerateScenesAuto()">إعادة التحليل 🪄</button></div>
+    <div id="scenesList"></div>
+    <button class="btn" onclick="applyCustomScenes()">💾 حفظ التعديلات وعرضها</button>
+  </div>
+</section>
+
+<section id="page-templates" class="page">
+  <div class="info-card"><h3 style="font-size:1.05rem;margin-bottom:10px">💡 شخصيات جاهزة</h3><div id="tplList"></div></div>
+</section>
+
+<section id="page-history" class="page">
+  <div class="info-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <h3 style="font-size:1.05rem">📂 المحفوظات</h3><button class="chip" onclick="clearHistory()">مسح الكل</button></div>
+    <div id="histList"></div>
+  </div>
+</section>
+
+<section id="page-settings" class="page">
+  <div class="info-card">
+    <h3 style="font-size:1.05rem;margin-bottom:12px">⚙️ إعدادات Gemini API</h3>
+    <div class="fg"><label class="lbl">مفتاح Gemini API</label>
+      <input type="password" id="keyInput" class="fc" placeholder="AIzaSy..." style="font-family:monospace">
+      <small style="color:var(--mu);font-size:.74rem">من aistudio.google.com/apikey. يُحفظ على جهازك فقط. لا تنشر التطبيق وفيه مفتاحك.</small></div>
+    <div class="fg"><label class="lbl">النموذج</label>
+      <select id="modelSel" class="fc">
+        <option value="gemini-2.5-flash">Gemini 3.8 Flash (سريع، موصى به)</option>
+        <option value="gemini-2.5-pro">Gemini 2.5 Pro (أدق)</option>
+        <option value="gemini-2.0-flash">Gemini 2.0 Flash</option></select></div>
+    <div class="g2"><button class="btn" onclick="saveSettings()">💾 حفظ</button><button class="btn sec" onclick="testGemini()">🔌 فحص الاتصال</button></div>
+  </div>
+</section>
+</main>
+
+<nav class="bottom-nav" id="nav">
+  <button class="nav-item active" onclick="switchPage('generator',0)"><span class="nav-icon">🎭</span>الشخصيات</button>
+  <button class="nav-item" onclick="switchPage('scenes',1)"><span class="nav-icon">🎬</span>المشاهد</button>
+  <button class="nav-item" onclick="switchPage('templates',2)"><span class="nav-icon">💡</span>جاهزة</button>
+  <button class="nav-item" onclick="switchPage('history',3)"><span class="nav-icon">📑</span>المحفوظات</button>
+  <button class="nav-item" onclick="switchPage('settings',4)"><span class="nav-icon">⚙️</span>الإعدادات</button>
+</nav>
+
+<script>
+/* ===== كل المتغيرات في الأعلى ===== */
+let dur=9,aspect='9:16',theme='indigo',type='talking_shapes';
+let playing=false,time=0,last=0,exporting=false,edited=false;
+let scenes=[],particles=[],hist=[],look={},brand='',contact='',liveT=null,wl=null;
+let apiKey='',model='gemini-2.5-flash';
+const mem={};
+const $=id=>document.getElementById(id);
+const canvas=$('videoCanvas'),ctx=canvas.getContext('2d');
+
+/* ===== تخزين آمن (يعمل حتى داخل المعاينة المعزولة) ===== */
+function sGet(k){try{const v=localStorage.getItem(k);if(v!==null)return v}catch(e){}return mem[k]??null}
+function sSet(k,v){mem[k]=v;try{localStorage.setItem(k,v)}catch(e){}}
+
+/* ===== بيانات ثابتة ===== */
+const THEMES={
+ indigo:{bg:['#1e1b4b','#0f172a','#312e81'],acc:'#818cf8',card:'rgba(30,27,75,.85)',bd:'#6366f1'},
+ cyber:{bg:['#020617','#090d16','#0f172a'],acc:'#06b6d4',card:'rgba(15,23,42,.9)',bd:'#0ea5e9'},
+ sunset:{bg:['#431407','#1c0a00','#7c2d12'],acc:'#fb923c',card:'rgba(67,20,7,.85)',bd:'#ea580c'}};
+const TYPES=[['talking_shapes','🏃‍♂️','كرتون أطراف','أيدي وأرجل'],['action','⚔️','مقاتل وأكشن','دروع وأسلحة'],['educational','🧑‍🏫','معلم وإرشاد','نظارة وعصا'],['promotional','🎁','عروض وهدايا','تقديم وجوائز'],['kinetic','⚡','خيال وأضواء','طاقة وجزيئات'],['news','🎙️','مذيع','مايك وحديث'],['anime','🎌','أنمي ومسلسل','حلقة درامية']];
+const FORMATS=[['9:16','📱','9:16 ريلز'],['1:1','🟦','1:1 مربع'],['16:9','🖥️','16:9 عريض']];
+const THLIST=[['indigo','🌌','نيلي ليلي'],['cyber','⚡','سايبر نيون'],['sunset','🔥','غروب دافئ']];
+const SIZES={'9:16':[720,1280],'1:1':[720,720],'16:9':[1280,720]};
+const MOTIONS={talking_shapes:['wave','jump','float','jump'],action:['fight','jump','fight','float'],educational:['point','wave','point','wave'],promotional:['jump','wave','jump','wave'],kinetic:['float','float','jump','float'],news:['point','wave','point','wave'],anime:['point','fight','jump','float']};
+/* مراحل القصة: قصيرة (حتى 4 مشاهد) وطويلة (أكثر) */
+const SHORT_N=[['👋','ظهور الشخصية'],['🎬','الحركة والتفاعل'],['⭐','لحظة الذروة'],['🏁','الختام']];
+const SHORT_A=[['🌅','الافتتاح'],['⚔️','الصراع'],['💥','الذروة'],['📺','يتبع في الحلقة القادمة']];
+const ARC_N=[['👋','ظهور الشخصية'],['🎬','الحركة والتفاعل'],['🔍','الاستكشاف'],['🤝','لقاء جديد'],['⚡','تصاعد الأحداث'],['🌪️','تحدٍّ كبير'],['💪','المقاومة'],['⭐','لحظة الذروة'],['🔥','المواجهة'],['🎉','الانتصار'],['🌅','لحظة هدوء'],['🏁','الختام']];
+const ARC_A=[['🌅','الافتتاح'],['🏫','التعارف'],['❓','ظهور الغموض'],['⚔️','الصراع'],['😱','الخطر'],['💭','ذكريات'],['🔥','التحول'],['💥','الذروة'],['⚡','المعركة الأخيرة'],['🎉','النتيجة'],['🌇','الهدوء بعد العاصفة'],['📺','يتبع في الحلقة القادمة']];
+const COLOR_RX=[[/أحمر|احمر|حمراء/,'#ef4444'],[/أزرق|ازرق|زرقاء/,'#3b82f6'],[/أصفر|اصفر|صفراء/,'#facc15'],[/أخضر|اخضر|خضراء/,'#22c55e'],[/أبيض|ابيض|بيضاء/,'#f1f5f9'],[/أسود|اسود|سوداء|داكن/,'#334155'],[/برتقالي/,'#fb923c'],[/بنفسجي/,'#a855f7'],[/وردي/,'#ec4899'],[/فضي/,'#cbd5e1'],[/ذهبي/,'#f59e0b'],[/كحلي/,'#1e3a8a']];
+const ITEMS=[[/صاروخ/,'🚀'],[/سيف/,'🗡️'],[/قهوة|فنجان|كوب/,'☕'],[/كتاب|دفتر/,'📖'],[/هاتف/,'📱'],[/مايك/,'🎙️'],[/عصا/,'🪄'],[/هدية|جائزة/,'🎁'],[/وجبة|طعام/,'🍽️']];
+const QUICK=[['🚀 رواد فضاء','رائد فضاء يرتدي خوذة زرقاء وبدلة بيضاء يقفز ويحمل صاروخاً صغيراً ومعه رائد أحمر يلوح بيده!'],['⚔️ نينجا','محارب نينجا يرتدي درعاً أسود وقناعاً أحمر يحمل سيفاً طاقياً يقاتل وحشاً أزرق!'],['👨‍🍳 شيف','طباخ مبتسم يرتدي قبعة طهاة بيضاء يحمل فنجان قهوة ساخن ويقدم وجبة بسعادة!'],['🤖 روبوت','روبوت ذكي بعيون خضراء وجسد أصفر يقفز بحماس ويحمل هاتفاً متطوراً!'],['🧑‍🏫 معلم','معلم عجوز بنظارات دائرية يحمل كتاباً ويشرح بحماس!']];
+const TEMPLATES=[
+ {title:'شخصية مرحة صفراء بقبعة تلوح وتقفز',badge:'كرتون مرح',type:'talking_shapes',desc:'شخصية صفراء ترتدي قبعة حمراء وقفازات بيضاء تقفز بحماس وتلوح بيدها، ومعها رفيق أزرق لطيف',brand:'فيفي وكوكو',contact:'مغامرات كرتونية'},
+ {title:'رائد فضاء بخوذة يحمل صاروخاً',badge:'فضاء وخيال',type:'talking_shapes',desc:'رائد فضاء بدلة بيضاء وخوذة زرقاء يطفو في الفضاء ويحمل صاروخاً صغيراً',brand:'رواد الفضاء',contact:'استكشاف المجرات'},
+ {title:'مقاتل نينجا سايبر بسيف طاقي',badge:'أكشن',type:'action',desc:'مقاتل نينجا أسود بقناع أحمر يوجه ضربات سريعة بسيف ضوئي متوهج',brand:'المحارب السيبراني',contact:'معارك المستقبل'},
+ {title:'معلم حكيم بنظارة يحمل كتاباً',badge:'تعليم',type:'educational',desc:'معلم وقور بنظارة طبية وبدلة كحلية يؤشر بعصا ذهبية ويحمل كتاب العلوم',brand:'المعلم الذكي',contact:'شروحات علمية'},
+ {title:'شيف بقبعة بيضاء يحمل قهوة',badge:'طعام',type:'promotional',desc:'طباخ بشوش بقبعة طهاة بيضاء ومريلة خضراء يقفز فرحاً ويحمل فنجان قهوة ساخناً',brand:'الشيف الماهر',contact:'فنون الطهي'},
+ {title:'بطل أنمي بشعر أزرق وسيف ضوئي',badge:'أنمي',type:'anime',desc:'فتى أنمي بشعر أزرق يرتدي بدلة بيضاء وقناعاً أحمر ويحمل سيفاً ضوئياً ويقاتل وحشاً بنفسجياً',brand:'ملحمة النصل',contact:'الموسم الأول'}];
+
+/* ===== أدوات عامة ===== */
+let toastH=null;
+function showToast(t,m,icon){
+ $('tTitle').textContent=t;$('tMsg').textContent=m;$('tIcon').textContent=icon||'⚡';
+ $('toast').classList.add('show');clearTimeout(toastH);toastH=setTimeout(()=>$('toast').classList.remove('show'),3800);
+}
+function fmt(t){t=Math.max(0,Math.floor(t));return String(Math.floor(t/60)).padStart(2,'0')+':'+String(t%60).padStart(2,'0')}
+function esc(t){return String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function switchPage(id,idx){
+ document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+ $('page-'+id).classList.add('active');
+ document.querySelectorAll('#nav .nav-item').forEach((b,i)=>b.classList.toggle('active',i===idx));
+ if(id==='generator')renderFrame(time);
+ if(id==='scenes')renderScenesEditor();
+ if(id==='history')renderHistory();
+}
+function buildSel(id,arr,onPick,withSub){
+ const box=$(id);box.innerHTML='';
+ arr.forEach((a,i)=>{
+  const d=document.createElement('div');d.className='sc'+(i===0?' selected':'');d.dataset.v=a[0];
+  d.innerHTML=`<i>${a[1]}</i><b>${a[2]}</b>${withSub?`<small>${a[3]}</small>`:''}`;
+  d.onclick=()=>{markSel(id,a[0]);onPick(a[0])};box.appendChild(d);
+ });
+}
+function markSel(id,v){[...$(id).children].forEach(c=>c.classList.toggle('selected',c.dataset.v===v))}
+
+/* ===== تحليل الوصف واستخراج مظهر الشخصية ===== */
+function parseLook(){
+ const d=$('promptInput').value;
+ brand=$('brandInput').value.trim()||'الشخصية';contact=$('contactInput').value.trim();
+ const hm=d.match(/شعر\S*\s+(\S+)/);let hair='#1e1b4b';
+ if(hm)COLOR_RX.forEach(([rx,h])=>{if(rx.test(hm[1]))hair=h});
+ const d2=d.replace(/شعر\S*\s+\S+/g,'');
+ const found=[];COLOR_RX.forEach(([rx,h])=>{const m=d2.search(rx);if(m>=0)found.push([m,h])});
+ found.sort((a,b)=>a[0]-b[0]);const cs=found.map(f=>f[1]);
+ look={hair,body:cs[0]||'#facc15',acc:cs[1]||'#ef4444',
+  hat:/خوذة/.test(d)?'helmet':/قبعة/.test(d)?'hat':/قناع/.test(d)?'mask':'',
+  glasses:/نظار/.test(d),item:(ITEMS.find(([rx])=>rx.test(d))||[0,'⭐'])[1],
+  buddy:/رفيق|ومعه|معه|وحش|ومعها/.test(d)};
+}
+/* عدد المشاهد حسب المدة */
+function sceneCount(){return dur<=9?3:dur<=12?4:dur<=30?4:Math.min(12,Math.round(dur/8))}
+function buildScenes(){
+ parseLook();
+ const n=sceneCount(),mo=MOTIONS[type]||MOTIONS.talking_shapes,an=type==='anime';
+ const parts=$('promptInput').value.split(/[،,.!؟\n]/).map(s=>s.trim()).filter(Boolean);
+ const pick=i=>{
+  if(n<=4)return (an?SHORT_A:SHORT_N)[i];
+  const arc=an?ARC_A:ARC_N;return arc[Math.round(i*(arc.length-1)/(n-1))];
+ };
+ scenes=[];
+ for(let i=0;i<n;i++){const p=pick(i);
+  scenes.push({badge:p[0],title:p[1],subtitle:parts.length?parts[i%parts.length]:'شخصية جديدة',motion:mo[i%mo.length]});}
+ edited=false;
+}
+function epNo(){return hist.filter(h=>h.brand===brand).length+1}
+
+/* ===== الرسم ===== */
+function initParticles(){
+ particles=[];for(let i=0;i<40;i++)particles.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height,r:Math.random()*3+1,vx:(Math.random()-.5)*.9,vy:(Math.random()-.5)*.9,a:Math.random()*.6+.2});
+}
+function rr(x,y,w,h,r){ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,r);else ctx.rect(x,y,w,h)}
+function ln(a,b,c,d){ctx.beginPath();ctx.moveTo(a,b);ctx.lineTo(c,d);ctx.stroke()}
+function circ(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,6.2832);ctx.fill()}
+function wrap(text,maxW){
+ const words=String(text).split(' '),lines=[];let cur='';
+ words.forEach(w=>{const t=cur?cur+' '+w:w;if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=w}else cur=t});
+ if(cur)lines.push(cur);return lines.slice(0,3);
+}
+function drawChar(x,gy,s,body,acc,t,mot,ph,showItem){
+ const w=t*5+ph;let by;
+ if(mot==='jump')by=-Math.abs(Math.sin(w))*100*s;
+ else if(mot==='float')by=-100*s+Math.sin(w*.6)*20*s;
+ else by=Math.sin(w*2)*4*s;
+ const y=gy+by;
+ ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(x,gy+6*s,Math.max(20,60*s+by*.25),11*s,0,0,6.3);ctx.fill();
+ ctx.lineCap='round';
+ const sw=(mot==='fight'||mot==='jump')?Math.sin(w*2)*16*s:0;
+ ctx.strokeStyle='#1e293b';ctx.lineWidth=17*s;
+ ln(x-24*s,y-72*s,x-24*s-sw,y-10*s);ln(x+24*s,y-72*s,x+24*s+sw,y-10*s);
+ ctx.fillStyle=acc;
+ [x-24*s-sw,x+24*s+sw].forEach(fx=>{ctx.beginPath();ctx.ellipse(fx,y-4*s,24*s,12*s,0,0,6.3);ctx.fill()});
+ ctx.fillStyle=body;rr(x-56*s,y-196*s,112*s,128*s,44*s);ctx.fill();
+ ctx.fillStyle='rgba(255,255,255,.18)';ctx.beginPath();ctx.ellipse(x,y-125*s,30*s,38*s,0,0,6.3);ctx.fill();
+ /* الأذرع */
+ ctx.strokeStyle=body;ctx.lineWidth=18*s;const L=72*s,shy=y-165*s;
+ const aL=mot==='wave'?-2.3+Math.sin(w*3)*.45:mot==='point'?3.0:1.9+Math.sin(w)*.15;
+ const aR=mot==='fight'?-.9+Math.sin(w*3)*.9:mot==='jump'?-1+Math.sin(w*2)*.3:mot==='float'?.3:1.0+Math.sin(w)*.15;
+ const lx=x-54*s+Math.cos(aL)*L,ly=shy+Math.sin(aL)*L,rx=x+54*s+Math.cos(aR)*L,ry=shy+Math.sin(aR)*L;
+ ln(x-54*s,shy,lx,ly);ln(x+54*s,shy,rx,ry);
+ ctx.fillStyle='#fff';circ(lx,ly,14*s);circ(rx,ry,14*s);
+ if(showItem&&look.item){
+  ctx.save();ctx.translate(rx,ry-28*s);ctx.rotate(mot==='fight'?Math.sin(w*3)*.6:.2*Math.sin(w));
+  ctx.font=(84*s)+'px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(look.item,0,0);ctx.restore();
+ }
+ /* الرأس */
+ const hx=x,hy=y-258*s;
+ ctx.fillStyle=body;circ(hx,hy,64*s);
+ if(look.hat==='mask'){ctx.fillStyle='#0f172a';rr(hx-64*s,hy-24*s,128*s,34*s,16*s);ctx.fill()}
+ ctx.fillStyle=look.hat==='mask'?acc:'#fff';circ(hx-24*s,hy-6*s,15*s);circ(hx+24*s,hy-6*s,15*s);
+ ctx.fillStyle='#0f172a';const ex=Math.sin(w)*2*s;circ(hx-24*s+ex,hy-6*s,7*s);circ(hx+24*s+ex,hy-6*s,7*s);
+ ctx.strokeStyle='#1e293b';ctx.lineWidth=5*s;ctx.beginPath();ctx.arc(hx,hy+14*s,24*s,.2,2.94);ctx.stroke();
+ ctx.fillStyle='rgba(244,114,182,.45)';circ(hx-44*s,hy+14*s,9*s);circ(hx+44*s,hy+14*s,9*s);
+ if(look.glasses){ctx.strokeStyle='#1e293b';ctx.lineWidth=5*s;[-24,24].forEach(d=>{ctx.beginPath();ctx.arc(hx+d*s,hy-6*s,21*s,0,6.3);ctx.stroke()});ln(hx-3*s,hy-6*s,hx+3*s,hy-6*s)}
+ if(look.hat==='helmet'){ctx.fillStyle='rgba(186,230,253,.22)';ctx.strokeStyle=acc;ctx.lineWidth=6*s;ctx.beginPath();ctx.arc(hx,hy,82*s,0,6.3);ctx.fill();ctx.stroke()}
+ if(look.hat==='hat'){ctx.fillStyle=acc;ctx.beginPath();ctx.ellipse(hx,hy-52*s,62*s,12*s,0,0,6.3);ctx.fill();rr(hx-38*s,hy-112*s,76*s,62*s,14*s);ctx.fill();ctx.fillStyle='rgba(255,255,255,.85)';ctx.fillRect(hx-38*s,hy-70*s,76*s,10*s)}
+ /* شعر وعيون الأنمي */
+ if(type==='anime'){
+  if(!look.hat){
+   ctx.fillStyle=look.hair;ctx.beginPath();ctx.moveTo(hx-66*s,hy-28*s);
+   [[-60,-70],[-40,-34],[-22,-92],[0,-42],[22,-96],[42,-36],[60,-74],[66,-28]].forEach(p=>ctx.lineTo(hx+p[0]*s,hy+p[1]*s));
+   ctx.closePath();ctx.fill();
+   [[-40,-26,-12],[-12,2,16],[16,32,48]].forEach(b=>{ctx.beginPath();ctx.moveTo(hx+b[0]*s,hy-28*s);ctx.lineTo(hx+b[1]*s,hy+(b[1]===2?-4:0)*s);ctx.lineTo(hx+b[2]*s,hy-28*s);ctx.fill()});
+  }
+  [-1,1].forEach(k=>{const ex2=hx+k*26*s,ey=hy+2*s;
+   ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(ex2,ey,17*s,22*s,0,0,6.3);ctx.fill();
+   ctx.fillStyle=look.acc;ctx.beginPath();ctx.ellipse(ex2,ey+2*s,12*s,17*s,0,0,6.3);ctx.fill();
+   ctx.fillStyle='#0f172a';ctx.beginPath();ctx.ellipse(ex2,ey+3*s,6*s,10*s,0,0,6.3);ctx.fill();
+   ctx.fillStyle='#fff';circ(ex2-4*s,ey-6*s,5*s);circ(ex2+4*s,ey+8*s,2.5*s)});
+ }
+}
+function renderFrame(t){
+ const W=canvas.width,H=canvas.height,th=THEMES[theme],land=W>H;
+ const g=ctx.createLinearGradient(0,0,W*.3,H);g.addColorStop(0,th.bg[0]);g.addColorStop(.5,th.bg[1]);g.addColorStop(1,th.bg[2]);
+ ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+ ctx.fillStyle=th.acc;
+ particles.forEach(p=>{ctx.globalAlpha=p.a;circ(p.x,p.y,p.r)});ctx.globalAlpha=1;
+ if(!scenes.length)return;
+ const n=scenes.length,seg=dur/n,i=Math.min(n-1,Math.floor(t/seg)),lt=t-i*seg,sc=scenes[i];
+ /* في المشاهد الطويلة تتغير الحركة كل 3 ثوانٍ كي لا يتكرر المشهد */
+ const mo=MOTIONS[type]||MOTIONS.talking_shapes;
+ const mot=seg>6?mo[(i+Math.floor(lt/3))%mo.length]:sc.motion;
+ const al=Math.max(0,Math.min(1,lt/.4,(seg-lt)/.4+.3));
+ const s=Math.min(W,H)/720*1.05,gy=H*(land?.7:.62),u=Math.min(W,H);
+ const fg=ctx.createRadialGradient(W/2,gy,10,W/2,gy,W*.45);fg.addColorStop(0,th.acc+'55');fg.addColorStop(1,'transparent');
+ ctx.fillStyle=fg;ctx.fillRect(0,gy-u*.2,W,u*.4);
+ if(type==='anime'){
+  const fast=mot==='fight'||mot==='jump';
+  ctx.save();ctx.translate(W/2,gy-u*.3);ctx.strokeStyle='rgba(255,255,255,'+(fast?.35:.12)+')';ctx.lineWidth=2;
+  for(let k=0;k<44;k++){const a=k/44*6.2832+t*(fast?1.5:.2),r1=u*.35,r2=u*(fast?1.4:.9);
+   ctx.beginPath();ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);ctx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2);ctx.stroke()}
+  ctx.restore();
+ }
+ ctx.globalAlpha=Math.min(1,al+.2);
+ if(look.buddy){drawChar(W*.34,gy,s,look.body,look.acc,t,mot,0,true);drawChar(W*.7,gy,s*.8,look.acc,look.body,t,mot==='fight'?'jump':'wave',1.7,false)}
+ else drawChar(W*.5,gy,s,look.body,look.acc,t,mot,0,true);
+ ctx.globalAlpha=al;ctx.direction='rtl';ctx.textAlign='center';ctx.textBaseline='middle';
+ ctx.fillStyle=th.acc;ctx.font=`600 ${u*.04}px system-ui`;ctx.fillText(brand,W/2,H*.05);
+ ctx.fillStyle='#fff';ctx.font=`800 ${u*.07}px system-ui`;ctx.fillText(sc.badge+' '+sc.title,W/2,H*.12);
+ const ch=H*(land?.2:.15),cy=H*(land?.76:.78);
+ ctx.fillStyle=th.card;rr(W*.06,cy,W*.88,ch,24);ctx.fill();ctx.strokeStyle=th.bd;ctx.lineWidth=3;ctx.stroke();
+ ctx.fillStyle='#e2e8f0';ctx.font=`500 ${u*.044}px system-ui`;
+ const lines=wrap(sc.subtitle,W*.8),lh=u*.058,y0=cy+ch/2-(lines.length-1)*lh/2;
+ lines.forEach((l,k)=>ctx.fillText(l,W/2,y0+k*lh));
+ if(contact){ctx.fillStyle='#94a3b8';ctx.font=`500 ${u*.034}px system-ui`;ctx.fillText(contact,W/2,H*.955)}
+ ctx.globalAlpha=1;
+ if(type==='anime'){
+  ctx.fillStyle='#000';const bh=H*.03;ctx.fillRect(0,0,W,bh);ctx.fillRect(0,H-bh,W,bh);
+  if(t<2.2){ctx.globalAlpha=Math.min(1,(2.2-t)/.6);ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(0,H*.4,W,u*.16);
+   ctx.fillStyle='#fff';ctx.font=`800 ${u*.06}px system-ui`;ctx.fillText('الحلقة '+epNo()+' • '+brand,W/2,H*.4+u*.08);ctx.globalAlpha=1}
+ }
+ ctx.fillStyle=th.acc;ctx.fillRect(0,H-6,W*(t/dur),6);
+}
+
+/* ===== التشغيل ===== */
+function updateUI(){$('tline').value=(time/dur)*100;$('curT').textContent=fmt(time);$('totT').textContent=fmt(dur);$('playBtn').textContent=playing?'⏸':'▶'}
+function loop(ts){
+ if(!playing)return;
+ const dt=Math.min(.05,(ts-last)/1000);last=ts;time+=dt;
+ if(time>=dur)time=exporting?dur-.001:time%dur;
+ particles.forEach(p=>{p.x=(p.x+p.vx+canvas.width)%canvas.width;p.y=(p.y+p.vy+canvas.height)%canvas.height});
+ renderFrame(time);updateUI();requestAnimationFrame(loop);
+}
+function startPlay(){if(playing)return;playing=true;last=performance.now();requestAnimationFrame(loop);updateUI()}
+function stopPlay(){playing=false;updateUI()}
+function togglePlay(){playing?stopPlay():startPlay()}
+function restartVideo(){time=0;renderFrame(0);startPlay()}
+function seekVideo(v){time=(v/100)*dur;renderFrame(time);updateUI()}
+
+/* ===== الإعدادات المباشرة ===== */
+function setAspect(v){
+ aspect=v;const [w,h]=SIZES[v];canvas.width=w;canvas.height=h;
+ $('resBadge').textContent={'9:16':'📱 9:16 ريلز','1:1':'🟦 1:1 مربع','16:9':'🖥️ 16:9 عريض'}[v];
+ initParticles();renderFrame(time);
+}
+function setTheme(v){theme=v;renderFrame(time)}
+function setType(v){type=v;markSel('typeSel',v);if(!edited)buildScenes();renderFrame(time)}
+function onDuration(v){
+ dur=+v;buildScenes();time=Math.min(time,dur-.01);renderFrame(time);updateUI();
+ if(dur>=30)showToast('فيديو طويل 🎞️','سيُقسَّم إلى '+scenes.length+' مشاهد. اضغط "تطوير بذكاء Gemini" لسيناريو مختلف لكل مشهد.','🎬');
+}
+function onLive(){
+ clearTimeout(liveT);
+ liveT=setTimeout(()=>{if(edited)parseLook();else buildScenes();renderFrame(time)},350);
+}
+function applyQuickPrompt(t){$('promptInput').value=t;edited=false;buildScenes();restartVideo();showToast('تم','تم تحميل الوصف','🎭')}
+function generateVideoFromPrompt(){
+ if(!$('promptInput').value.trim()){showToast('تنبيه','اكتب وصف الشخصية أولاً','⚠️');return}
+ buildScenes();restartVideo();showToast('تم الرسم','الشخصية تتحرك الآن','🎨');
+}
+
+/* ===== المشاهد ===== */
+function renderScenesEditor(){
+ $('scenesList').innerHTML=scenes.map((s,i)=>`<div class="hc"><b>${s.badge} المشهد ${i+1} من ${scenes.length}</b>
+  <input class="fc" id="st${i}" value="${esc(s.title)}" style="margin:8px 0">
+  <textarea class="fc" id="ss${i}" rows="2">${esc(s.subtitle)}</textarea></div>`).join('')||'<div class="empty">لا توجد مشاهد</div>';
+}
+function regenerateScenesAuto(){buildScenes();renderScenesEditor();renderFrame(time);showToast('تم','أُعيد تحليل الوصف','🪄')}
+function applyCustomScenes(){
+ scenes.forEach((s,i)=>{const a=$('st'+i),b=$('ss'+i);if(a)s.title=a.value;if(b)s.subtitle=b.value});
+ edited=true;switchPage('generator',0);restartVideo();showToast('تم الحفظ','تم تحديث المشاهد','💾');
+}
+
+/* ===== النماذج الجاهزة ===== */
+function renderTemplates(){
+ $('tplList').innerHTML=TEMPLATES.map((t,i)=>`<div class="hc" onclick="loadTemplate(${i})" style="cursor:pointer"><span class="chip active" style="cursor:default">${t.badge}</span>
+  <div style="font-weight:700;margin:8px 0 4px">${t.title}</div><div style="font-size:.82rem;color:var(--mu)">${t.desc}</div></div>`).join('');
+}
+function loadTemplate(i){
+ const t=TEMPLATES[i];$('promptInput').value=t.desc;$('brandInput').value=t.brand;$('contactInput').value=t.contact;
+ type=t.type;markSel('typeSel',type);buildScenes();switchPage('generator',0);restartVideo();showToast('تم التحميل',t.title,'💡');
+}
+
+/* ===== المحفوظات ===== */
+function loadHistory(){try{hist=JSON.parse(sGet('anim_history')||'[]')}catch(e){hist=[]}}
+function saveHistory(){sSet('anim_history',JSON.stringify(hist.slice(0,30)))}
+function renderHistory(){
+ $('histList').innerHTML=hist.length?hist.map((h,i)=>`<div class="hc"><b>${esc(h.brand)}</b>
+  <div style="font-size:.78rem;color:var(--mu);margin:4px 0 8px">${esc(h.date)} • ${h.dur} ث • ${h.aspect}</div>
+  <div class="g2"><button class="btn sec" onclick="reuse(${i})">فتح</button><button class="btn sec" onclick="delHist(${i})">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فيديوهات محفوظة بعد</div>';
+}
+function reuse(i){
+ const h=hist[i];$('promptInput').value=h.desc;$('brandInput').value=h.brand;$('contactInput').value=h.contact;
+ type=h.type;theme=h.theme;dur=h.dur;$('durSel').value=String(dur);markSel('typeSel',type);markSel('thSel',theme);markSel('fmtSel',h.aspect);
+ setAspect(h.aspect);buildScenes();switchPage('generator',0);restartVideo();
+}
+function delHist(i){hist.splice(i,1);saveHistory();renderHistory()}
+function clearHistory(){hist=[];saveHistory();renderHistory()}
+
+/* ===== التصدير والمشاركة ===== */
+async function lockScreen(){try{if(navigator.wakeLock)wl=await navigator.wakeLock.request('screen')}catch(e){}}
+function unlockScreen(){try{if(wl)wl.release()}catch(e){}wl=null}
+function exportRealVideo(){
+ if(exporting)return;
+ if(!window.MediaRecorder||!canvas.captureStream){showToast('غير مدعوم','المتصفح لا يدعم تصدير الفيديو','⚠️');return}
+ const mime=['video/mp4','video/webm;codecs=vp9','video/webm'].find(m=>MediaRecorder.isTypeSupported(m))||'';
+ exporting=true;$('expBtn').disabled=true;$('expTxt').innerHTML='<span class="spin"></span> جارٍ التسجيل...';
+ stopPlay();time=0;renderFrame(0);lockScreen();
+ if(dur>=30)showToast('بدأ التسجيل 🔴','يستغرق '+fmt(dur)+' تقريباً. لا تغلق الشاشة ولا تغادر الصفحة.','🎥');
+ const chunks=[];let rec;
+ try{rec=new MediaRecorder(canvas.captureStream(30),mime?{mimeType:mime,videoBitsPerSecond:3000000}:{})}
+ catch(e){exporting=false;unlockScreen();$('expBtn').disabled=false;$('expTxt').textContent='⬇️ تصدير فيديو';showToast('خطأ',e.message,'⚠️');return}
+ rec.ondataavailable=e=>{if(e.data&&e.data.size)chunks.push(e.data)};
+ rec.onstop=()=>{
+  exporting=false;stopPlay();unlockScreen();$('expBtn').disabled=false;$('expTxt').textContent='⬇️ تصدير فيديو';
+  const ext=(rec.mimeType||mime).includes('mp4')?'mp4':'webm';
+  const url=URL.createObjectURL(new Blob(chunks,{type:rec.mimeType||mime||'video/webm'}));
+  const a=document.createElement('a');a.href=url;a.download=`animation_${Date.now()}.${ext}`;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),120000);
+  hist.unshift({brand,desc:$('promptInput').value,contact,type,theme,dur,aspect,date:new Date().toLocaleString('ar-EG')});saveHistory();
+  showToast('تم التصدير ✅','إذا لم يبدأ التحميل فافتح التطبيق في المتصفح','⬇️');
+ };
+ rec.start(1000);startPlay();
+ setTimeout(()=>{if(rec.state!=='inactive')rec.stop()},dur*1000+250);
+}
+async function shareVideoDetails(){
+ const text=`${brand}\n${$('promptInput').value}\n${contact}`;
+ try{if(navigator.share){await navigator.share({title:brand,text});return}}catch(e){if(e.name==='AbortError')return}
+ try{await navigator.clipboard.writeText(text);showToast('تم النسخ','نُسخ وصف الشخصية','📋')}
+ catch(e){showToast('تعذّرت المشاركة','المتصفح يمنع النسخ هنا','⚠️')}
+}
+
+/* ===== Gemini ===== */
+function loadSettings(){
+ apiKey=sGet('gemini_api_key')||'';model=sGet('gemini_model_choice')||'gemini-2.5-flash';
+ if(/^gemini-1\.5/.test(model))model='gemini-2.5-flash';
+ $('keyInput').value=apiKey;$('modelSel').value=model;updateBadge();
+}
+function saveSettings(){
+ apiKey=$('keyInput').value.trim();model=$('modelSel').value;
+ sSet('gemini_api_key',apiKey);sSet('gemini_model_choice',model);updateBadge();
+ showToast('تم الحفظ',apiKey?'حُفظ المفتاح':'مُسح المفتاح','⚙️');
+}
+function updateBadge(){
+ $('sDot').style.background=apiKey?'#38bdf8':'#10b981';
+ $('sDot').style.boxShadow='0 0 8px '+(apiKey?'#38bdf8':'#10b981');
+ $('sTxt').textContent=apiKey?'Gemini متصل ⚡':'المحرك جاهز';
+}
+async function callGemini(prompt,key,json){
+ const body={contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:.7,maxOutputTokens:6000}};
+ if(json)body.generationConfig.responseMimeType='application/json';
+ const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});
+ if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e?.error?.message||('خطأ '+r.status))}
+ const d=await r.json();
+ return (d?.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('');
+}
+async function testGemini(){
+ const key=$('keyInput').value.trim()||apiKey;model=$('modelSel').value;
+ if(!key){showToast('تنبيه','اكتب المفتاح أولاً','⚠️');return}
+ showToast('جارٍ الفحص','يتم التحقق من المفتاح...','🔌');
+ try{await callGemini('أجب بكلمة واحدة: جاهز',key,false);showToast('اتصال ناجح ✅','المفتاح يعمل','🔌')}
+ catch(e){showToast('فشل الاتصال',e.message,'⚠️')}
+}
+async function generateWithGemini(){
+ const idea=$('promptInput').value.trim();
+ if(!apiKey){showToast('المفتاح مطلوب','أدخل مفتاح Gemini في الإعدادات','⚙️');switchPage('settings',4);return}
+ if(!idea){showToast('تنبيه','اكتب فكرة بسيطة أولاً','⚠️');return}
+ const btn=$('gemBtn');btn.disabled=true;$('gemIcon').innerHTML='<span class="spin"></span>';$('gemTxt').textContent='Gemini يبتكر السيناريو...';
+ const n=sceneCount();
+ const long=n>4?' القصة طويلة، فاجعل كل مشهد يتطور عن السابق بقصة متصلة: بداية، تصاعد، أزمة، ذروة، حل، خاتمة. لا تكرر الجمل.':'';
+ const sys=`أنت مصمم شخصيات ومخرج أنيميشن. حلل الفكرة وأعد JSON فقط بهذا الشكل:
+{"expandedPrompt":"وصف قصير بجمل مفصولة بفواصل يذكر الألوان والملابس والأداة المحمولة والحركة","brandName":"اسم الشخصية","contactText":"شعار قصير","automationType":"talking_shapes أو action أو educational أو promotional أو kinetic أو news أو anime","scenes":[{"title":"عنوان قصير","subtitle":"جملة واحدة عن حركة الشخصية","badge":"إيموجي واحد"}]}
+عدد المشاهد بالضبط ${n}.${long}${type==='anime'?' اكتب كحلقة أنمي درامية تنتهي بتشويق للحلقة القادمة. اذكر لون الشعر مثل (شعر أزرق).':''} استخدم ألوان بالعربية مثل أحمر وأزرق وأصفر.`;
+ try{
+  let txt=await callGemini(sys+'\n\nالفكرة:\n'+idea,apiKey,true);
+  txt=txt.replace(/```json|```/g,'').trim();
+  const a=txt.indexOf('{'),b=txt.lastIndexOf('}');
+  const j=JSON.parse(txt.slice(a,b+1));
+  if(j.expandedPrompt)$('promptInput').value=j.expandedPrompt;
+  if(j.brandName)$('brandInput').value=j.brandName;
+  if(j.contactText)$('contactInput').value=j.contactText;
+  if(TYPES.some(t=>t[0]===j.automationType)){type=j.automationType;markSel('typeSel',type)}
+  buildScenes();
+  if(Array.isArray(j.scenes)&&j.scenes.length){
+   scenes.forEach((s,i)=>{const g=j.scenes[i];if(g){s.title=g.title||s.title;s.subtitle=g.subtitle||s.subtitle;s.badge=g.badge||s.badge}});
+   edited=true;
+  }
+  restartVideo();showToast('تم التوليد ✨','طوّر Gemini الشخصية والمشاهد','✨');
+ }catch(e){showToast('تعذّر التوليد',e.message,'⚠️')}
+ finally{btn.disabled=false;$('gemIcon').textContent='✨';$('gemTxt').textContent='تطوير السيناريو بذكاء Gemini'}
+}
+
+/* ===== البدء ===== */
+document.addEventListener('DOMContentLoaded',()=>{
+ $('quickChips').innerHTML=QUICK.map((q,i)=>`<button class="chip" onclick="applyQuickPrompt(QUICK[${i}][1])">${q[0]}</button>`).join('');
+ buildSel('typeSel',TYPES,setType,true);buildSel('fmtSel',FORMATS,setAspect,false);buildSel('thSel',THLIST,setTheme,false);
+ loadSettings();loadHistory();renderTemplates();
+ const t=TEMPLATES[0];$('promptInput').value=t.desc;$('brandInput').value=t.brand;$('contactInput').value=t.contact;
+ initParticles();buildScenes();time=1.2;renderFrame(time);updateUI();
+});
+</script>
 </body>
 </html>
