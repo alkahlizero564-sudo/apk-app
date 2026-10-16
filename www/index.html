@@ -24,7 +24,9 @@ button.sec{background:#243557}
 button.acc{background:var(--acc);color:#222}
 button.ghost{background:transparent;border:1px solid var(--line);margin-top:10px;width:100%}
 button:disabled{opacity:.5}
-.link{margin:4px 0 12px}
+.link{margin:4px 0 12px;display:flex;gap:8px}
+.desc[hidden]{display:none}
+.desc{margin-top:8px;border:1px dashed var(--acc);border-radius:12px;padding:8px}
 .note{color:var(--mut);font-size:12px;line-height:1.7}
 .errbox{color:var(--bad);font-size:13px;margin-top:8px;white-space:pre-wrap}
 .edit[hidden]{display:none}
@@ -75,7 +77,7 @@ function arErr(e){const m=String((e&&e.message)||e);
   return m}
 
 /* ---------- الواجهات ---------- */
-const FIELDS=[['ghToken','مفتاح GitHub (Token)','password','صلاحيات: repo + workflow'],['repo','اسم المستودع','text','apk-app'],['sbToken','مفتاح Supabase (Access Token)','password','يبدأ بـ sbp_'],['sbRef','Supabase project ref','text',''],['gemini','مفتاح Gemini API','password',''],['claude','مفتاح Claude API','password','']];
+const FIELDS=[['ghToken','مفتاح GitHub (Token)','password','صلاحيات: repo + workflow'],['repo','اسم المستودع','text','apk-app'],['sbToken','مفتاح Supabase (Access Token)','password','يبدأ بـ sbp_'],['sbRef','Supabase project ref','text',''],['fbUrl','رابط Firebase (Realtime Database URL)','text','https://xxxx-default-rtdb.firebaseio.com'],['fbKey','مفتاح Firebase (Web API Key) - اختياري','password','يبدأ بـ AIza'],['gemini','مفتاح Gemini API','password',''],['claude','مفتاح Claude API','password','']];
 function vKeys(){return `<div class="card"><h2>🔑 قائمة المفاتيح</h2>
 ${FIELDS.map(f=>`<label>${f[1]}</label><input type="${f[2]}" value="${esc(S.keys[f[0]]||'')}" placeholder="${f[3]}" autocomplete="off" oninput="S.keys['${f[0]}']=this.value.trim();save()">`).join('')}
 <label>الذكاء الاصطناعي المستخدم في التعديل</label>
@@ -85,6 +87,12 @@ ${FIELDS.map(f=>`<label>${f[1]}</label><input type="${f[2]}" value="${esc(S.keys
 function vCode(){const card=i=>{const a=S.apps[i];return `<section class="card">
 <input class="name" value="${esc(a.name)}" placeholder="اسم التطبيق بالإنجليزية (مثل awad)" oninput="S.apps[${i}].name=this.value;save()">
 <p class="note">اسم التطبيق يصير اسم المجلد: حروف إنجليزية وأرقام فقط</p>
+<button class="acc" style="width:100%;margin-top:8px" onclick="toggleDesc(${i})">✨ اكتب وصف التطبيق</button>
+<div class="desc" id="desc${i}" hidden>
+<textarea class="req" id="dsc${i}" placeholder="اكتب وصف التطبيق بكلمات بسيطة، مثال: تطبيق لتسجيل مصاريف البيت اليومية مع المجموع الشهري"></textarea>
+<button class="acc" style="width:100%;margin-top:8px" onclick="aiCreate(${i},this)">🚀 أنشئ التطبيق وعاين</button>
+<p class="note">لو في كود قديم، يتحفظ في "النسخ السابقة" وتقدر ترجع له.</p>
+</div>
 <textarea class="code" id="code${i}" placeholder="الصق كود التطبيق هنا" oninput="S.apps[${i}].code=this.value;save()">${esc(a.code)}</textarea>
 <iframe id="pv${i}" sandbox="allow-scripts allow-forms allow-modals"></iframe>
 <div class="row"><button onclick="preview(${i})">▶ المعاينة الفعلية</button><button class="sec" onclick="toggleEdit(${i})">✏️ تعديل الكود</button></div>
@@ -94,7 +102,7 @@ function vCode(){const card=i=>{const a=S.apps[i];return `<section class="card">
 <div class="errbox" id="err${i}">${esc(a.err)}</div>
 <details><summary>النسخ السابقة (${a.versions.length})</summary>${a.versions.map((v,j)=>`<div class="ver"><span>${esc(v.t)}</span><button class="sec" onclick="restore(${i},${j})">رجوع</button></div>`).join('')||'<p>لا توجد نسخ بعد</p>'}</details>
 </div></section>`};
-return card(0)+`<div class="link"><button class="acc" onclick="linkApps(this)">🔗 ربط التطبيقين عبر Supabase</button></div>`+card(1)}
+return card(0)+`<div class="link"><button class="acc" onclick="linkApps(this)">🔗 ربط عبر Supabase</button><button class="acc" onclick="linkFirebase(this)">🔥 ربط عبر Firebase</button></div>`+card(1)}
 
 function vBuild(){return `<div class="card"><h2>🏗️ قائمة البناء</h2><p class="note">اضغط بناء وسيتم رفع الكود إلى مجلد باسم التطبيق وبناء ملف APK تلقائياً، وتتابع المراحل هنا.</p></div>`+
 S.apps.map((a,i)=>`<div class="card"><h2>${esc(a.name)}</h2><p class="note">المجلد: apps/${esc(slugOf(a.name)||'← اكتب اسماً إنجليزياً في قائمة الكود')}</p><button onclick="build(${i})">بناء ${esc(a.name)}</button>${a.apk?`<a class="btn acc" style="margin-top:8px" href="${esc(a.apk)}" target="_blank">⬇ تحميل آخر APK</a>`:''}</div>`).join('')}
@@ -173,6 +181,35 @@ function linkApps(btn){busy(btn,async()=>{const k=S.keys;
     P.set(2,'ok');P.set(3,'run');
     pushVersion(0);pushVersion(1);S.apps[0].code=parts.a1;S.apps[1].code=parts.a2;save();render();
     P.set(3,'ok');P.extra('<p style="color:var(--ok)">تم الربط بنجاح ✔</p>');
+  }catch(e){P.extra('<div class="errbox">'+esc(arErr(e))+'</div>');throw e}})}
+
+
+/* ---------- وصف التطبيق ---------- */
+function toggleDesc(i){const e=$('#desc'+i);e.hidden=!e.hidden}
+function aiCreate(i,btn){busy(btn,async()=>{const d=$('#dsc'+i).value.trim();
+  if(!d)throw new Error('اكتب وصف التطبيق أولاً');
+  const out=await ai(SYS+'أنشئ تطبيقاً كاملاً يعمل من الصفر حسب هذا الوصف. اجعل الواجهة عربية من اليمين لليسار، مناسبة لشاشة الهاتف، بأزرار كبيرة وألوان جميلة، وبدون أي مكتبات خارجية. احفظ البيانات في localStorage. أضف كل ما يلزم ليكون التطبيق مفيداً وكاملاً.\n\nوصف التطبيق:\n'+d);
+  setCode(i,clean(out));$('#dsc'+i).value='';$('#desc'+i).hidden=true;toast('تم إنشاء التطبيق ✔ شاهد المعاينة')})}
+
+/* ---------- Firebase ---------- */
+function parseApps(t){const m=t.match(/===APP1===([\s\S]*?)===APP2===([\s\S]*)$/);if(!m)throw new Error('رد الذكاء الاصطناعي غير مكتمل، حاول مرة أخرى.');return {a1:clean(m[1]),a2:clean(m[2])}}
+function linkFirebase(btn){busy(btn,async()=>{const k=S.keys;
+  if(!k.fbUrl)throw new Error('أدخل رابط Firebase في قائمة المفاتيح');
+  const url=k.fbUrl.trim().replace(/\/+$/,'');
+  if(!/^https:\/\/[a-z0-9.-]+\.(firebaseio\.com|firebasedatabase\.app)$/i.test(url))throw new Error('رابط Firebase غير صحيح. شكله: https://اسم-مشروعك-default-rtdb.firebaseio.com');
+  if(!S.apps[0].code.trim()||!S.apps[1].code.trim())throw new Error('اكتب كود التطبيقين أولاً');
+  const P=progress('ربط التطبيقين عبر Firebase',['فحص الاتصال بقاعدة Firebase','الذكاء الاصطناعي يصمم البيانات ويعدل التطبيقين','حفظ الكود الجديد']);
+  try{
+    P.set(0,'run');
+    let r;try{r=await fetch(url+'/apk_test.json',{method:'PUT',body:JSON.stringify({ok:Date.now()})})}catch(e){throw new Error('تعذّر الاتصال بـ Firebase. تأكد من الرابط ومن الإنترنت.')}
+    if(r.status===401||r.status===403)throw new Error('Firebase يرفض الكتابة. افتح Firebase > Realtime Database > Rules، والصق:\n{"rules":{".read":true,".write":true}}\nثم اضغط Publish وأعد المحاولة.');
+    if(!r.ok)throw new Error('الرابط غير صحيح أو قاعدة البيانات غير موجودة (خطأ '+r.status+').');
+    try{await fetch(url+'/apk_test.json',{method:'DELETE'})}catch(e){}
+    P.set(0,'ok');
+    const base='لديك تطبيقان (أندرويد، HTML/JS) يجب أن يتشاركا البيانات عبر Firebase Realtime Database.\nرابط قاعدة البيانات: '+url+'\n'+(k.fbKey?'Web API Key: '+k.fbKey+'\n':'')+'\nالمطلوب: عدّل كود التطبيقين ليقرأ ويكتب في قاعدة البيانات عبر REST فقط، بدون أي مكتبة أو SDK:\n- القراءة: fetch(DB+"/المسار.json") وتأتي النتيجة كائناً مفاتيحه معرّفات أو null، حوّلها لمصفوفة.\n- إضافة عنصر: POST إلى المسار ويرجع {name:"المعرّف"}. تعديل: PATCH أو PUT على DB+"/المسار/المعرّف.json". حذف: DELETE.\n- لا تستخدم orderBy ولا الفلترة من السيرفر، افلتر في الكود.\n- لتحديث البيانات مباشرة اعمل polling كل 5 ثوانٍ، وتعامل مع انقطاع الإنترنت بدون أن ينهار التطبيق.\n- ضع كل بيانات التطبيقين تحت جذر واحد مناسب لفكرتهما، وأبقِ بقية وظائف التطبيقين كما هي.\n\nأعد الرد بهذا الشكل فقط:\n===APP1===\n```html\n...\n```\n===APP2===\n```html\n...\n```\n\nالتطبيق الأول:\n```html\n'+S.apps[0].code+'\n```\n\nالتطبيق الثاني:\n```html\n'+S.apps[1].code+'\n```';
+    P.set(1,'run');const parts=parseApps(await ai(base));P.set(1,'ok');
+    P.set(2,'run');pushVersion(0);pushVersion(1);S.apps[0].code=parts.a1;S.apps[1].code=parts.a2;save();render();
+    P.set(2,'ok');P.extra('<p style="color:var(--ok)">تم الربط بنجاح ✔ عاين التطبيقين ثم ابنِهما.</p><p class="note">تنبيه: قواعد Firebase الحالية مفتوحة للجميع، وهذا مناسب للتجربة فقط.</p>');
   }catch(e){P.extra('<div class="errbox">'+esc(arErr(e))+'</div>');throw e}})}
 
 /* ---------- GitHub والبناء ---------- */
