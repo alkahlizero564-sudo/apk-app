@@ -1,0 +1,2675 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>صانع فيديو أوتوميشن بالذكاء الاصطناعي</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --primary-light: #eef2ff;
+            --accent: #06b6d4;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --card-surface: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --radius-lg: 18px;
+            --radius-md: 14px;
+            --radius-sm: 8px;
+            --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 10px 30px -3px rgba(0, 0, 0, 0.6);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        input, textarea, select {
+            user-select: text;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            padding-bottom: 75px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1e1b4b, #312e81, #4f46e5);
+            color: white;
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-title h1 {
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .engine-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(8px);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulseDot 1.5s infinite;
+        }
+
+        @keyframes pulseDot {
+            0% { transform: scale(0.9); opacity: 0.7; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.7; }
+        }
+
+        nav.bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b;
+            display: flex;
+            border-top: 1px solid var(--border);
+            height: 65px;
+            z-index: 1000;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.3);
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: none;
+            background: none;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .nav-item.active {
+            color: #818cf8;
+        }
+
+        .nav-icon {
+            font-size: 1.35rem;
+            margin-bottom: 2px;
+        }
+
+        main {
+            padding: 16px;
+            flex: 1;
+            max-width: 650px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .info-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            box-shadow: var(--shadow);
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #cbd5e1;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 13px;
+            border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border);
+            font-size: 0.95rem;
+            outline: none;
+            background: #0f172a;
+            color: #f8fafc;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+        }
+
+        .chips-container {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+            scrollbar-width: none;
+        }
+
+        .chips-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        .chip {
+            background: #0f172a;
+            border: 1px solid var(--border);
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            white-space: nowrap;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+
+        .chip:hover {
+            border-color: #6366f1;
+            color: #f8fafc;
+        }
+
+        .chip.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: linear-gradient(135deg, #4f46e5, #6366f1);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: var(--radius-md);
+            font-size: 1.05rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 18px rgba(79, 70, 229, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        .btn-submit:active {
+            transform: scale(0.98);
+        }
+
+        .btn-secondary {
+            background: #334155;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 13px;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            transition: background 0.2s;
+        }
+
+        .btn-secondary:active {
+            background: #475569;
+        }
+
+        .video-box-wrapper {
+            position: relative;
+            background: #000;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+        }
+
+        #videoCanvas {
+            width: 100%;
+            max-height: 440px;
+            display: block;
+            background: #000;
+            object-fit: contain;
+        }
+
+        .video-controls {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.98);
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: white;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .ctrl-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: transform 0.1s;
+        }
+
+        .ctrl-btn:active {
+            transform: scale(0.92);
+        }
+
+        .progress-bar-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .custom-slider {
+            width: 100%;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+
+        .time-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .story-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(79, 70, 229, 0.85);
+            color: white;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            backdrop-filter: blur(6px);
+            z-index: 5;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: #1e1b4b;
+            border: 1px solid #4f46e5;
+            color: white;
+            padding: 14px 18px;
+            border-radius: var(--radius-md);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 9999;
+            transform: translateY(-150%);
+            transition: transform 0.35s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        .toast-notification.show {
+            transform: translateY(0);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .style-select-card {
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 10px 6px;
+            text-align: center;
+            cursor: pointer;
+            background: #0f172a;
+            transition: all 0.2s;
+        }
+
+        .style-select-card.selected {
+            border-color: #818cf8;
+            background: rgba(79, 70, 229, 0.15);
+            color: #a5b4fc;
+            font-weight: bold;
+        }
+
+        .history-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .meta-tag {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toast" class="toast-notification">
+        <span id="toastIcon" style="font-size: 1.5rem;">⚡</span>
+        <div>
+            <div id="toastTitle" style="font-weight: bold; font-size: 0.95rem;">محرك الأوتوميشن</div>
+            <div id="toastMsg" style="font-size: 0.85rem; color: #cbd5e1;"></div>
+        </div>
+    </div>
+
+    <header>
+        <div class="header-title">
+            <span style="font-size: 1.8rem;">🚀</span>
+            <div>
+                <h1>أوتوميشن الفيديو الذكي</h1>
+                <small style="font-size: 0.75rem; opacity: 0.85;">شخصيات متحركة بأطراف حية تنفذ وصفك بحركات تفاعلية</small>
+            </div>
+        </div>
+        <div class="engine-pill">
+            <span class="status-dot"></span>
+            <span>المحرك نشط</span>
+        </div>
+    </header>
+
+    <main>
+        <section id="page-generator" class="page active">
+            <div class="video-box-wrapper">
+                <span class="story-badge" id="videoResolutionBadge">📱 9:16 ستوري / ريلز</span>
+                <canvas id="videoCanvas" width="720" height="1280"></canvas>
+                <div class="video-controls">
+                    <button class="ctrl-btn" id="playPauseBtn" onclick="togglePlayVideo()">▶</button>
+                    <div class="progress-bar-container">
+                        <input type="range" id="videoTimeline" class="custom-slider" min="0" max="100" value="0" oninput="seekVideo(this.value)">
+                        <div class="time-label">
+                            <span id="currentTimeDisplay">00:00</span>
+                            <span id="totalTimeDisplay">00:09</span>
+                        </div>
+                    </div>
+                    <button class="ctrl-btn" style="background:#0284c7;" title="إعادة التشغيل" onclick="restartVideo()">🔄</button>
+                </div>
+            </div>
+
+            <div class="grid-2" style="margin-bottom: 16px;">
+                <button class="btn-submit" id="exportVideoBtn" style="margin-top:0;" onclick="exportRealVideo()">
+                    <span id="exportIcon">⬇️</span>
+                    <span id="exportText">تصدير وتحميل فيديو (MP4/WebM)</span>
+                </button>
+                <button class="btn-secondary" onclick="shareVideoDetails()">
+                    <span>📤</span> مشاركة النص والسيناريو
+                </button>
+            </div>
+
+            <div class="info-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h3 style="font-size: 1.1rem; font-weight: 700;">✍️ اكتب وصف أو سيناريو الفيديو</h3>
+                    <span style="font-size:0.75rem; color:#818cf8; font-weight:bold;">توليد فوري ذكي</span>
+                </div>
+
+                <div class="chips-container">
+                    <button class="chip" onclick="applyQuickPrompt('حوار كرتوني: مرحباً بكم يا أبطال! نحن نقفز ونلوح بأيدينا فرحاً، ثم نحمل الكتب والأجهزة ونحتفل معكم بنجاحكم الباهر!')">🤖 شخصيات حية تنفذ الوصف</button>
+                    <button class="chip" onclick="applyQuickPrompt('تحدي أكشن خيالي: مقاتلو السايبر البرمجي يشحنون طاقة الليزر ويوجهون ضربات كهرومغناطيسية لإسقاط جدار الحماية وحماية النظام!')">💥 أكشن سايبر خيالي</button>
+                    <button class="chip" onclick="applyQuickPrompt('درس تعليمي ذكي تفاعلي: المعلم البرمجي يشير بعصاه الذكية نحو السبورة، ويشرح خطوة بخطوة بالرسم والخرائط التفاعلية')">📚 معلم ذكي تفاعلي</button>
+                    <button class="chip" onclick="applyQuickPrompt('إعلان ترويجي وتسويق حصري: أكبر عروض التوفير خصم 60% على منتجاتنا الذكية مع هدية مجانية!')">📣 حملة ترويجية</button>
+                    <button class="chip" onclick="applyQuickPrompt('إعلان إطلاق تطبيق توصيل جديد: اطلب أي شيء يصلك في 15 دقيقة مع خصم 50% للطلب الأول وكود ترحيبي')">🚀 إطلاق تطبيق جديد</button>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">نوع محرك الأوتوميشن المطلوب *</label>
+                    <div class="grid-3" id="automationTypeSelector">
+                        <div class="style-select-card selected" onclick="selectAutomationType('talking_shapes', this)">
+                            <div style="font-size:1.3rem;">🏃‍♂️</div>
+                            <div style="font-size:0.8rem; font-weight:bold;">شخصيات متحركة بأطراف</div>
+                            <div style="font-size:0.65rem; color:var(--text-muted);">أيدي وأرجل تنفذ الوصف</div>
+                        </div>
+                        <div class="style-select-card" onclick="selectAutomationType('action', this)">
+                            <div style="font-size:1.3rem;">⚔️</div>
+                            <div style="font-size:0.8rem; font-weight:bold;">أكشن برمجيات خيالي</div>
+                            <div style="font-size:0.65rem; color:var(--text-muted);">روبوتات ومقاتلو كود</div>
+                        </div>
+                        <div class="style-select-card" onclick="selectAutomationType('educational', this)">
+                            <div style="font-size:1.3rem;">🧑‍🏫</div>
+                            <div style="font-size:0.8rem; font-weight:bold;">معلم تفاعلي بالخطوات</div>
+                            <div style="font-size:0.65rem; color:var(--text-muted);">شخصية تشرح وتؤشر</div>
+                        </div>
+                        <div class="style-select-card" onclick="selectAutomationType('promotional', this)">
+                            <div style="font-size:1.3rem;">📣</div>
+                            <div style="font-size:0.8rem; font-weight:bold;">ترويجي وتسويقي</div>
+                            <div style="font-size:0.65rem; color:var(--text-muted);">High Promo Marketing</div>
+                        </div>
+                        <div class="style-select-card" onclick="selectAutomationType('kinetic', this)">
+                            <div style="font-size:1.3rem;">⚡</div>
+                            <div style="font-size:0.8rem; font-weight:bold;">حركي إعلاني</div>
+                            <div style="font-size:0.65rem; color:var(--text-muted);">Kinetic Ad</div>
+                        </div>
+                        <div class="style-select-card" onclick="selectAutomationType('news', this)">
+                            <div style="font-size:1.3rem;">🎙️</div>
+                            <div style="font-size:0.8rem; font-weight:bold;">نشرة إخبارية</div>
+                            <div style="font-size:0.65rem; color:var(--text-muted);">Breaking News</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">النص أو الوصف المراد تحويله إلى فيديو *</label>
+                    <textarea id="promptInput" class="form-control" rows="4" placeholder="اكتب وصفك هنا... ستتحرك الشخصيات بأيديها وأرجلها وتتفاعل حركياً مع النص، سواء بالقفز والتلويح أو بالإشارة على السبورة أو في معارك الليزر والكود!"></textarea>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label class="form-label">الهوية / اسم البراند (اختياري)</label>
+                        <input type="text" id="brandInput" class="form-control" placeholder="مثال: استوديو فيفي، أكاديمية الرواد...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">بيانات التواصل / الموقع (اختياري)</label>
+                        <input type="text" id="contactInput" class="form-control" placeholder="رابط، رقم هاتف أو حساب التواصل">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">أبعاد ومقاس الفيديو</label>
+                    <div class="grid-3" id="formatSelector">
+                        <div class="style-select-card selected" onclick="selectVideoFormat('9:16', this)">
+                            <div style="font-size:1.3rem;">📱</div>
+                            <div style="font-size:0.8rem;">9:16 ريلز / ستوري</div>
+                        </div>
+                        <div class="style-select-card" onclick="selectVideoFormat('1:1', this)">
+                            <div style="font-size:1.3rem;">🟦</div>
+                            <div style="font-size:0.8rem;">1:1 مربع منشور</div>
+                        </div>
+                        <div class="style-select-card" onclick="selectVideoFormat('16:9', this)">
+                            <div style="font-size:1.3rem;">🖥️</div>
+                            <div style="font-size:0.8rem;">16:9 شاشة عريضة</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">نمط ومظهر الفيديو</label>
+                    <div class="grid-3" id="themeSelector">
+                        <div class="style-select-card selected" onclick="selectVideoTheme('indigo', this)">
+                            <div style="font-size:1.3rem;">🌌</div>
+                            <div style="font-size:0.8rem;">نيلي عصري</div>
+                        </div>
+                        <div class="style-select-card" onclick="selectVideoTheme('cyber', this)">
+                            <div style="font-size:1.3rem;">⚡</div>
+                            <div style="font-size:0.8rem;">سايبر نيون</div>
+                        </div>
+                        <div class="style-select-card" onclick="selectVideoTheme('sunset', this)">
+                            <div style="font-size:1.3rem;">🔥</div>
+                            <div style="font-size:0.8rem;">تدرج ناري</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">مدة الفيديو بالأوتوميشن</label>
+                    <select id="videoDuration" class="form-control">
+                        <option value="6">سريع وموجز (6 ثوانٍ - 3 مشاهد)</option>
+                        <option value="9" selected>قياسي وتفاعلي (9 ثوانٍ - 3 مشاهد)</option>
+                        <option value="12">تفصيلي وشامل (12 ثانية - 4 مشاهد)</option>
+                    </select>
+                </div>
+
+                <button class="btn-submit" onclick="generateVideoFromPrompt()">
+                    <span>✨</span> إنشاء وتوليد الأوتوميشن من الوصف
+                </button>
+            </div>
+        </section>
+
+        <section id="page-scenes" class="page">
+            <div class="info-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                    <h3 style="font-size: 1.15rem; font-weight: 700;">🎞️ المشاهد والنصوص المستخرجة</h3>
+                    <button class="chip active" onclick="regenerateScenesAuto()">إعادة تحليل النص 🪄</button>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+                    يقوم نظام الأوتوميشن بتفكيك الوصف بدقة إلى مشاهد درامية متسلسلة؛ يمكنك تعديل أي نص أو شارة بحرية:
+                </p>
+
+                <div id="scenesEditorList"></div>
+
+                <button class="btn-submit" onclick="applyCustomScenesAndPreview()">
+                    <span>💾</span> حفظ التعديلات وتحديث العرض
+                </button>
+            </div>
+        </section>
+
+        <section id="page-templates" class="page">
+            <div class="info-card">
+                <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 8px;">💡 أفكار وقوالب ملهمة للأوتوميشن</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+                    انقر على أي نموذج لتطبيق السيناريو والأوتوميشن فوراً وتجربته:
+                </p>
+                <div id="templatesListContainer"></div>
+            </div>
+        </section>
+
+        <section id="page-history" class="page">
+            <div class="info-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3 style="font-size: 1.15rem; font-weight: 700;">📂 سجل الفيديوهات المنشأة</h3>
+                    <button class="chip" onclick="clearLocalHistory()">مسح السجل</button>
+                </div>
+                <div id="historyListContainer"></div>
+            </div>
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchPage('generator', this)">
+            <span class="nav-icon">🎬</span>
+            <span>الأوتوميشن</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('scenes', this)">
+            <span class="nav-icon">📝</span>
+            <span>المشاهد</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('templates', this)">
+            <span class="nav-icon">💡</span>
+            <span>نماذج جاهزة</span>
+        </button>
+        <button class="nav-item" onclick="switchPage('history', this)">
+            <span class="nav-icon">📑</span>
+            <span>المحفوظات</span>
+        </button>
+    </nav>
+
+    <script>
+        let videoDuration = 9;
+        let currentAspect = '9:16';
+        let currentTheme = 'indigo';
+        let currentAutomationType = 'talking_shapes';
+        let isPlaying = false;
+        let currentTime = 0;
+        let animationFrameId = null;
+        let lastTimestamp = 0;
+        let isExporting = false;
+        let generatedScenes = [];
+        let particles = [];
+        let savedHistory = [];
+        let audioCtx = null;
+        let lastFifiSpeechStep = -1;
+
+        const canvas = document.getElementById('videoCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const THEMES = {
+            indigo: {
+                bgGradient: ['#1e1b4b', '#0f172a', '#312e81'],
+                accent: '#818cf8',
+                accent2: '#38bdf8',
+                textMain: '#ffffff',
+                textSub: '#cbd5e1',
+                cardBg: 'rgba(30, 27, 75, 0.75)',
+                cardBorder: '#6366f1'
+            },
+            cyber: {
+                bgGradient: ['#020617', '#090d16', '#0f172a'],
+                accent: '#06b6d4',
+                accent2: '#f43f5e',
+                textMain: '#ffffff',
+                textSub: '#bae6fd',
+                cardBg: 'rgba(15, 23, 42, 0.85)',
+                cardBorder: '#0ea5e9'
+            },
+            sunset: {
+                bgGradient: ['#431407', '#1c0a00', '#7c2d12'],
+                accent: '#fb923c',
+                accent2: '#facc15',
+                textMain: '#ffffff',
+                textSub: '#fed7aa',
+                cardBg: 'rgba(67, 20, 7, 0.8)',
+                cardBorder: '#ea580c'
+            }
+        };
+
+        const READY_TEMPLATES = [
+            {
+                title: 'شخصيات متحركة بأيدي وأرجل تنفذ الوصف',
+                badge: 'أطراف وحركة',
+                autoType: 'talking_shapes',
+                desc: 'مرحباً بكم يا أصدقاء! نحن نقفز ونلوح بأيدينا فرحاً، ونتحرك في المكان لنتعلم كيف نصنع أروع الفيديوهات بسهولة وحماس!',
+                brand: 'عالم الأصدقاء المرح',
+                contact: 'اشترك وشاهد المزيد من المغامرات التفاعلية'
+            },
+            {
+                title: 'معركة السايبر البرمجية الخيالية',
+                badge: 'أكشن كود',
+                autoType: 'action',
+                desc: 'مقاتلو البرمجة الروبوتية يطلقون شعاع الداتا والليزر، ويصدون الهجمات البرمجية بدروع الطاقة لحماية السيرفر العملاق!',
+                brand: 'Cyber Warriors Studio',
+                contact: 'تابع المعارك البرمجية واشترك الآن'
+            },
+            {
+                title: 'معلم ذكي يشرح بالخطوات على السبورة',
+                badge: 'تعليم تفاعلي',
+                autoType: 'educational',
+                desc: 'المعلم الذكي يشير بالعصا إلى السبورة ويشرح: الخطوة الأولى التخطيط، والخطوة الثانية البرمجة، والخطوة الثالثة الإطلاق بنجاح!',
+                brand: 'أكاديمية المعلم الذكي',
+                contact: 'سجل في ورشتنا التفاعلية القادمة عبر الرابط'
+            },
+            {
+                title: 'حملة ترويجية تسويقية استثنائية',
+                badge: 'ترويج وتسويق',
+                autoType: 'promotional',
+                desc: 'عرض خاص ومحدود جداً! احصل على خصم فوري 60% مع شحن مجاني وهدية قيمة عند أول عملية شراء اليوم فقط!',
+                brand: 'متجر الصفقة الكبرى',
+                contact: 'استخدم كود الخصم: SUPER60 قبل النفاد'
+            }
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initParticles();
+            loadLocalHistory();
+            renderTemplatesList();
+            setDefaultPromptAndRender();
+        });
+
+        function selectAutomationType(typeKey, el) {
+            currentAutomationType = typeKey;
+            document.querySelectorAll('#automationTypeSelector .style-select-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            lastFifiSpeechStep = -1;
+            renderVideoFrame(currentTime);
+            showToast('نوع الأوتوميشن 🎬', `تم التبديل إلى: ${getAutomationTypeName(typeKey)}`);
+        }
+
+        function getAutomationTypeName(key) {
+            const names = {
+                talking_shapes: 'شخصيات متحركة بأيدي وأرجل تنفذ الوصف',
+                action: 'أكشن برمجيات خيالي (روبوتات ومقاتلو كود)',
+                educational: 'معلم تفاعلي يشرح ويؤشر بالخطوات',
+                promotional: 'ترويجي وتسويقي (High Promo Marketing)',
+                kinetic: 'حركي إعلاني (Kinetic Ad)',
+                news: 'نشرة إخبارية وعاجل (Breaking News)'
+            };
+            return names[key] || 'أوتوميشن مخصص';
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < 45; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    radius: Math.random() * 4 + 1.2,
+                    vx: (Math.random() - 0.5) * 1.6,
+                    vy: (Math.random() - 0.5) * 1.6,
+                    alpha: Math.random() * 0.6 + 0.2
+                });
+            }
+        }
+
+        function renderTemplatesList() {
+            const container = document.getElementById('templatesListContainer');
+            container.innerHTML = READY_TEMPLATES.map((tmpl, idx) => `
+                <div style="background:#0f172a; border:1px solid var(--border); border-radius:var(--radius-sm); padding:14px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <strong style="color:var(--text-main); font-size:0.95rem;">${tmpl.title}</strong>
+                        <span class="meta-tag" style="color:#818cf8; border-color:#4f46e5;">${tmpl.badge}</span>
+                    </div>
+                    <p style="font-size:0.83rem; color:var(--text-muted); line-height:1.5; margin-bottom:10px;">${tmpl.desc}</p>
+                    <button class="chip active" style="width:100%; justify-content:center; padding:9px;" onclick="loadTemplateByIndex(${idx})">
+                        ⚡ تطبيق هذا السيناريو وإنشاء الفيديو
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function loadTemplateByIndex(idx) {
+            const tmpl = READY_TEMPLATES[idx];
+            if (!tmpl) return;
+
+            document.getElementById('promptInput').value = tmpl.desc;
+            document.getElementById('brandInput').value = tmpl.brand;
+            document.getElementById('contactInput').value = tmpl.contact;
+
+            if (tmpl.autoType) {
+                const targetCard = Array.from(document.querySelectorAll('#automationTypeSelector .style-select-card')).find(c => {
+                    const attr = c.getAttribute('onclick') || '';
+                    return attr.includes(`'${tmpl.autoType}'`);
+                });
+                if (targetCard) selectAutomationType(tmpl.autoType, targetCard);
+            }
+
+            switchPage('generator', document.querySelector('.bottom-nav .nav-item:first-child'));
+            generateVideoFromPrompt();
+        }
+
+        function applyQuickPrompt(text) {
+            document.getElementById('promptInput').value = text;
+            generateVideoFromPrompt();
+        }
+
+        function selectVideoFormat(ratio, el) {
+            currentAspect = ratio;
+            document.querySelectorAll('#formatSelector .style-select-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+
+            const badge = document.getElementById('videoResolutionBadge');
+            if (ratio === '9:16') {
+                canvas.width = 720;
+                canvas.height = 1280;
+                badge.innerText = '📱 9:16 ستوري / ريلز';
+            } else if (ratio === '1:1') {
+                canvas.width = 1080;
+                canvas.height = 1080;
+                badge.innerText = '🟦 1:1 مربع منشور';
+            } else {
+                canvas.width = 1280;
+                canvas.height = 720;
+                badge.innerText = '🖥️ 16:9 شاشة عريضة';
+            }
+            initParticles();
+            renderVideoFrame(currentTime);
+        }
+
+        function selectVideoTheme(themeKey, el) {
+            currentTheme = themeKey;
+            document.querySelectorAll('#themeSelector .style-select-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            renderVideoFrame(currentTime);
+        }
+
+        function setDefaultPromptAndRender() {
+            document.getElementById('promptInput').value = 'مرحباً بكم يا رفاق! نحن شخصيات متحركة مرحة ولنا أيدي وأرجل نتحرك ونلوح وننفذ كل ما تكتبه في الوصف بكل دقة وحيوية!';
+            document.getElementById('brandInput').value = 'استوديو الشخصيات التفاعلية';
+            document.getElementById('contactInput').value = 'تابعنا للمزيد من الحركات والرسوم المتحركة الذكية!';
+            generateVideoFromPrompt();
+        }
+
+        // تحسس الكلمات المفتاحية في الوصف لتحديد نوع الحركة للشخصيات
+        function detectActionIntent(text) {
+            const t = (text || '').toLowerCase();
+            return {
+                jump: /قفز|طيران|فوق|أعلى|حماس|سعادة|سرعة|jump/.test(t),
+                wave: /مرحب|أهل|سلام|أصدقاء|وداع|لوح|باي|wave|hello/.test(t),
+                fight: /قتال|ضرب|أكشن|ليزر|سيف|درع|شحن|مقاتل|هجوم|حرب|fight|attack/.test(t),
+                teach: /شرح|درس|تعلم|خطوة|سبورة|قاعدة|كتاب|نصيحة|معلم|teach|step/.test(t),
+                present: /هدية|خصم|عرض|شراء|تسوق|وفر|sale|deal|gift/.test(t),
+                think: /فكر|ذكاء|حل|فكرة|كيف|سر|think|idea/.test(t)
+            };
+        }
+
+        function parsePromptToScenes(promptText, brandName, contactText, duration) {
+            const cleanText = promptText.trim().replace(/\n+/g, ' ');
+            let segments = cleanText.split(/[\.\!\؟\:\،\؛\-\—\|]+/).map(s => s.trim()).filter(s => s.length > 3);
+            if (segments.length === 0) {
+                segments = [cleanText];
+            }
+
+            const intent = detectActionIntent(cleanText);
+            let contextIcon = '🏃‍♂️';
+            let contextCategory = 'حركة وتفاعل';
+
+            if (intent.fight) {
+                contextIcon = '⚔️'; contextCategory = 'معركة كود وأكشن';
+            } else if (intent.teach) {
+                contextIcon = '🧑‍🏫'; contextCategory = 'شرح تفاعلي بالخطوات';
+            } else if (intent.present) {
+                contextIcon = '🎁'; contextCategory = 'عرض وتقديم';
+            }
+
+            const sceneCount = duration >= 12 ? 4 : 3;
+            const sceneDuration = duration / sceneCount;
+            const scenes = [];
+
+            let hookTitle = segments[0] || 'مرحباً بكم يا أصدقاء!';
+            let hookSubtitle = segments[1] ? segments[1].slice(0, 60) : 'شاهدونا ونحن ننفذ كل الحركات والأفكار بحماس';
+            if (hookTitle.length > 38) {
+                const words = hookTitle.split(' ');
+                hookTitle = words.slice(0, 6).join(' ');
+                hookSubtitle = words.slice(6).join(' ') + ' ' + (segments[1] || '');
+            }
+
+            scenes.push({
+                id: 1,
+                sceneName: 'المشهد الأول: بداية الحركة والتنفيذ',
+                startTime: 0,
+                endTime: sceneDuration,
+                tag: contextCategory,
+                title: hookTitle,
+                subtitle: hookSubtitle.slice(0, 80),
+                badge: '✨ استعراض الحركة',
+                icon: contextIcon,
+                speaker: 'الشخصية الرئيسية',
+                intent: detectActionIntent(hookTitle + ' ' + hookSubtitle)
+            });
+
+            let valueTitle = segments[2] || segments[1] || 'تنفيذ الخطوات والمغامرة بكل نشاط!';
+            let valueSubtitle = segments[3] || cleanText.slice(0, 70);
+            if (valueTitle.length > 38) {
+                valueTitle = valueTitle.slice(0, 36) + '...';
+            }
+
+            scenes.push({
+                id: 2,
+                sceneName: 'المشهد الثاني: التفاعل الحركي وتطبيق الوصف',
+                startTime: sceneDuration,
+                endTime: sceneDuration * (sceneCount === 4 ? 2 : 2),
+                tag: '🎯 تطبيق الفكرة',
+                title: valueTitle,
+                subtitle: valueSubtitle.slice(0, 80),
+                badge: '🔥 قمة التفاعل',
+                icon: '💫',
+                speaker: 'الشخصية الصديقة',
+                intent: detectActionIntent(valueTitle + ' ' + valueSubtitle)
+            });
+
+            if (sceneCount === 4) {
+                let midTitle = segments[3] || 'إتقان الحركة والوصول للهدف';
+                let midSubtitle = segments[4] || 'الشخصيات تتبادل الأدوار بتناسق مذهل';
+                scenes.push({
+                    id: 3,
+                    sceneName: 'المشهد الثالث: النتيجة والمهارة',
+                    startTime: sceneDuration * 2,
+                    endTime: sceneDuration * 3,
+                    tag: '⭐ خطوة متقدمة',
+                    title: midTitle.slice(0, 36),
+                    subtitle: midSubtitle.slice(0, 80),
+                    badge: '🚀 أداء بارع',
+                    icon: '🌟',
+                    speaker: 'الفريق البرمجي',
+                    intent: detectActionIntent(midTitle + ' ' + midSubtitle)
+                });
+            }
+
+            const lastStart = sceneDuration * (sceneCount - 1);
+            let ctaTitle = brandName ? `انطلقوا معنا مع ${brandName}` : 'شاركونا الحماس وجربوا الآن!';
+            let ctaSubtitle = contactText || 'تابعونا للمزيد من الحركات والرسوم الممتعة';
+
+            scenes.push({
+                id: sceneCount,
+                sceneName: 'مشهد الختام والاحتفال',
+                startTime: lastStart,
+                endTime: duration,
+                tag: '🎉 احتفال النهاية',
+                title: ctaTitle,
+                subtitle: ctaSubtitle.slice(0, 80),
+                badge: '🥳 الجميع يحتفل',
+                icon: '👉',
+                speaker: 'الجميع معاً',
+                intent: detectActionIntent(ctaTitle + ' ' + ctaSubtitle)
+            });
+
+            return scenes;
+        }
+
+        function generateVideoFromPrompt() {
+            const prompt = document.getElementById('promptInput').value.trim() || 'فيديو أوتوميشن لشخصيات متحركة بأطراف كاملة';
+            const brand = document.getElementById('brandInput').value.trim();
+            const contact = document.getElementById('contactInput').value.trim();
+            videoDuration = parseFloat(document.getElementById('videoDuration').value) || 9;
+            document.getElementById('totalTimeDisplay').innerText = formatTime(videoDuration);
+
+            generatedScenes = parsePromptToScenes(prompt, brand, contact, videoDuration);
+
+            renderScenesEditorUI();
+            restartVideo();
+            playAutomationSoundEffect('generate');
+            showToast('تم بناء الأوتوميشن ✨', `نمط [${getAutomationTypeName(currentAutomationType)}] جاهز للعرض.`);
+        }
+
+        function renderScenesEditorUI() {
+            const container = document.getElementById('scenesEditorList');
+            container.innerHTML = generatedScenes.map((sc, idx) => `
+                <div style="background:#0f172a; border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px; margin-bottom:12px;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-weight:bold; font-size:0.85rem; color:#818cf8;">
+                        <span>${sc.sceneName} (${sc.startTime.toFixed(1)} ث - ${sc.endTime.toFixed(1)} ث)</span>
+                        <span class="meta-tag" style="background:rgba(79, 70, 229, 0.2); color:#a5b4fc; border-color:#4f46e5;">${sc.tag}</span>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:8px;">
+                        <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:2px;">العنوان الرئيسي للحوار / المشهد:</label>
+                        <input type="text" id="sceneTitle_${idx}" class="form-control" value="${sc.title}" style="padding:8px 10px; font-size:0.88rem;">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:8px;">
+                        <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:2px;">النص المنطوق / الشرح الفرعي:</label>
+                        <input type="text" id="sceneSub_${idx}" class="form-control" value="${sc.subtitle}" style="padding:8px 10px; font-size:0.88rem;">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:2px;">الشارة والمتحدث:</label>
+                        <input type="text" id="sceneBadge_${idx}" class="form-control" value="${sc.badge}" style="padding:8px 10px; font-size:0.88rem;">
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function applyCustomScenesAndPreview() {
+            generatedScenes.forEach((sc, idx) => {
+                const t = document.getElementById(`sceneTitle_${idx}`);
+                const s = document.getElementById(`sceneSub_${idx}`);
+                const b = document.getElementById(`sceneBadge_${idx}`);
+                if (t) sc.title = t.value;
+                if (s) sc.subtitle = s.value;
+                if (b) sc.badge = b.value;
+                sc.intent = detectActionIntent(sc.title + ' ' + sc.subtitle);
+            });
+
+            switchPage('generator', document.querySelector('.bottom-nav .nav-item:first-child'));
+            restartVideo();
+            showToast('تم الحفظ', 'تم تحديث مشاهد الفيديو وحركات الشخصيات.');
+        }
+
+        function regenerateScenesAuto() {
+            generateVideoFromPrompt();
+        }
+
+        // ==========================================
+        // CANVAS VIDEO RENDERER DISPATCHER
+        // ==========================================
+        function renderVideoFrame(time) {
+            const width = canvas.width;
+            const height = canvas.height;
+            const theme = THEMES[currentTheme] || THEMES.indigo;
+            const brand = document.getElementById('brandInput').value.trim() || 'فيديو أوتوميشن';
+            const contact = document.getElementById('contactInput').value.trim() || 'صُنع بواسطة محرك الأوتوميشن الذكي';
+
+            let currentScene = generatedScenes.find(s => time >= s.startTime && time < s.endTime);
+            if (!currentScene && generatedScenes.length > 0) {
+                currentScene = generatedScenes[generatedScenes.length - 1];
+            }
+            const sceneProgress = currentScene 
+                ? (time - currentScene.startTime) / (currentScene.endTime - currentScene.startTime)
+                : 0.5;
+
+            switch (currentAutomationType) {
+                case 'talking_shapes':
+                    renderAutomationTalkingShapesWithLimbs(time, width, height, theme, brand, contact, currentScene, sceneProgress);
+                    break;
+                case 'action':
+                    renderAutomationProgrammingAction(time, width, height, theme, brand, contact, currentScene, sceneProgress);
+                    break;
+                case 'educational':
+                    renderAutomationInteractiveTeacher(time, width, height, theme, brand, contact, currentScene, sceneProgress);
+                    break;
+                case 'promotional':
+                    renderAutomationPromotional(time, width, height, theme, brand, contact, currentScene, sceneProgress);
+                    break;
+                case 'news':
+                    renderAutomationNews(time, width, height, theme, brand, contact, currentScene, sceneProgress);
+                    break;
+                case 'kinetic':
+                default:
+                    renderAutomationKinetic(time, width, height, theme, brand, contact, currentScene, sceneProgress);
+                    break;
+            }
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.fillRect(0, 0, width, 5);
+            ctx.fillStyle = theme.accent;
+            ctx.fillRect(0, 0, (time / videoDuration) * width, 5);
+            ctx.restore();
+        }
+
+        // ==========================================
+        // 1. شخصيات متحركة بأيدي وأرجل تنفذ الوصف
+        // ==========================================
+        function renderAutomationTalkingShapesWithLimbs(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
+            const promptIntent = currentScene ? currentScene.intent : detectActionIntent('');
+
+            // خلفية بيئة كرتونية ملونة
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+            bgGrad.addColorStop(0, '#38bdf8');
+            bgGrad.addColorStop(0.55, '#bae6fd');
+            bgGrad.addColorStop(0.56, '#4ade80');
+            bgGrad.addColorStop(1, '#16a34a');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // غيوم متحركة
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            const cloudShift = (time * 25) % (width + 160);
+            drawCartoonCloud(ctx, cloudShift - 100, height * 0.12, width * 0.18);
+            drawCartoonCloud(ctx, ((cloudShift * 0.7) + width * 0.45) % (width + 120), height * 0.20, width * 0.14);
+
+            // تلال الأرضية
+            ctx.fillStyle = '#22c55e';
+            ctx.beginPath();
+            ctx.arc(width * 0.25, height * 1.05, width * 0.55, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#15803d';
+            ctx.beginPath();
+            ctx.arc(width * 0.85, height * 1.05, width * 0.65, 0, Math.PI * 2);
+            ctx.fill();
+
+            // صوت الصفارة المرح عند الحديث
+            const speechStep = Math.floor(time * 5.5);
+            if (isPlaying && speechStep !== lastFifiSpeechStep) {
+                lastFifiSpeechStep = speechStep;
+                playFifiWhistleChirp(speechStep);
+            }
+
+            // حركة الجسم والأطراف بناءً على الوصف
+            const walkCycle = time * 7;
+            const isJumping = promptIntent.jump || promptIntent.fight;
+            const jumpOffset = isJumping ? Math.abs(Math.sin(time * 6)) * 40 : 0;
+            const bodyBob = Math.sin(time * 8) * 8 - jumpOffset;
+
+            // ----------------------------------------------------
+            // الشخصية الأولى: فيفي الأصفر (رأس وجسم بأيدي وأرجل وقفازات وأحذية)
+            // ----------------------------------------------------
+            const fifiX = width * 0.32;
+            const fifiBaseY = height * 0.62;
+            const fifiY = fifiBaseY + bodyBob;
+            const fifiR = width * 0.12;
+
+            // ظل الشخصية متفاعل مع الارتفاع والقفز
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath();
+            const shadowScale = Math.max(0.4, 1 - (jumpOffset / 60));
+            ctx.ellipse(fifiX, height * 0.76, fifiR * 0.85 * shadowScale, 14 * shadowScale, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // أرجل فيفي (ساقين وحذاءين متحركين)
+            const legLeftAngle = Math.sin(walkCycle) * 0.45;
+            const legRightAngle = -Math.sin(walkCycle) * 0.45;
+            drawCartoonLeg(ctx, fifiX - fifiR * 0.35, fifiY + fifiR * 0.8, legLeftAngle, width * 0.11, '#ca8a04', '#dc2626');
+            drawCartoonLeg(ctx, fifiX + fifiR * 0.35, fifiY + fifiR * 0.8, legRightAngle, width * 0.11, '#ca8a04', '#dc2626');
+
+            // جسم ورأس فيفي
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(fifiX, fifiY, fifiR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = '#eab308';
+            ctx.stroke();
+
+            // قبعة أو هوائي فيفي مع لمبة تفاعلية
+            ctx.beginPath();
+            ctx.moveTo(fifiX, fifiY - fifiR);
+            ctx.lineTo(fifiX, fifiY - fifiR - 22);
+            ctx.strokeStyle = '#ea580c';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath();
+            ctx.arc(fifiX, fifiY - fifiR - 26, 11, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ذراعا فيفي (تنفذ الوصف: تلويح، رفع، قفز، أو تقديم)
+            let armLeftAngle = -0.5 + Math.sin(time * 5) * 0.2;
+            let armRightAngle = 0.5 - Math.cos(time * 5) * 0.2;
+
+            if (promptIntent.wave || promptIntent.jump) {
+                // تلويح نشط بكلتا اليدين للأعلى
+                armRightAngle = -2.2 + Math.sin(time * 12) * 0.6;
+                armLeftAngle = 2.2 - Math.cos(time * 12) * 0.6;
+            } else if (promptIntent.present) {
+                // مد اليدين للأمام كأنه يقدم عرضاً أو هدية
+                armRightAngle = -0.9 + Math.sin(time * 4) * 0.15;
+                armLeftAngle = 0.9 - Math.sin(time * 4) * 0.15;
+            }
+
+            drawCartoonArm(ctx, fifiX - fifiR * 0.85, fifiY + 5, armLeftAngle, width * 0.11, '#ca8a04', '#ffffff');
+            drawCartoonArm(ctx, fifiX + fifiR * 0.85, fifiY + 5, armRightAngle, width * 0.11, '#ca8a04', '#ffffff');
+
+            // إذا كان الوصف يتحدث عن كتب أو أجهزة أو هدايا، تظهر في يده!
+            if (promptIntent.present || promptIntent.teach) {
+                ctx.font = `${Math.round(width * 0.08)}px system-ui`;
+                ctx.fillText(promptIntent.present ? '🎁' : '📚', fifiX + fifiR + 15, fifiY + 10);
+            }
+
+            // عيون فيفي الحية والتعبيرية
+            const isBlink = Math.sin(time * 4) > 0.94;
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(fifiX - 18, fifiY - 14, 13, 0, Math.PI * 2);
+            ctx.arc(fifiX + 18, fifiY - 14, 13, 0, Math.PI * 2);
+            ctx.fill();
+
+            if (!isBlink) {
+                ctx.fillStyle = '#0f172a';
+                ctx.beginPath();
+                ctx.arc(fifiX - 15 + Math.cos(time * 4) * 2, fifiY - 14, 6.5, 0, Math.PI * 2);
+                ctx.arc(fifiX + 15 + Math.cos(time * 4) * 2, fifiY - 14, 6.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(fifiX - 17, fifiY - 16, 3, 0, Math.PI * 2);
+                ctx.arc(fifiX + 13, fifiY - 16, 3, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                ctx.moveTo(fifiX - 28, fifiY - 14); ctx.lineTo(fifiX - 8, fifiY - 14);
+                ctx.moveTo(fifiX + 8, fifiY - 14); ctx.lineTo(fifiX + 28, fifiY - 14);
+                ctx.stroke();
+            }
+
+            // الخدود الموردة
+            ctx.fillStyle = 'rgba(244, 63, 94, 0.45)';
+            ctx.beginPath();
+            ctx.arc(fifiX - 32, fifiY + 8, 9, 0, Math.PI * 2);
+            ctx.arc(fifiX + 32, fifiY + 8, 9, 0, Math.PI * 2);
+            ctx.fill();
+
+            // فم ناطق بحركة دائرية متغيرة
+            const mouthPulse = Math.abs(Math.sin(time * 16));
+            const mouthH = 5 + (mouthPulse * 16);
+            ctx.fillStyle = '#991b1b';
+            ctx.beginPath();
+            ctx.ellipse(fifiX, fifiY + 18, 14, mouthH, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 2.5;
+            ctx.strokeStyle = '#7f1d1d';
+            ctx.stroke();
+
+            // ----------------------------------------------------
+            // الشخصية الثانية: كوكو الأزرق المربع بأيدي وأرجل وقدمين
+            // ----------------------------------------------------
+            const kokoX = width * 0.72;
+            const kokoW = width * 0.20;
+            const kokoH = width * 0.20;
+            const kokoBaseY = height * 0.62;
+            const kokoY = kokoBaseY + Math.cos(time * 8) * 8 - (isJumping ? Math.abs(Math.cos(time * 6)) * 35 : 0);
+
+            // ظل كوكو
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.beginPath();
+            ctx.ellipse(kokoX + kokoW / 2, height * 0.76, kokoW * 0.6, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // أرجل كوكو
+            drawCartoonLeg(ctx, kokoX + kokoW * 0.3, kokoY + kokoH, -legRightAngle, width * 0.10, '#3730a3', '#1e1b4b');
+            drawCartoonLeg(ctx, kokoX + kokoW * 0.7, kokoY + kokoH, -legLeftAngle, width * 0.10, '#3730a3', '#1e1b4b');
+
+            // جسم كوكو المربع المستدير الزوايا
+            ctx.fillStyle = '#6366f1';
+            drawRoundRect(ctx, kokoX, kokoY, kokoW, kokoH, 16);
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#4338ca';
+            ctx.stroke();
+
+            // أذرع كوكو
+            const kokoArmLeft = (promptIntent.wave ? -2.0 + Math.sin(time * 10) * 0.5 : 0.6 + Math.cos(time * 5) * 0.2);
+            const kokoArmRight = (promptIntent.wave ? 2.0 - Math.cos(time * 10) * 0.5 : -0.6 - Math.sin(time * 5) * 0.2);
+            drawCartoonArm(ctx, kokoX, kokoY + kokoH * 0.4, kokoArmLeft, width * 0.09, '#3730a3', '#ffffff');
+            drawCartoonArm(ctx, kokoX + kokoW, kokoY + kokoH * 0.4, kokoArmRight, width * 0.09, '#3730a3', '#ffffff');
+
+            // عيون كوكو
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(kokoX + kokoW * 0.35, kokoY + kokoH * 0.36, 10, 0, Math.PI * 2);
+            ctx.arc(kokoX + kokoW * 0.65, kokoY + kokoH * 0.36, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(kokoX + kokoW * 0.35 - 2, kokoY + kokoH * 0.36, 5, 0, Math.PI * 2);
+            ctx.arc(kokoX + kokoW * 0.65 - 2, kokoY + kokoH * 0.36, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // فم كوكو المتفاعل
+            ctx.fillStyle = '#312e81';
+            ctx.beginPath();
+            ctx.ellipse(kokoX + kokoW * 0.5, kokoY + kokoH * 0.72, 10, 4 + (1 - mouthPulse) * 8, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ----------------------------------------------------
+            // فقاعة الحوار الدرامية بالاعلى مع النص
+            // ----------------------------------------------------
+            const bubbleW = width * 0.88;
+            const bubbleH = height * 0.24;
+            const bubbleX = (width - bubbleW) / 2;
+            const bubbleY = height * 0.14;
+
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#4f46e5';
+            ctx.lineWidth = 4;
+            drawRoundRect(ctx, bubbleX, bubbleY, bubbleW, bubbleH, 22);
+            ctx.fill();
+            ctx.stroke();
+
+            // مؤشر رأس الفقاعة يشير لفيفي
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.moveTo(fifiX, bubbleY + bubbleH);
+            ctx.lineTo(fifiX - 16, bubbleY + bubbleH + 20);
+            ctx.lineTo(fifiX + 16, bubbleY + bubbleH);
+            ctx.closePath();
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#4f46e5';
+            ctx.beginPath();
+            ctx.moveTo(fifiX - 16, bubbleY + bubbleH);
+            ctx.lineTo(fifiX - 16, bubbleY + bubbleH + 20);
+            ctx.lineTo(fifiX + 16, bubbleY + bubbleH);
+            ctx.stroke();
+
+            // شارة المتحدث مع الأكشن
+            ctx.fillStyle = '#f43f5e';
+            drawRoundRect(ctx, bubbleX + 16, bubbleY - 14, width * 0.44, 28, 14);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${Math.round(width * 0.030)}px system-ui`;
+            ctx.textAlign = 'center';
+            const actionStatusText = isJumping ? '🏃‍♂️ يقفز وينفذ الوصف' : (promptIntent.wave ? '👋 يلوح وينفذ الوصف' : '🗣️ ينفذ ويتحدث');
+            ctx.fillText(actionStatusText, bubbleX + 16 + (width * 0.22), bubbleY + 5);
+
+            if (currentScene) {
+                ctx.fillStyle = '#1e1b4b';
+                ctx.font = `bold ${Math.round(width * 0.046)}px system-ui, Arial`;
+                wrapText(ctx, currentScene.title, width / 2, bubbleY + height * 0.075, bubbleW * 0.88, Math.round(width * 0.065));
+
+                ctx.fillStyle = '#475569';
+                ctx.font = `bold ${Math.round(width * 0.034)}px system-ui, Arial`;
+                wrapText(ctx, currentScene.subtitle, width / 2, bubbleY + height * 0.165, bubbleW * 0.88, Math.round(width * 0.052));
+            }
+            ctx.restore();
+
+            // شريط البراند السفلي
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+            ctx.fillRect(0, height * 0.87, width, height * 0.13);
+
+            ctx.font = `bold ${Math.round(width * 0.036)}px system-ui, Arial`;
+            ctx.fillStyle = '#facc15';
+            ctx.textAlign = 'center';
+            ctx.fillText(brand || 'استوديو الشخصيات التفاعلية', width / 2, height * 0.925);
+
+            ctx.font = `${Math.round(width * 0.027)}px system-ui, Arial`;
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText(contact, width / 2, height * 0.965);
+        }
+
+        // رسم ذراع كرتوني مع قفاز باليد
+        function drawCartoonArm(context, startX, startY, angle, length, armColor, gloveColor) {
+            context.save();
+            context.translate(startX, startY);
+            context.rotate(angle);
+
+            context.lineWidth = 7;
+            context.lineCap = 'round';
+            context.strokeStyle = armColor;
+            context.beginPath();
+            context.moveTo(0, 0);
+            context.lineTo(0, length);
+            context.stroke();
+
+            // كف اليد / القفاز الأبيض
+            context.fillStyle = gloveColor;
+            context.strokeStyle = '#0f172a';
+            context.lineWidth = 2.5;
+            context.beginPath();
+            context.arc(0, length + 4, 9, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+
+            // إبهام القفاز
+            context.beginPath();
+            context.arc(4, length + 2, 4.5, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+
+            context.restore();
+        }
+
+        // رسم ساق كرتونية مع حذاء أنيق
+        function drawCartoonLeg(context, startX, startY, angle, length, legColor, shoeColor) {
+            context.save();
+            context.translate(startX, startY);
+            context.rotate(angle);
+
+            context.lineWidth = 8;
+            context.lineCap = 'round';
+            context.strokeStyle = legColor;
+            context.beginPath();
+            context.moveTo(0, 0);
+            context.lineTo(0, length);
+            context.stroke();
+
+            // حذاء رياضي كرتوني
+            context.fillStyle = shoeColor;
+            context.strokeStyle = '#0f172a';
+            context.lineWidth = 2.5;
+            context.beginPath();
+            context.ellipse(3, length + 4, 12, 6.5, 0, 0, Math.PI * 2);
+            context.fill();
+            context.stroke();
+
+            context.restore();
+        }
+
+        // ==========================================
+        // 2. شخصيات برمجية متحركة تقوم بالأكشن التخيلي
+        // ==========================================
+        function renderAutomationProgrammingAction(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
+            const promptIntent = currentScene ? currentScene.intent : detectActionIntent('');
+
+            // خلفية فضاء السايبر المشفر والمعارك الرقمية
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, 0, width, height);
+
+            // شبكة أرضية ثلاثية الأبعاد متحركة بسرعة عالية
+            ctx.save();
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.25)';
+            ctx.lineWidth = 1.5;
+            const gridSpeed = (time * 80) % 40;
+            for (let y = height * 0.55; y < height * 0.88; y += 22) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(width, y);
+                ctx.stroke();
+            }
+            for (let x = -width * 0.5; x < width * 1.5; x += 45) {
+                ctx.beginPath();
+                ctx.moveTo(width / 2, height * 0.52);
+                ctx.lineTo(x, height * 0.88);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            // رموز كود ومصفوفات تطير في الخلفية (Matrix Rain & Sparkles)
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.35)';
+            ctx.font = `bold ${Math.round(width * 0.026)}px monospace`;
+            const codeSnippets = ['0101', 'function()', 'async', '<div>', '<fire>', '{strike: true}', 'compile()', 'class Bot'];
+            for (let i = 0; i < 8; i++) {
+                const cx = (width * 0.12 * i + (time * 20)) % width;
+                const cy = height * 0.12 + ((time * 45 + i * 50) % (height * 0.4));
+                ctx.fillText(codeSnippets[i % codeSnippets.length], cx, cy);
+            }
+
+            // حركة اهتزاز الشاشة عند الهجمات والضربات
+            const shake = Math.sin(time * 30) * 3;
+            ctx.save();
+            ctx.translate(shake, 0);
+
+            // ----------------------------------------------------
+            // الشخصية البرمجية 1: مقاتل الكود الأزرق (Cyber Bot Hero)
+            // ----------------------------------------------------
+            const botX = width * 0.28;
+            const botBaseY = height * 0.65;
+            const botY = botBaseY + Math.sin(time * 10) * 10;
+            const botSize = width * 0.14;
+
+            // ساقا الروبوت الميكانيكية
+            drawRobotLeg(ctx, botX - botSize * 0.3, botY + botSize * 0.6, Math.sin(time * 8) * 0.3, width * 0.12, '#0284c7');
+            drawRobotLeg(ctx, botX + botSize * 0.3, botY + botSize * 0.6, -Math.sin(time * 8) * 0.3, width * 0.12, '#0284c7');
+
+            // درع وجسد الروبوت
+            ctx.fillStyle = '#0f172a';
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 4;
+            drawRoundRect(ctx, botX - botSize * 0.5, botY - botSize * 0.4, botSize, botSize, 12);
+            ctx.fill();
+            ctx.stroke();
+
+            // شاشة الوجه وقناع الرؤية السايبر
+            ctx.fillStyle = '#06b6d4';
+            ctx.fillRect(botX - botSize * 0.35, botY - botSize * 0.25, botSize * 0.7, botSize * 0.25);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 12px monospace';
+            ctx.textAlign = 'center';
+            ctx.fillText('>_<', botX, botY - botSize * 0.1);
+
+            // ذراع روبوتية تطلق شعاع الليزر البرمجي (Data Laser Beam)
+            const attackCycle = (time * 12) % Math.PI;
+            const beamX = botX + botSize * 0.6;
+            const beamY = botY - 5;
+            
+            // رسم ذراعي المقاتل
+            drawRobotArm(ctx, botX - botSize * 0.5, botY, -0.6, width * 0.10, '#0284c7');
+            drawRobotArm(ctx, botX + botSize * 0.5, botY, 1.4, width * 0.10, '#06b6d4');
+
+            // إطلاق طاقة الليزر من سلاحه نحو الهدف المقابل!
+            const targetX = width * 0.75;
+            const targetY = height * 0.64;
+
+            ctx.save();
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 8 + Math.sin(time * 25) * 4;
+            ctx.shadowColor = '#06b6d4';
+            ctx.shadowBlur = 20;
+            ctx.beginPath();
+            ctx.moveTo(beamX, beamY);
+            ctx.lineTo(targetX, targetY);
+            ctx.stroke();
+
+            // قلب الشعاع الأبيض الحارق
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(beamX, beamY);
+            ctx.lineTo(targetX, targetY);
+            ctx.stroke();
+            ctx.restore();
+
+            // ----------------------------------------------------
+            // الشخصية البرمجية 2: روبوت الفيروس المقابل مع درع الحماية
+            // ----------------------------------------------------
+            const rivalX = width * 0.76;
+            const rivalY = height * 0.64 + Math.cos(time * 10) * 10;
+            const rivalSize = width * 0.13;
+
+            // أرجل الوحش البرمجي
+            drawRobotLeg(ctx, rivalX - rivalSize * 0.3, rivalY + rivalSize * 0.6, -Math.sin(time * 8) * 0.3, width * 0.12, '#991b1b');
+            drawRobotLeg(ctx, rivalX + rivalSize * 0.3, rivalY + rivalSize * 0.6, Math.sin(time * 8) * 0.3, width * 0.12, '#991b1b');
+
+            // جسد الروبوت الشرير / الفيروس
+            ctx.fillStyle = '#450a0a';
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 4;
+            drawRoundRect(ctx, rivalX - rivalSize * 0.5, rivalY - rivalSize * 0.4, rivalSize, rivalSize, 10);
+            ctx.fill();
+            ctx.stroke();
+
+            // عيون حمراء متوهجة
+            ctx.fillStyle = '#ef4444';
+            ctx.fillRect(rivalX - rivalSize * 0.35, rivalY - rivalSize * 0.25, rivalSize * 0.7, rivalSize * 0.2);
+            ctx.fillStyle = '#fef08a';
+            ctx.fillText('⚡ ⚡', rivalX, rivalY - rivalSize * 0.1);
+
+            // درع الطاقة المتصدع أمام الروبوت المتلقي للشعاع
+            ctx.save();
+            ctx.strokeStyle = '#f43f5e';
+            ctx.lineWidth = 5;
+            ctx.shadowColor = '#f43f5e';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(rivalX - rivalSize * 0.6, rivalY, rivalSize * 0.8, -Math.PI * 0.45, Math.PI * 0.45);
+            ctx.stroke();
+
+            // انفجارات وشرارات تصادم الأكشن التخيلي
+            for (let s = 0; s < 6; s++) {
+                const spAngle = time * 15 + s * 1.1;
+                const spDist = 18 + Math.sin(time * 20 + s) * 12;
+                ctx.fillStyle = s % 2 === 0 ? '#facc15' : '#06b6d4';
+                ctx.beginPath();
+                ctx.arc(rivalX - rivalSize * 0.6 + Math.cos(spAngle) * spDist, rivalY + Math.sin(spAngle) * spDist, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+            ctx.restore(); // نهاية الـ shake
+
+            // ----------------------------------------------------
+            // بطاقة الأكشن الهيدروليكية للنص والسيناريو
+            // ----------------------------------------------------
+            const actionCardW = width * 0.88;
+            const actionCardH = height * 0.30;
+            const actionCardX = (width - actionCardW) / 2;
+            const actionCardY = height * 0.14;
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
+            ctx.strokeStyle = '#06b6d4';
+            ctx.lineWidth = 3;
+            drawRoundRect(ctx, actionCardX, actionCardY, actionCardW, actionCardH, 18);
+            ctx.fill();
+            ctx.stroke();
+
+            // زوايا تقنية عسكرية
+            ctx.strokeStyle = '#ef4444';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(actionCardX + 8, actionCardY + 8, 18, 18);
+            ctx.strokeRect(actionCardX + actionCardW - 26, actionCardY + 8, 18, 18);
+
+            // شارة الأكشن التخيلي
+            ctx.fillStyle = '#dc2626';
+            drawRoundRect(ctx, actionCardX + 20, actionCardY - 15, width * 0.52, 30, 8);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `900 ${Math.round(width * 0.033)}px system-ui`;
+            ctx.textAlign = 'center';
+            ctx.fillText('⚔️ معركة برمجية خيالية تنفذ الوصف', actionCardX + 20 + (width * 0.26), actionCardY + 6);
+
+            if (currentScene) {
+                ctx.font = `900 ${Math.round(width * 0.052)}px system-ui, Arial`;
+                ctx.fillStyle = '#38bdf8';
+                ctx.textAlign = 'center';
+                wrapText(ctx, currentScene.title, width / 2, actionCardY + height * 0.085, actionCardW * 0.88, Math.round(width * 0.075));
+
+                ctx.font = `bold ${Math.round(width * 0.035)}px system-ui, Arial`;
+                ctx.fillStyle = '#e2e8f0';
+                wrapText(ctx, currentScene.subtitle, width / 2, actionCardY + height * 0.19, actionCardW * 0.88, Math.round(width * 0.052));
+            }
+            ctx.restore();
+
+            // شريط التواصل والأكشن السفلي
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, height * 0.87, width, height * 0.13);
+
+            ctx.font = `bold ${Math.round(width * 0.036)}px system-ui, Arial`;
+            ctx.fillStyle = '#06b6d4';
+            ctx.textAlign = 'center';
+            ctx.fillText(brand || 'Cyber Warriors System', width / 2, height * 0.925);
+
+            ctx.font = `${Math.round(width * 0.028)}px system-ui, Arial`;
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillText(contact, width / 2, height * 0.965);
+        }
+
+        function drawRobotLeg(context, startX, startY, angle, length, color) {
+            context.save();
+            context.translate(startX, startY);
+            context.rotate(angle);
+
+            context.lineWidth = 7;
+            context.strokeStyle = color;
+            context.beginPath();
+            context.moveTo(0, 0);
+            context.lineTo(0, length);
+            context.stroke();
+
+            // قدم هيدروليكية
+            context.fillStyle = '#334155';
+            context.fillRect(-6, length - 2, 16, 7);
+            context.restore();
+        }
+
+        function drawRobotArm(context, startX, startY, angle, length, color) {
+            context.save();
+            context.translate(startX, startY);
+            context.rotate(angle);
+
+            context.lineWidth = 6;
+            context.strokeStyle = color;
+            context.beginPath();
+            context.moveTo(0, 0);
+            context.lineTo(0, length);
+            context.stroke();
+
+            // فوهة السلاح أو المخلب
+            context.fillStyle = '#facc15';
+            context.beginPath();
+            context.arc(0, length + 2, 6, 0, Math.PI * 2);
+            context.fill();
+            context.restore();
+        }
+
+        // ==========================================
+        // 3. شخصية تعليمية تفاعلية تشرح وتؤشر بالخطوات
+        // ==========================================
+        function renderAutomationInteractiveTeacher(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
+            // خلفية القاعة الذكية والألواح التفاعلية
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+
+            // شبكة هندسية خلفية أنيقة
+            ctx.strokeStyle = 'rgba(99, 102, 241, 0.15)';
+            ctx.lineWidth = 1;
+            for (let x = 0; x < width; x += 35) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+            }
+            for (let y = 0; y < height; y += 35) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            }
+
+            // ترويسة الدرس بالاعلى
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 0, width, height * 0.11);
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(0, height * 0.11); ctx.lineTo(width, height * 0.11); ctx.stroke();
+
+            ctx.font = `bold ${Math.round(width * 0.044)}px system-ui, Arial`;
+            ctx.fillStyle = '#38bdf8';
+            ctx.textAlign = 'right';
+            ctx.fillText('📖 ' + (brand || 'المعلم الذكي التفاعلي'), width - 24, height * 0.065);
+
+            // مؤشر الخطوة الحالية المستنتجة من السيناريو
+            const currentStepIdx = (currentScene ? currentScene.id : 1);
+            ctx.fillStyle = '#4f46e5';
+            drawRoundRect(ctx, 20, height * 0.032, width * 0.28, height * 0.048, 10);
+            ctx.fill();
+            ctx.font = `bold ${Math.round(width * 0.029)}px system-ui`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText(`الخطوة ${currentStepIdx} من 3`, 20 + (width * 0.14), height * 0.065);
+
+            // ----------------------------------------------------
+            // السبورة الذكية التفاعلية (Smart Interactive Board)
+            // ----------------------------------------------------
+            const boardW = width * 0.60;
+            const boardH = height * 0.48;
+            const boardX = width * 0.05;
+            const boardY = height * 0.16;
+
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 3;
+            drawRoundRect(ctx, boardX, boardY, boardW, boardH, 18);
+            ctx.fill();
+            ctx.stroke();
+
+            // شارة داخل السبورة
+            ctx.fillStyle = '#0284c7';
+            drawRoundRect(ctx, boardX + 15, boardY + 15, boardW * 0.6, 28, 8);
+            ctx.fill();
+            ctx.font = `bold ${Math.round(width * 0.028)}px system-ui`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎯 الشرح وتطبيق الخطوة', boardX + 15 + (boardW * 0.3), boardY + 34);
+
+            // إضاءة التحديد الأصفر التفاعلي تحت النص
+            const hlProgress = Math.min(1, sceneProgress * 1.5);
+            ctx.fillStyle = 'rgba(250, 204, 21, 0.35)';
+            ctx.fillRect(boardX + 15, boardY + height * 0.14, (boardW - 30) * hlProgress, 14);
+
+            if (currentScene) {
+                ctx.font = `bold ${Math.round(width * 0.046)}px system-ui, Arial`;
+                ctx.fillStyle = '#f8fafc';
+                ctx.textAlign = 'center';
+                wrapText(ctx, currentScene.title, boardX + boardW / 2, boardY + height * 0.12, boardW * 0.88, Math.round(width * 0.065));
+
+                ctx.font = `${Math.round(width * 0.033)}px system-ui, Arial`;
+                ctx.fillStyle = '#cbd5e1';
+                wrapText(ctx, currentScene.subtitle, boardX + boardW / 2, boardY + height * 0.26, boardW * 0.88, Math.round(width * 0.050));
+            }
+
+            // ----------------------------------------------------
+            // شخصية المعلم الذكي (بأيدي وأرجل وعصا يشير بها للسبورة)
+            // ----------------------------------------------------
+            const teacherX = width * 0.82;
+            const teacherBaseY = height * 0.44;
+            const teacherBob = Math.sin(time * 6) * 5;
+            const teacherY = teacherBaseY + teacherBob;
+            const teacherR = width * 0.10;
+
+            // ظل المعلم
+            ctx.fillStyle = 'rgba(0,0,0,0.25)';
+            ctx.beginPath();
+            ctx.ellipse(teacherX, height * 0.68, teacherR * 0.85, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // ساقا وحذاء المعلم
+            drawCartoonLeg(ctx, teacherX - teacherR * 0.3, teacherY + teacherR * 1.4, Math.sin(time * 4) * 0.15, width * 0.13, '#1e293b', '#0f172a');
+            drawCartoonLeg(ctx, teacherX + teacherR * 0.3, teacherY + teacherR * 1.4, -Math.sin(time * 4) * 0.15, width * 0.13, '#1e293b', '#0f172a');
+
+            // سترة وجسم المعلم
+            ctx.fillStyle = '#4338ca';
+            drawRoundRect(ctx, teacherX - teacherR * 0.7, teacherY + teacherR * 0.5, teacherR * 1.4, width * 0.14, 12);
+            ctx.fill();
+
+            // رابطة عنق أنيقة
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.moveTo(teacherX, teacherY + teacherR * 0.5);
+            ctx.lineTo(teacherX - 7, teacherY + teacherR * 0.85);
+            ctx.lineTo(teacherX, teacherY + teacherR * 1.1);
+            ctx.lineTo(teacherX + 7, teacherY + teacherR * 0.85);
+            ctx.closePath();
+            ctx.fill();
+
+            // رأس المعلم
+            ctx.fillStyle = '#fed7aa';
+            ctx.beginPath();
+            ctx.arc(teacherX, teacherY, teacherR, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#f97316';
+            ctx.stroke();
+
+            // نظارة المعلم الذكية
+            ctx.strokeStyle = '#0284c7';
+            ctx.lineWidth = 3.5;
+            ctx.beginPath();
+            ctx.arc(teacherX - 12, teacherY - 4, 9, 0, Math.PI * 2);
+            ctx.arc(teacherX + 12, teacherY - 4, 9, 0, Math.PI * 2);
+            ctx.moveTo(teacherX - 3, teacherY - 4);
+            ctx.lineTo(teacherX + 3, teacherY - 4);
+            ctx.stroke();
+
+            // عيون المعلم خلف النظارة
+            ctx.fillStyle = '#0f172a';
+            ctx.beginPath();
+            ctx.arc(teacherX - 12, teacherY - 4, 4, 0, Math.PI * 2);
+            ctx.arc(teacherX + 12, teacherY - 4, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // فم المعلم وهو يشرح
+            const teacherMouthH = 4 + Math.abs(Math.sin(time * 14)) * 9;
+            ctx.fillStyle = '#991b1b';
+            ctx.beginPath();
+            ctx.ellipse(teacherX, teacherY + 18, 9, teacherMouthH, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // شعر وقبعة التخرج/المعلم
+            ctx.fillStyle = '#1e1b4b';
+            ctx.beginPath();
+            ctx.arc(teacherX, teacherY - teacherR * 0.7, teacherR * 0.9, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            // يد المعلم اليسرى في جيبه
+            drawCartoonArm(ctx, teacherX + teacherR * 0.7, teacherY + teacherR * 0.6, 0.4, width * 0.08, '#4338ca', '#ffffff');
+
+            // يد المعلم اليمنى ممدودة بعصا الليزر يشير بها للسبورة!
+            const stickAngle = -2.3 + Math.sin(time * 4) * 0.15;
+            ctx.save();
+            ctx.translate(teacherX - teacherR * 0.6, teacherY + teacherR * 0.6);
+            ctx.rotate(stickAngle);
+
+            // الذراع
+            ctx.lineWidth = 7;
+            ctx.strokeStyle = '#4338ca';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, width * 0.10);
+            ctx.stroke();
+
+            // اليد
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(0, width * 0.10, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            // عصا التأشير الذهبية
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = '#facc15';
+            ctx.beginPath();
+            ctx.moveTo(0, width * 0.10);
+            ctx.lineTo(0, width * 0.28);
+            ctx.stroke();
+
+            // رأس العصا يشع ضوءاً نحو السبورة
+            ctx.fillStyle = '#38bdf8';
+            ctx.shadowColor = '#38bdf8';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.arc(0, width * 0.29, 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+
+            // بطاقة التلخيص والملاحظات بالأسفل
+            const noteCardW = width * 0.90;
+            const noteCardH = height * 0.14;
+            const noteCardX = (width - noteCardW) / 2;
+            const noteCardY = height * 0.71;
+
+            ctx.fillStyle = '#1e293b';
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2.5;
+            drawRoundRect(ctx, noteCardX, noteCardY, noteCardW, noteCardH, 14);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.font = `bold ${Math.round(width * 0.034)}px system-ui, Arial`;
+            ctx.fillStyle = '#facc15';
+            ctx.textAlign = 'center';
+            ctx.fillText('💡 نصيحة المعلم لتطبيق هذا الوصف:', width / 2, noteCardY + height * 0.045);
+
+            ctx.font = `${Math.round(width * 0.031)}px system-ui, Arial`;
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText('اتبع الخطوات بدقة وحول أي فكرة إلى نتيجة ملموسة!', width / 2, noteCardY + height * 0.095);
+
+            // التذييل
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, height * 0.87, width, height * 0.13);
+
+            ctx.font = `bold ${Math.round(width * 0.034)}px system-ui, Arial`;
+            ctx.fillStyle = '#38bdf8';
+            ctx.textAlign = 'center';
+            ctx.fillText(brand || 'منصة التعليم والتطوير الذكي', width / 2, height * 0.925);
+
+            ctx.font = `${Math.round(width * 0.027)}px system-ui, Arial`;
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText(contact, width / 2, height * 0.965);
+        }
+
+        // ==========================================
+        // باقي قوالب الأوتوميشن
+        // ==========================================
+        function renderAutomationPromotional(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
+            const grad = ctx.createLinearGradient(0, 0, width, height);
+            grad.addColorStop(0, '#4f46e5');
+            grad.addColorStop(0.5, '#7c3aed');
+            grad.addColorStop(1, '#db2777');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            const starScale = 1 + Math.sin(time * 6) * 0.06;
+            ctx.save();
+            ctx.translate(width / 2, height * 0.22);
+            ctx.scale(starScale, starScale);
+
+            ctx.fillStyle = '#facc15';
+            ctx.beginPath();
+            ctx.arc(0, 0, width * 0.18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#ffffff';
+            ctx.stroke();
+
+            ctx.font = `900 ${Math.round(width * 0.052)}px system-ui, Arial`;
+            ctx.fillStyle = '#1e1b4b';
+            ctx.textAlign = 'center';
+            ctx.fillText('عرض خاص', 0, -6);
+            ctx.font = `900 ${Math.round(width * 0.065)}px system-ui, Arial`;
+            ctx.fillStyle = '#db2777';
+            ctx.fillText('SALE', 0, 26);
+            ctx.restore();
+
+            const cardW = width * 0.88;
+            const cardH = height * 0.44;
+            const cardX = (width - cardW) / 2;
+            const cardY = height * 0.38;
+
+            ctx.save();
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 25;
+            drawRoundRect(ctx, cardX, cardY, cardW, cardH, 24);
+            ctx.fill();
+            ctx.restore();
+
+            ctx.fillStyle = '#ef4444';
+            drawRoundRect(ctx, cardX + cardW * 0.2, cardY - 18, cardW * 0.6, 36, 18);
+            ctx.fill();
+            ctx.font = `900 ${Math.round(width * 0.034)}px system-ui, Arial`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText('🏷️ لفترة محدودة جداً 🏷️', width / 2, cardY + 6);
+
+            if (currentScene) {
+                ctx.font = `900 ${Math.round(width * 0.056)}px system-ui, Arial`;
+                ctx.fillStyle = '#1e1b4b';
+                ctx.textAlign = 'center';
+                wrapText(ctx, currentScene.title, width / 2, cardY + height * 0.11, cardW * 0.86, Math.round(width * 0.076));
+
+                ctx.font = `bold ${Math.round(width * 0.038)}px system-ui, Arial`;
+                ctx.fillStyle = '#475569';
+                wrapText(ctx, currentScene.subtitle, width / 2, cardY + height * 0.24, cardW * 0.86, Math.round(width * 0.054));
+            }
+
+            const btnW = cardW * 0.8;
+            const btnH = height * 0.07;
+            const btnX = (width - btnW) / 2;
+            const btnY = cardY + cardH - btnH - 18;
+
+            ctx.fillStyle = '#10b981';
+            drawRoundRect(ctx, btnX, btnY, btnW, btnH, 16);
+            ctx.fill();
+
+            ctx.font = `900 ${Math.round(width * 0.040)}px system-ui, Arial`;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText('⚡ اطلب الآن واستفد من الخصم', width / 2, btnY + btnH * 0.65);
+
+            ctx.font = `bold ${Math.round(width * 0.036)}px system-ui, Arial`;
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(brand || 'المتجر الرسمي المعتمد', width / 2, height * 0.88);
+
+            ctx.font = `${Math.round(width * 0.030)}px system-ui, Arial`;
+            ctx.fillStyle = '#fef08a';
+            ctx.fillText(contact, width / 2, height * 0.93);
+        }
+
+        function renderAutomationKinetic(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
+            const grad = ctx.createLinearGradient(
+                Math.sin(time * 0.7) * 120,
+                0,
+                width + Math.cos(time * 0.7) * 120,
+                height
+            );
+            grad.addColorStop(0, theme.bgGradient[0]);
+            grad.addColorStop(0.5, theme.bgGradient[1]);
+            grad.addColorStop(1, theme.bgGradient[2]);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
+
+            particles.forEach((p, idx) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0) p.x = width;
+                if (p.x > width) p.x = 0;
+                if (p.y < 0) p.y = height;
+                if (p.y > height) p.y = 0;
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius * (1 + Math.sin(time * 3 + idx) * 0.25), 0, Math.PI * 2);
+                ctx.fillStyle = theme.accent;
+                ctx.globalAlpha = p.alpha * (0.5 + Math.sin(time * 2 + idx) * 0.5);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            ctx.save();
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillRect(0, 0, width, height * 0.11);
+
+            ctx.font = `bold ${Math.round(width * 0.046)}px system-ui, Arial`;
+            ctx.fillStyle = theme.textMain;
+            ctx.textAlign = 'right';
+            ctx.fillText(brand, width - width * 0.06, height * 0.065);
+
+            ctx.font = `${Math.round(width * 0.028)}px system-ui, Arial`;
+            ctx.fillStyle = theme.accent;
+            ctx.fillText('⚡ فيديو أوتوميشن فوري', width - width * 0.06, height * 0.093);
+
+            ctx.beginPath();
+            ctx.arc(width * 0.08, height * 0.06, width * 0.034, 0, Math.PI * 2);
+            ctx.fillStyle = theme.accent;
+            ctx.fill();
+            ctx.font = `bold ${Math.round(width * 0.036)}px system-ui, Arial`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.fillText('AI', width * 0.08, height * 0.071);
+            ctx.restore();
+
+            if (currentScene) {
+                renderSceneContent(currentScene, sceneProgress, width, height, theme);
+            }
+
+            ctx.save();
+            const footerY = height * 0.88;
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            ctx.fillRect(0, footerY, width, height * 0.12);
+
+            ctx.font = `bold ${Math.round(width * 0.033)}px system-ui, Arial`;
+            ctx.fillStyle = theme.accent2;
+            ctx.textAlign = 'center';
+            ctx.fillText(contact.slice(0, 52), width / 2, footerY + height * 0.052);
+
+            ctx.font = `${Math.round(width * 0.026)}px system-ui, Arial`;
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillText('أوتوميشن المحتوى المرئي الفوري', width / 2, footerY + height * 0.088);
+            ctx.restore();
+        }
+
+        function renderAutomationNews(time, width, height, theme, brand, contact, currentScene, sceneProgress) {
+            ctx.fillStyle = '#0a0d14';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.save();
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.12)';
+            ctx.lineWidth = 1.5;
+            for (let x = 0; x < width; x += 40) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+            }
+            for (let y = 0; y < height; y += 40) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+            }
+            ctx.restore();
+
+            ctx.fillStyle = '#dc2626';
+            ctx.fillRect(0, 0, width, height * 0.10);
+            ctx.font = `900 ${Math.round(width * 0.048)}px system-ui, Arial`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'right';
+            ctx.fillText(brand || 'شبكة الأخبار العاجلة', width - width * 0.05, height * 0.065);
+
+            ctx.fillStyle = '#ffffff';
+            drawRoundRect(ctx, width * 0.05, height * 0.03, width * 0.16, height * 0.042, 6);
+            ctx.fill();
+            ctx.fillStyle = '#dc2626';
+            ctx.font = `bold ${Math.round(width * 0.028)}px system-ui, Arial`;
+            ctx.textAlign = 'center';
+            const liveDot = Math.floor(time * 2) % 2 === 0 ? '🔴 ' : '⚪ ';
+            ctx.fillText(liveDot + 'مباشر', width * 0.13, height * 0.058);
+
+            const screenW = width * 0.88;
+            const screenH = height * 0.46;
+            const screenX = (width - screenW) / 2;
+            const screenY = height * 0.18;
+
+            ctx.save();
+            ctx.fillStyle = '#111827';
+            ctx.strokeStyle = '#dc2626';
+            ctx.lineWidth = 3;
+            drawRoundRect(ctx, screenX, screenY, screenW, screenH, 12);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#b91c1c';
+            ctx.fillRect(screenX, screenY, screenW, height * 0.06);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `bold ${Math.round(width * 0.034)}px system-ui, Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText('🚨 عاجل • تغطية خاصة وحصرية', screenX + screenW / 2, screenY + height * 0.04);
+
+            if (currentScene) {
+                ctx.font = `bold ${Math.round(width * 0.052)}px system-ui, Arial`;
+                ctx.fillStyle = '#ffffff';
+                wrapText(ctx, currentScene.title, screenX + screenW / 2, screenY + height * 0.14, screenW * 0.88, Math.round(width * 0.07));
+
+                ctx.font = `${Math.round(width * 0.036)}px system-ui, Arial`;
+                ctx.fillStyle = '#cbd5e1';
+                wrapText(ctx, currentScene.subtitle, screenX + screenW / 2, screenY + height * 0.28, screenW * 0.88, Math.round(width * 0.052));
+            }
+            ctx.restore();
+
+            const tickerH = height * 0.11;
+            const tickerY = height * 0.76;
+            ctx.fillStyle = '#b91c1c';
+            ctx.fillRect(0, tickerY, width, tickerH);
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(width * 0.72, tickerY, width * 0.28, tickerH);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `900 ${Math.round(width * 0.034)}px system-ui, Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText('شريط الأخبار', width * 0.86, tickerY + tickerH * 0.58);
+
+            ctx.save();
+            ctx.rect(0, tickerY, width * 0.72, tickerH);
+            ctx.clip();
+            const tickerFullText = (currentScene ? currentScene.title + ' — ' + currentScene.subtitle : '') + ' • ' + contact;
+            const shiftX = (time * 120) % (width * 1.5);
+            ctx.font = `bold ${Math.round(width * 0.032)}px system-ui, Arial`;
+            ctx.fillStyle = '#fef08a';
+            ctx.textAlign = 'right';
+            ctx.fillText(tickerFullText, width * 0.70 + shiftX, tickerY + tickerH * 0.60);
+            ctx.fillText(tickerFullText, width * 0.70 + shiftX - width, tickerY + tickerH * 0.60);
+            ctx.restore();
+
+            ctx.fillStyle = '#030712';
+            ctx.fillRect(0, height * 0.87, width, height * 0.13);
+            ctx.font = `bold ${Math.round(width * 0.031)}px system-ui, Arial`;
+            ctx.fillStyle = '#94a3b8';
+            ctx.textAlign = 'center';
+            ctx.fillText(contact, width / 2, height * 0.94);
+        }
+
+        function renderSceneContent(scene, progress, width, height, theme) {
+            ctx.save();
+
+            let animScale = 1;
+            let animAlpha = 1;
+
+            if (progress < 0.14) {
+                const inP = progress / 0.14;
+                animScale = 0.82 + (inP * 0.18);
+                animAlpha = inP;
+            } else if (progress > 0.88) {
+                const outP = (progress - 0.88) / 0.12;
+                animScale = 1 + (outP * 0.08);
+                animAlpha = 1 - outP;
+            }
+
+            ctx.globalAlpha = Math.max(0, Math.min(1, animAlpha));
+
+            const centerX = width / 2;
+            const centerY = height * 0.48;
+
+            ctx.translate(centerX, centerY);
+            ctx.scale(animScale, animScale);
+            ctx.translate(-centerX, -centerY);
+
+            const cardW = width * 0.88;
+            const cardH = height * 0.48;
+            const cardX = (width - cardW) / 2;
+            const cardY = centerY - (cardH / 2);
+
+            ctx.fillStyle = theme.cardBg;
+            ctx.strokeStyle = theme.cardBorder;
+            ctx.lineWidth = 3;
+            drawRoundRect(ctx, cardX, cardY, cardW, cardH, 22);
+            ctx.fill();
+            ctx.stroke();
+
+            const iconY = cardY + height * 0.06;
+            ctx.beginPath();
+            ctx.arc(centerX, iconY, width * 0.085, 0, Math.PI * 2);
+            ctx.fillStyle = theme.accent;
+            ctx.fill();
+
+            ctx.font = `${Math.round(width * 0.085)}px system-ui, Apple Color Emoji`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(scene.icon || '✨', centerX, iconY + 2);
+
+            const badgeY = iconY + height * 0.085;
+            ctx.font = `bold ${Math.round(width * 0.032)}px system-ui, Arial`;
+            const badgeText = scene.badge || 'أوتوميشن مميز';
+            const textMetrics = ctx.measureText(badgeText);
+            const pillW = textMetrics.width + 34;
+            const pillH = height * 0.038;
+
+            ctx.fillStyle = theme.accent2;
+            drawRoundRect(ctx, centerX - pillW / 2, badgeY - pillH / 2, pillW, pillH, 14);
+            ctx.fill();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillText(badgeText, centerX, badgeY);
+
+            const titleY = badgeY + height * 0.078;
+            ctx.font = `bold ${Math.round(width * 0.056)}px system-ui, Arial`;
+            ctx.fillStyle = theme.textMain;
+            wrapText(ctx, scene.title, centerX, titleY, cardW * 0.86, Math.round(width * 0.075));
+
+            const subY = titleY + height * 0.11;
+            ctx.font = `${Math.round(width * 0.038)}px system-ui, Arial`;
+            ctx.fillStyle = theme.textSub;
+            wrapText(ctx, scene.subtitle, centerX, subY, cardW * 0.86, Math.round(width * 0.052));
+
+            ctx.restore();
+        }
+
+        function drawCartoonCloud(context, cx, cy, r) {
+            context.beginPath();
+            context.arc(cx, cy, r * 0.6, 0, Math.PI * 2);
+            context.arc(cx + r * 0.5, cy - r * 0.2, r * 0.7, 0, Math.PI * 2);
+            context.arc(cx + r, cy, r * 0.6, 0, Math.PI * 2);
+            context.fill();
+        }
+
+        function drawRoundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function wrapText(context, text, x, y, maxWidth, lineHeight) {
+            if (!text) return;
+            const words = text.split(' ');
+            let line = '';
+            let curY = y;
+
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                const metrics = context.measureText(testLine);
+                const testWidth = metrics.width;
+                if (testWidth > maxWidth && n > 0) {
+                    context.fillText(line.trim(), x, curY);
+                    line = words[n] + ' ';
+                    curY += lineHeight;
+                } else {
+                    line = testLine;
+                }
+            }
+            context.fillText(line.trim(), x, curY);
+        }
+
+        function playFifiWhistleChirp(step) {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                const whistlePitches = [950, 1100, 1300, 1500, 1250, 1600, 1400, 1750];
+                const baseFreq = whistlePitches[step % whistlePitches.length];
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(baseFreq, now);
+                osc.frequency.exponentialRampToValueAtTime(baseFreq + 180, now + 0.12);
+
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(now);
+                osc.stop(now + 0.14);
+            } catch (e) {}
+        }
+
+        // ==========================================
+        // CONTROLS & TIMELINE
+        // ==========================================
+        function togglePlayVideo() {
+            if (isPlaying) {
+                pauseVideo();
+            } else {
+                playVideo();
+            }
+        }
+
+        function playVideo() {
+            isPlaying = true;
+            document.getElementById('playPauseBtn').innerText = '⏸';
+            lastTimestamp = performance.now();
+            requestAnimationFrame(videoLoop);
+            playAutomationSoundEffect('beat');
+        }
+
+        function pauseVideo() {
+            isPlaying = false;
+            document.getElementById('playPauseBtn').innerText = '▶';
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        }
+
+        function restartVideo() {
+            currentTime = 0;
+            lastFifiSpeechStep = -1;
+            updateTimelineUI();
+            renderVideoFrame(currentTime);
+            playVideo();
+        }
+
+        function seekVideo(val) {
+            currentTime = (val / 100) * videoDuration;
+            lastFifiSpeechStep = -1;
+            updateTimelineUI();
+            renderVideoFrame(currentTime);
+        }
+
+        function videoLoop(timestamp) {
+            if (!isPlaying) return;
+
+            const delta = (timestamp - lastTimestamp) / 1000;
+            lastTimestamp = timestamp;
+
+            currentTime += delta;
+
+            if (currentTime >= videoDuration) {
+                currentTime = 0;
+                lastFifiSpeechStep = -1;
+            }
+
+            updateTimelineUI();
+            renderVideoFrame(currentTime);
+
+            animationFrameId = requestAnimationFrame(videoLoop);
+        }
+
+        function updateTimelineUI() {
+            document.getElementById('currentTimeDisplay').innerText = formatTime(currentTime);
+            const slider = document.getElementById('videoTimeline');
+            slider.value = (currentTime / videoDuration) * 100;
+        }
+
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60);
+            const s = Math.floor(sec % 60);
+            return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+        }
+
+        function playAutomationSoundEffect(type) {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const now = audioCtx.currentTime;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                if (type === 'generate') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.25);
+                    gain.gain.setValueAtTime(0.18, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.35);
+                } else if (type === 'beat') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(520, now);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(now);
+                    osc.stop(now + 0.2);
+                }
+            } catch (e) {}
+        }
+
+        // ==========================================
+        // EXPORT ENGINE
+        // ==========================================
+        async function exportRealVideo() {
+            if (isExporting) return;
+            isExporting = true;
+            pauseVideo();
+
+            const exportIcon = document.getElementById('exportIcon');
+            const exportText = document.getElementById('exportText');
+
+            exportIcon.innerHTML = '<span class="spinner"></span>';
+            exportText.innerText = 'جارٍ معالجة وتصدير الفيديو...';
+            showToast('بدء التصدير 🎬', 'يقوم المحرك الآن برندر الإطارات بدقة وتجميع الفيديو.');
+
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                const audioDest = audioCtx.createMediaStreamDestination();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(320, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+                osc.connect(gain);
+                gain.connect(audioDest);
+                osc.start();
+
+                const canvasStream = canvas.captureStream(30);
+                const tracks = [...canvasStream.getVideoTracks(), ...audioDest.stream.getAudioTracks()];
+                const combinedStream = new MediaStream(tracks);
+
+                let mimeType = 'video/webm;codecs=vp9';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = 'video/webm';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        mimeType = '';
+                    }
+                }
+
+                const recorder = new MediaRecorder(combinedStream, mimeType ? { mimeType } : undefined);
+                const recordedChunks = [];
+
+                recorder.ondataavailable = (e) => {
+                    if (e.data && e.data.size > 0) {
+                        recordedChunks.push(e.data);
+                    }
+                };
+
+                recorder.onstop = () => {
+                    try { osc.stop(); } catch(e) {}
+
+                    const blob = new Blob(recordedChunks, { type: recorder.mimeType || 'video/webm' });
+                    const videoUrl = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    const fileName = `video_automation_${Date.now()}.webm`;
+                    a.href = videoUrl;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+
+                    saveToHistory({
+                        id: Date.now(),
+                        title: generatedScenes[0]?.title || 'فيديو أوتوميشن',
+                        duration: videoDuration,
+                        format: currentAspect,
+                        type: currentAutomationType,
+                        date: new Date().toLocaleDateString('ar-SA') + ' ' + new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute:'2-digit' }),
+                        url: videoUrl,
+                        fileName: fileName
+                    });
+
+                    exportIcon.innerText = '✅';
+                    exportText.innerText = 'تم التصدير والتحميل بنجاح!';
+                    showToast('اكتمل الفيديو 🎉', 'تم حفظ الفيديو على جهازك بنجاح.');
+
+                    setTimeout(() => {
+                        exportIcon.innerText = '⬇️';
+                        exportText.innerText = 'تصدير وتحميل فيديو (MP4/WebM)';
+                        isExporting = false;
+                        restartVideo();
+                    }, 3000);
+                };
+
+                recorder.start();
+
+                let recordTime = 0;
+                const fps = 30;
+                const frameInterval = 1 / fps;
+                const totalFrames = Math.ceil(videoDuration * fps);
+                let currentFrame = 0;
+
+                function recordStep() {
+                    if (currentFrame < totalFrames) {
+                        recordTime = currentFrame * frameInterval;
+                        renderVideoFrame(recordTime);
+                        currentFrame++;
+                        setTimeout(recordStep, 1000 / fps);
+                    } else {
+                        recorder.stop();
+                    }
+                }
+
+                recordStep();
+
+            } catch (err) {
+                exportIcon.innerText = '❌';
+                exportText.innerText = 'تعذر التصدير التلقائي';
+                isExporting = false;
+                alert('تنبيه: ' + err.message);
+                restartVideo();
+            }
+        }
+
+        function saveToHistory(item) {
+            savedHistory.unshift(item);
+            if (savedHistory.length > 25) savedHistory.pop();
+            try {
+                localStorage.setItem('automation_video_history', JSON.stringify(savedHistory));
+            } catch(e) {}
+            renderHistoryUI();
+        }
+
+        function loadLocalHistory() {
+            try {
+                const data = localStorage.getItem('automation_video_history');
+                if (data) {
+                    savedHistory = JSON.parse(data);
+                }
+            } catch (e) {
+                savedHistory = [];
+            }
+            renderHistoryUI();
+        }
+
+        function renderHistoryUI() {
+            const container = document.getElementById('historyListContainer');
+            if (!savedHistory || savedHistory.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size:3rem; margin-bottom:8px;">📁</div>
+                        <h4>لا توجد فيديوهات مصدرة مسبقاً</h4>
+                        <p style="font-size:0.85rem; margin-top:4px;">ستظهر جميع الفيديوهات التي تنشئها هنا لإعادة تحميلها أو مشاركتها في أي وقت.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = savedHistory.map(item => `
+                <div class="history-card">
+                    <div class="history-header">
+                        <strong style="color:var(--text-main); font-size:0.95rem;">${item.title}</strong>
+                        <span class="meta-tag" style="color:#818cf8; border-color:#4f46e5;">
+                            ${item.format} • ${item.duration} ث
+                        </span>
+                    </div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">📅 التاريخ: ${item.date}</div>
+                    <div style="display:flex; gap:8px; margin-top:4px;">
+                        <button class="chip active" style="font-size:0.8rem; padding:6px 12px; flex:1; justify-content:center;" onclick="downloadHistoryBlob('${item.url}', '${item.fileName}')">
+                            ⬇️ تحميل مجدداً
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function downloadHistoryBlob(url, fileName) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName || 'automation_video.webm';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function clearLocalHistory() {
+            if (confirm('هل تريد مسح سجل الفيديوهات المحفوظة؟')) {
+                savedHistory = [];
+                try { localStorage.removeItem('automation_video_history'); } catch(e) {}
+                renderHistoryUI();
+                showToast('تم المسح', 'تم تفريغ السجل بنجاح.');
+            }
+        }
+
+        function shareVideoDetails() {
+            const prompt = document.getElementById('promptInput').value;
+            const brand = document.getElementById('brandInput').value || 'أوتوميشن الفيديو';
+            const contact = document.getElementById('contactInput').value;
+            const text = `🎬 سيناريو فيديو أوتوميشن:\nالنمط: ${getAutomationTypeName(currentAutomationType)}\nالعنوان: ${generatedScenes[0]?.title || ''}\nالبراند: ${brand}\nالوصف: ${prompt}\nالتواصل: ${contact}`;
+            
+            if (navigator.share) {
+                navigator.share({ title: brand, text }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast('تم النسخ', 'تم نسخ سيناريو الأوتوميشن للحافظة بنجاح.');
+                });
+            }
+        }
+
+        function switchPage(pageKey, btnElement) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+
+            document.getElementById(`page-${pageKey}`).classList.add('active');
+            if (btnElement) btnElement.classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (pageKey === 'generator') {
+                restartVideo();
+            } else {
+                pauseVideo();
+            }
+
+            if (pageKey === 'history') {
+                renderHistoryUI();
+            }
+        }
+
+        let toastTimeout = null;
+        function showToast(title, msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastTitle').innerText = title;
+            document.getElementById('toastMsg').innerText = msg;
+
+            toast.classList.add('show');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
