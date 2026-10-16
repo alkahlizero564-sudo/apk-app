@@ -56,6 +56,38 @@ jobs:
           npm install
           npx cap add android
           npx cap sync android
+          M=android/app/src/main/AndroidManifest.xml
+          for P in INTERNET ACCESS_NETWORK_STATE; do
+            grep -q "android.permission.$P" "$M" || sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.$P\" />\n</manifest>|" "$M"
+          done
+          echo "--- permissions ---"
+          grep "uses-permission" "$M"
+          if [ -f icon.png ]; then
+            echo "--- applying icon ---"
+            npm install --no-save sharp
+            cat > make-icon.js <<'EOF'
+          const sharp = require('sharp');
+          const fs = require('fs');
+          const path = require('path');
+          const res = 'android/app/src/main/res';
+          const sizes = { mdpi: 48, hdpi: 72, xhdpi: 96, xxhdpi: 144, xxxhdpi: 192 };
+          (async () => {
+            for (const d of Object.keys(sizes)) {
+              const s = sizes[d];
+              const dir = path.join(res, 'mipmap-' + d);
+              fs.mkdirSync(dir, { recursive: true });
+              const sq = await sharp('icon.png').resize(s, s, { fit: 'cover' }).png().toBuffer();
+              fs.writeFileSync(path.join(dir, 'ic_launcher.png'), sq);
+              const mask = Buffer.from('<svg width="' + s + '" height="' + s + '"><circle cx="' + (s / 2) + '" cy="' + (s / 2) + '" r="' + (s / 2) + '"/></svg>');
+              const rd = await sharp(sq).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer();
+              fs.writeFileSync(path.join(dir, 'ic_launcher_round.png'), rd);
+            }
+            fs.rmSync(path.join(res, 'mipmap-anydpi-v26'), { recursive: true, force: true });
+            console.log('icon done');
+          })();
+          EOF
+            node make-icon.js
+          fi
           cp "$GITHUB_WORKSPACE/keys/shared.keystore" android/app/shared.keystore
           cat >> android/app/build.gradle <<'EOF'
 
