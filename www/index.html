@@ -63,7 +63,7 @@ const MODELS={gemini:'gemini-3.8-flash',claude:'claude-sonnet-5-5'};
 const $=s=>document.querySelector(s);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const newApp=n=>({name:n,code:'',versions:[],err:'',apk:''});
+const newApp=n=>({name:n,code:'',versions:[],err:'',apk:'',icon:''});
 function slugOf(n){let s=String(n||'').toLowerCase().replace(/[^a-z0-9]/g,'');if(/^[0-9]/.test(s))s='a'+s;return s}
 function load(){try{const x=JSON.parse(localStorage.getItem('apkapp')||'null');if(x&&x.apps)return x}catch(e){}
   return {keys:{provider:'gemini',repo:'apk-app'},apps:[newApp('first'),newApp('second')]}}
@@ -77,16 +77,17 @@ function arErr(e){const m=String((e&&e.message)||e);
   return m}
 
 /* ---------- الواجهات ---------- */
-const FIELDS=[['ghToken','مفتاح GitHub (Token)','password','صلاحيات: repo + workflow'],['repo','اسم المستودع','text','apk-app'],['sbToken','مفتاح Supabase (Access Token)','password','يبدأ بـ sbp_'],['sbRef','Supabase project ref','text',''],['fbUrl','رابط Firebase (Realtime Database URL)','text','https://xxxx-default-rtdb.firebaseio.com'],['fbKey','مفتاح Firebase (Web API Key) - اختياري','password','يبدأ بـ AIza'],['gemini','مفتاح Gemini API','password',''],['claude','مفتاح Claude API','password','']];
+const FIELDS=[['ghToken','مفتاح GitHub (Token)','password','صلاحيات: repo + workflow'],['repo','اسم المستودع','text','apk-app'],['sbToken','مفتاح Supabase (Access Token)','password','يبدأ بـ sbp_'],['sbRef','Supabase project ref','text',''],['fbUrl','رابط Firebase (Realtime Database URL)','text','https://xxxx-default-rtdb.firebaseio.com'],['fbKey','مفتاح Firebase (Web API Key) - اختياري','password','يبدأ بـ AIza'],['gemini','مفتاح Gemini API','password',''],['claude','مفتاح Claude API','password',''],['orKey','مفتاح OpenRouter','password','يبدأ بـ sk-or-'],['orModel','اسم نموذج OpenRouter (انسخه من openrouter.ai/models)','text','مثال: openai/gpt-oss-120b:free'],['gqKey','مفتاح Groq','password','يبدأ بـ gsk_'],['gqModel','اسم نموذج Groq (اختياري)','text','openai/gpt-oss-120b']];
 function vKeys(){return `<div class="card"><h2>🔑 قائمة المفاتيح</h2>
 ${FIELDS.map(f=>`<label>${f[1]}</label><input type="${f[2]}" value="${esc(S.keys[f[0]]||'')}" placeholder="${f[3]}" autocomplete="off" oninput="S.keys['${f[0]}']=this.value.trim();save()">`).join('')}
 <label>الذكاء الاصطناعي المستخدم في التعديل</label>
-<select onchange="S.keys.provider=this.value;save()"><option value="gemini" ${S.keys.provider!=='claude'?'selected':''}>Gemini</option><option value="claude" ${S.keys.provider==='claude'?'selected':''}>Claude</option></select>
+<select onchange="S.keys.provider=this.value;save()">${[['gemini','Gemini'],['claude','Claude'],['openrouter','OpenRouter'],['groq','Groq']].map(p=>`<option value="${p[0]}" ${(S.keys.provider||'gemini')===p[0]?'selected':''}>${p[1]}</option>`).join('')}</select>
 <p class="note">تُحفظ المفاتيح تلقائياً داخل التطبيق على جهازك.</p></div>`}
 
 function vCode(){const card=i=>{const a=S.apps[i];return `<section class="card">
 <input class="name" value="${esc(a.name)}" placeholder="اسم التطبيق بالإنجليزية (مثل awad)" oninput="S.apps[${i}].name=this.value;save()">
 <p class="note">اسم التطبيق يصير اسم المجلد: حروف إنجليزية وأرقام فقط</p>
+<div class="row" style="align-items:center"><img id="ic${i}" src="${a.icon||'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='}" style="width:56px;height:56px;border-radius:14px;background:#0e1730;border:1px solid var(--line);object-fit:cover;flex:none"><button class="sec" onclick="document.getElementById('icf${i}').click()">🖼 ${a.icon?'تغيير الأيقونة':'اختر أيقونة'}</button><input type="file" accept="image/*" id="icf${i}" hidden onchange="pickIcon(${i},this)"></div>
 <button class="acc" style="width:100%;margin-top:8px" onclick="toggleDesc(${i})">✨ اكتب وصف التطبيق</button>
 <div class="desc" id="desc${i}" hidden>
 <textarea class="req" id="dsc${i}" placeholder="اكتب وصف التطبيق بكلمات بسيطة، مثال: تطبيق لتسجيل مصاريف البيت اليومية مع المجموع الشهري"></textarea>
@@ -127,7 +128,17 @@ window.addEventListener('message',e=>{if(!e.data||!e.data.apkErr)return;
 function restore(i,j){pushVersion(i);S.apps[i].code=S.apps[i].versions[j].code;save();render();toast('تم الرجوع للنسخة')}
 
 /* ---------- الذكاء الاصطناعي ---------- */
+const OAI={openrouter:{url:'https://openrouter.ai/api/v1/chat/completions',key:'orKey',model:'orModel',def:'',name:'OpenRouter'},groq:{url:'https://api.groq.com/openai/v1/chat/completions',key:'gqKey',model:'gqModel',def:'openai/gpt-oss-120b',name:'Groq'}};
 async function ai(prompt){const k=S.keys;
+  if(OAI[k.provider]){const c=OAI[k.provider];const key=k[c.key],model=k[c.model]||c.def;
+    if(!key)throw new Error('أدخل مفتاح '+c.name+' في قائمة المفاتيح');
+    if(!model)throw new Error('اكتب اسم النموذج في قائمة المفاتيح (انسخه من openrouter.ai/models واختر نموذجاً مجانياً ينتهي بـ :free)');
+    const r=await fetch(c.url,{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+key},body:JSON.stringify({model:model,messages:[{role:'user',content:prompt}],max_tokens:8000})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error((j.error&&(j.error.message||j.error))||('فشل الاتصال بـ '+c.name+' (خطأ '+r.status+')'));
+    const t=j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content;
+    if(!t)throw new Error('رد فارغ من '+c.name+'. جرّب نموذجاً آخر.');
+    return t}
   if(k.provider==='claude'){
     if(!k.claude)throw new Error('أدخل مفتاح Claude في قائمة المفاتيح');
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':k.claude,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:MODELS.claude,max_tokens:16000,messages:[{role:'user',content:prompt}]})});
@@ -227,6 +238,20 @@ const b64=s=>btoa(unescape(encodeURIComponent(s)));
 async function put(repo,branch,path,content){let sha;
   try{sha=(await gh('/repos/'+repo+'/contents/'+path+'?ref='+branch)).sha}catch(e){if(e.status!==404)throw e}
   await gh('/repos/'+repo+'/contents/'+path,{method:'PUT',body:JSON.stringify({message:'build: '+path,content:b64(content),branch:branch,sha:sha})})}
+async function putB64(repo,branch,path,data){let sha;
+  try{sha=(await gh('/repos/'+repo+'/contents/'+path+'?ref='+branch)).sha}catch(e){if(e.status!==404)throw e}
+  await gh('/repos/'+repo+'/contents/'+path,{method:'PUT',body:JSON.stringify({message:'icon: '+path,content:data,branch:branch,sha:sha})})}
+function pickIcon(i,inp){const f=inp.files&&inp.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{const im=new Image();
+    im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');
+      const m=Math.min(im.width,im.height),sx=(im.width-m)/2,sy=(im.height-m)/2;
+      x.drawImage(im,sx,sy,m,m,0,0,512,512);
+      try{S.apps[i].icon=c.toDataURL('image/png');save();$('#ic'+i).src=S.apps[i].icon;toast('تم اختيار الأيقونة ✔ تظهر بعد البناء')}
+      catch(e){S.apps[i].icon='';toast('الصورة كبيرة أو غير مدعومة، جرّب صورة ثانية')}};
+    im.onerror=()=>toast('تعذّر قراءة الصورة');
+    im.src=rd.result};
+  rd.readAsDataURL(f);inp.value=''}
 const pkg=n=>JSON.stringify({name:n,version:'1.0.0',private:true,dependencies:{'@capacitor/android':'^7.0.0','@capacitor/core':'^7.0.0'},devDependencies:{'@capacitor/cli':'^7.0.0'}},null,2);
 const cfg=(n,name)=>JSON.stringify({appId:'com.myapps.'+n,appName:name||n,webDir:'www'},null,2);
 const LOGS={};
@@ -247,6 +272,7 @@ async function build(i){const a=S.apps[i],key=slugOf(a.name);
     await put(repo,branch,dir+'/www/index.html',a.code);
     await put(repo,branch,dir+'/package.json',pkg(key));
     await put(repo,branch,dir+'/capacitor.config.json',cfg(key,a.name));
+    if(a.icon)await putB64(repo,branch,dir+'/icon.png',a.icon.split(',')[1]);
     P.set(1,'ok');
     step=2;P.set(2,'run');const t0=Date.now();
     for(let n=0;n<8;n++){try{await gh('/repos/'+repo+'/actions/workflows/build-app.yml/dispatches',{method:'POST',body:JSON.stringify({ref:branch,inputs:{app:key}})});break}
