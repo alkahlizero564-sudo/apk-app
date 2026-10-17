@@ -42,6 +42,28 @@ jobs:
             echo "icon missing, removing it from manifest"
             sed -i 's| android:icon="@mipmap/ic_launcher"||' app/src/main/AndroidManifest.xml
           fi
+      - name: Use shared keystore
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: |
+          cp "$GITHUB_WORKSPACE/keys/shared.keystore" app/shared.keystore
+          cat >> app/build.gradle <<'EOF'
+
+          android {
+              signingConfigs {
+                  shared {
+                      storeFile file("shared.keystore")
+                      storePassword "android123"
+                      keyAlias "shared"
+                      keyPassword "android123"
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.shared
+                  }
+              }
+          }
+          EOF
       - name: Build
         working-directory: ${{ steps.find.outputs.dir }}
         run: |
