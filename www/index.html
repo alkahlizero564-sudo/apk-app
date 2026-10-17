@@ -68,7 +68,11 @@ function slugOf(n){let s=String(n||'').toLowerCase().replace(/[^a-z0-9]/g,'');if
 function load(){try{const x=JSON.parse(localStorage.getItem('apkapp')||'null');if(x&&x.apps)return x}catch(e){}
   return {keys:{provider:'gemini',repo:'apk-app'},apps:[newApp('first'),newApp('second')]}}
 let S=load(),tab='keys';
-const save=()=>localStorage.setItem('apkapp',JSON.stringify(S));
+let _sv;
+function saveNow(){clearTimeout(_sv);try{localStorage.setItem('apkapp',JSON.stringify(S))}catch(e){toast('تعذّر الحفظ: المساحة ممتلئة. قلّل حجم الأكواد أو النسخ السابقة.')}}
+const save=()=>{clearTimeout(_sv);_sv=setTimeout(saveNow,600)};
+window.addEventListener('pagehide',saveNow);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)saveNow()});
 function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500)}
 function arErr(e){const m=String((e&&e.message)||e);
   if(/Failed to fetch|NetworkError|network|timeout/i.test(m))return 'تعذّر الاتصال. تأكد من الإنترنت.';
@@ -94,7 +98,7 @@ function vCode(){const card=i=>{const a=S.apps[i];return `<section class="card">
 <button class="acc" style="width:100%;margin-top:8px" onclick="aiCreate(${i},this)">🚀 أنشئ التطبيق وعاين</button>
 <p class="note">لو في كود قديم، يتحفظ في "النسخ السابقة" وتقدر ترجع له.</p>
 </div>
-<textarea class="code" id="code${i}" placeholder="الصق كود التطبيق هنا" oninput="S.apps[${i}].code=this.value;save()">${esc(a.code)}</textarea>
+<textarea class="code" id="code${i}" wrap="off" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="الصق كود التطبيق هنا" oninput="S.apps[${i}].code=this.value;save()">${esc(a.code)}</textarea>
 <iframe id="pv${i}" sandbox="allow-scripts allow-forms allow-modals"></iframe>
 <div class="row"><button onclick="preview(${i})">▶ المعاينة الفعلية</button><button class="sec" onclick="toggleEdit(${i})">✏️ تعديل الكود</button></div>
 <div class="edit" id="edit${i}" hidden>
@@ -112,13 +116,13 @@ function go(t){tab=t;render()}
 function render(){
   $('#main').innerHTML=tab==='keys'?vKeys():tab==='code'?vCode():vBuild();
   ['keys','code','build'].forEach(k=>$('#n-'+k).classList.toggle('on',k===tab));
-  if(tab==='code')S.apps.forEach((a,i)=>{if(a.code.trim())preview(i)});
+  if(tab==='code')S.apps.forEach((a,i)=>{if(a.code.trim()&&a.code.length<80000)preview(i)});
   window.scrollTo(0,0)}
 function toggleEdit(i){const e=$('#edit'+i);e.hidden=!e.hidden}
 
 /* ---------- المعاينة وتجميع الأخطاء ---------- */
 const CATCH='<scr'+'ipt>window.addEventListener("error",function(e){parent.postMessage({apkErr:e.message+" (سطر "+e.lineno+")"},"*")});window.addEventListener("unhandledrejection",function(e){parent.postMessage({apkErr:String(e.reason)},"*")});<\/scr'+'ipt>';
-function pushVersion(i){const a=S.apps[i];if(a.code.trim()&&(!a.versions[0]||a.versions[0].code!==a.code)){a.versions.unshift({t:new Date().toLocaleString('ar'),code:a.code});a.versions=a.versions.slice(0,20)}save()}
+function pushVersion(i){const a=S.apps[i];if(a.code.trim()&&(!a.versions[0]||a.versions[0].code!==a.code)){a.versions.unshift({t:new Date().toLocaleString('ar'),code:a.code});a.versions=a.versions.slice(0,8)}save()}
 function preview(i){const a=S.apps[i];pushVersion(i);a.err='';save();
   const el=$('#err'+i);if(el)el.textContent='';
   const f=$('#pv'+i);if(!f)return;
@@ -452,4 +456,4 @@ render=function(){
 render();
 </script>
 </body>
-</html> 
+  </html>
