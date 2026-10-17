@@ -34,7 +34,22 @@ jobs:
           fi
           echo "dir=$DIR" >> $GITHUB_OUTPUT
           echo "name=$(basename "$DIR")" >> $GITHUB_OUTPUT
+      - name: Detect type
+        id: type
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: |
+          if [ -f capacitor.config.json ] || [ -f capacitor.config.ts ]; then
+            echo "type=capacitor" >> $GITHUB_OUTPUT
+            echo "apk=android/app/build/outputs/apk/debug/app-debug.apk" >> $GITHUB_OUTPUT
+          elif [ -f gradlew ]; then
+            echo "type=kotlin" >> $GITHUB_OUTPUT
+            echo "apk=app/build/outputs/apk/debug/app-debug.apk" >> $GITHUB_OUTPUT
+          else
+            echo "Unknown project type"
+            exit 1
+          fi
       - name: Set unique appId
+        if: steps.type.outputs.type == 'capacitor'
         working-directory: ${{ steps.find.outputs.dir }}
         run: |
           ID=$(echo "${{ steps.find.outputs.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')
@@ -51,6 +66,7 @@ jobs:
             exit 1
           fi
       - name: Build
+        if: steps.type.outputs.type == 'capacitor'
         working-directory: ${{ steps.find.outputs.dir }}
         run: |
           npm install
@@ -110,7 +126,13 @@ jobs:
           cd android
           chmod +x gradlew
           ./gradlew assembleDebug
+      - name: Build Kotlin
+        if: steps.type.outputs.type == 'kotlin'
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.find.outputs.name }}-build-${{ github.run_number }}
-          files: ${{ steps.find.outputs.dir }}/android/app/build/outputs/apk/debug/app-debug.apk
+          files: ${{ steps.find.outputs.dir }}/${{ steps.type.outputs.apk }}
