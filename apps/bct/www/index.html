@@ -146,7 +146,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     </div>
 
     <div class="screen">
-      <!-- الفيديو موجود داخل الشاشة لضمان عدم توقف المتصفح عن رسم إطاراته -->
       <video id="srcVid" playsinline webkit-playsinline preload="auto"></video>
       <canvas id="cv" width="576" height="1024"></canvas>
       <video id="out" controls playsinline webkit-playsinline hidden></video>
@@ -168,21 +167,22 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
   </section>
 </main>
 
-<!-- نافذة الإعدادات -->
+<!-- نافذة الإعدادات مع اعتماد gemini-3.8-flash كخيار افتراضي -->
 <div id="settingsModal" class="modal-bg" hidden>
   <div class="modal-box">
     <h2>⚙ إعدادات الذكاء الاصطناعي</h2>
     <label>مفتاح Gemini API
       <input type="password" id="apiKeyInput" placeholder="AIzaSy..." autocomplete="off">
     </label>
-    <label>الموديل
-      <select id="modelInput">
-        <option value="gemini-2.5-flash">gemini-2.5-flash (موصى به وسريع)</option>
-        <option value="gemini-2.5-pro">gemini-2.5-pro (دقة عالية)</option>
-        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
-      </select>
+    <label>الموديل (الافتراضي: gemini-3.8-flash)
+      <input type="text" id="modelInput" list="modelsList" value="gemini-3.8-flash" dir="ltr">
+      <datalist id="modelsList">
+        <option value="gemini-3.8-flash">الأحدث والأسرع (الافتراضي)</option>
+        <option value="gemini-3.8-pro">دقة فائقة</option>
+        <option value="gemini-2.5-flash">الجيل السابق السريع</option>
+      </datalist>
     </label>
-    <p class="hint">يُحفظ المفتاح محلياً في جهازك فقط. يمكنك الحصول على مفتاح مجاني من موقع aistudio.google.com</p>
+    <p class="hint">يُحفظ المفتاح محلياً في متصفحك فقط. احصل عليه من aistudio.google.com</p>
     <div class="row">
       <button id="btnSaveSet" class="btn primary" type="button">حفظ وتفعيل</button>
       <button id="btnCloseSet" class="btn ghost" type="button">إغلاق</button>
@@ -202,15 +202,14 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
   let hasFrame = false;
   let ac = null, dest = null, srcNode = null;
   const memStore = {};
+  const DEFAULT_MODEL = 'gemini-3.8-flash';
 
-  // ألوان وتأثيرات الستايلات بدون الاعتماد على cx.filter الذي قد يسبب شاشة سوداء في بعض الهواتف
   const LOOKS = {
     dark:  { overlay: 'rgba(10, 6, 4, 0.28)', vig: 0.72, bars: false, txt: '#ffffff', em: '#ff3b3b' },
     light: { overlay: 'rgba(255, 255, 255, 0.12)', vig: 0.22, bars: true,  txt: '#ffffff', em: '#ff2a36' },
     blue:  { overlay: 'rgba(25, 55, 160, 0.32)', vig: 0.50, bars: false, txt: '#ffffff', em: '#7dffb0' }
   };
 
-  // تخزين آمن يعمل في كل البيئات
   function store(k, v) {
     try {
       if (v === undefined) return localStorage.getItem(k) || memStore[k] || '';
@@ -222,9 +221,10 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     }
   }
 
+  // اعتماد gemini-3.8-flash كموديل افتراضي دائماً
   function getModel() {
-    const m = store('gemini_model');
-    return (m && m !== 'gemini-3.8-flash') ? m : 'gemini-2.5-flash';
+    const m = store('gemini_model').trim();
+    return m || DEFAULT_MODEL;
   }
 
   function say(msg) {
@@ -252,7 +252,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     drawFrame();
   }
 
-  // رسم مستطيل بحواف دائرية متوافق مع كل المتصفحات القديمة والحديثة
   function fillRoundRect(ctx, x, y, w, h, r) {
     const rad = Math.min(r, w / 2, h / 2);
     ctx.beginPath();
@@ -265,7 +264,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     ctx.fill();
   }
 
-  // رسم الشاشة الافتراضية قبل رفع الفيديو
   function drawEmptyScreen(msg) {
     const W = cv.width, H = cv.height;
     cx.fillStyle = '#120e0c';
@@ -309,10 +307,10 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     const k = store('gemini_key');
     const c = $('btnSettings');
     if (k) {
-      c.textContent = '✓ Gemini جاهز (' + getModel() + ')';
+      c.textContent = '✓ جاهز · ' + getModel();
       c.classList.add('ok');
     } else {
-      c.textContent = '⚙ إعداد مفتاح API';
+      c.textContent = '⚙ إعداد مفتاح API (' + getModel() + ')';
       c.classList.remove('ok');
     }
   }
@@ -335,15 +333,15 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
 
   $('btnSaveSet').addEventListener('click', () => {
     const k = $('apiKeyInput').value.trim();
-    const m = $('modelInput').value;
+    const m = $('modelInput').value.trim() || DEFAULT_MODEL;
     store('gemini_key', k);
     store('gemini_model', m);
     updateChip();
     closeSettings();
-    say(k ? 'تم حفظ مفتاح API بنجاح!' : 'تم إزالة مفتاح API.');
+    say(k ? 'تم حفظ الإعدادات وتفعيل موديل ' + m : 'تم تحديث الموديل إلى ' + m + ' (بانتظار مفتاح API)');
   });
 
-  // ---------------- 3. اختيار وتحميل الفيديو (حل مشكلة الشاشة السوداء) ----------------
+  // ---------------- 3. اختيار وتحميل الفيديو ----------------
   $('btnPick').addEventListener('click', () => {
     $('fileInput').value = '';
     $('fileInput').click();
@@ -363,7 +361,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     vid.load();
   });
 
-  // عند قراءة أبعاد الفيديو ومدته
   vid.addEventListener('loadedmetadata', () => {
     const vw = vid.videoWidth || 576;
     const vh = vid.videoHeight || 1024;
@@ -382,7 +379,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     setView('live');
     renderCaps();
 
-    // خدعة مضمونة لإجبار جميع المتصفحات على فك تشفير الإطار الأول ورسمه فوراً
     vid.muted = true;
     const p = vid.play();
     if (p && p.then) {
@@ -393,7 +389,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
           vid.currentTime = 0.05;
           hasFrame = true;
           drawFrame();
-          say('تم تحميل الفيديو بنجاح! اضغط ▶ للتشغيل أو حلّله بالذكاء الاصطناعي.');
+          say('تم تحميل الفيديو بنجاح! اضغط ▶ للتشغيل أو حلّله عبر ' + getModel());
         }, 60);
       }).catch(() => {
         vid.muted = false;
@@ -405,16 +401,8 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     }
   });
 
-  vid.addEventListener('loadeddata', () => {
-    hasFrame = true;
-    drawFrame();
-  });
-
-  vid.addEventListener('seeked', () => {
-    hasFrame = true;
-    drawFrame();
-  });
-
+  vid.addEventListener('loadeddata', () => { hasFrame = true; drawFrame(); });
+  vid.addEventListener('seeked', () => { hasFrame = true; drawFrame(); });
   vid.addEventListener('timeupdate', () => {
     hasFrame = true;
     drawFrame();
@@ -430,7 +418,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     say('تعذر تشغيل هذا الفيديو. تأكد أنه بصيغة MP4 (H.264).');
   });
 
-  // تشغيل وإيقاف الفيديو
   $('btnPlay').addEventListener('click', async () => {
     if (!vid.src) return say('اختر فيديو من المعرض أولاً.');
     setView('live');
@@ -439,11 +426,10 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       if (vid.paused) await vid.play();
       else vid.pause();
     } catch (err) {
-      say('تعذر التشغيل التلقائي: ' + err.message);
+      say('تعذر التشغيل: ' + err.message);
     }
   });
 
-  // القفز عبر التايم لاين
   $('tl').addEventListener('click', e => {
     if (!vid.duration) return;
     const rect = $('tl').getBoundingClientRect();
@@ -465,9 +451,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       dest = ac.createMediaStreamDestination();
       srcNode.connect(dest);
       srcNode.connect(ac.destination);
-    } catch (e) {
-      console.warn('Audio routing notice:', e);
-    }
+    } catch (e) {}
   }
 
   // ---------------- 4. حلقة الرسم والتأثيرات ----------------
@@ -504,13 +488,11 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     } catch (e) {}
     cx.restore();
 
-    // طبقة اللون حسب الستايل المختار
     if (L.overlay) {
       cx.fillStyle = L.overlay;
       cx.fillRect(0, 0, W, H);
     }
 
-    // خطوط إضاءة خفيفة للستايل الفاتح
     if (L.bars) {
       for (let i = 0; i < 4; i++) {
         const g = cx.createLinearGradient(W * (i * 0.3 - 0.1), 0, W * (i * 0.3 + 0.05), 0);
@@ -522,14 +504,12 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       }
     }
 
-    // التظليل الدائري (Vignette)
     const vig = cx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.82);
     vig.addColorStop(0, 'rgba(0,0,0,0)');
     vig.addColorStop(1, 'rgba(0,0,0,' + L.vig + ')');
     cx.fillStyle = vig;
     cx.fillRect(0, 0, W, H);
 
-    // رسم الجملة الحالية إن وجدت
     if (activeCap) {
       drawCaption(activeCap, prog, L);
     }
@@ -609,7 +589,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     cx.restore();
   }
 
-  // ربط أدوات الستايل بالرسم الفوري
   document.querySelectorAll('input[name="look"], #fx, #tsize, #ty, #punch').forEach(el => {
     el.addEventListener('input', () => {
       $('tsizeVal').textContent = $('tsize').value;
@@ -648,7 +627,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         '<input type="number" step="0.1" title="وقت النهاية بالثواني">' +
         '<input type="text" placeholder="النص...">' +
         '<button type="button" title="حذف الجملة">×</button>' +
-        '<input class="em" type="text" placeholder="كلمات مميزة مفصولة بفاصلة (مثال: خطير، جداً)">';
+        '<input class="em" type="text" placeholder="كلمات مميزة مفصولة بفاصلة">';
 
       const sIn = row.children[0];
       const eIn = row.children[1];
@@ -693,24 +672,22 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     say('تمت إضافة جملة جديدة عند الثانية ' + now.toFixed(1));
   });
 
-  // زر إضافة جمل تجريبية لاختبار التأثيرات فوراً بدون مفتاح API
   $('btnDemoCaps').addEventListener('click', () => {
     if (!vid.src) return say('اختر فيديو من المعرض أولاً لتجربة الجمل عليه.');
     const dur = vid.duration || 10;
     caps = [
       { s: 0.1, e: Math.min(dur, 2.2), text: 'مرحباً بكم في استوديو مونتير', emph: ['مونتير'], fx: 'pop' },
-      { s: Math.min(dur - 0.5, 2.4), e: Math.min(dur, 4.8), text: 'مونتاج احترافي بالذكاء الاصطناعي', emph: ['احترافي'], fx: 'box' },
+      { s: Math.min(dur - 0.5, 2.4), e: Math.min(dur, 4.8), text: 'يعمل بأحدث نموذج Gemini 3.8 Flash', emph: ['3.8', 'Flash'], fx: 'box' },
       { s: Math.min(dur - 0.2, 5.0), e: Math.min(dur, 7.5), text: 'جاهز للنشر بجودة عالية', emph: ['عالية'], fx: 'glow' }
     ];
     renderCaps();
     vid.currentTime = 0.2;
     drawFrame();
-    // الانتقال لتبويب الجمل لرؤيتها
     document.querySelector('.tabs button[data-t="caps"]').click();
     say('تمت إضافة 3 جمل تجريبية! اضغط ▶ لمشاهدتها على الفيديو.');
   });
 
-  // ---------------- 6. التحليل بالذكاء الاصطناعي (Gemini API) ----------------
+  // ---------------- 6. التحليل عبر Gemini 3.8 Flash ----------------
   function parseSec(v) {
     if (typeof v === 'number') return v;
     const parts = String(v).split(':').map(Number);
@@ -729,8 +706,9 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       return say('حجم الفيديو أكبر من 18MB. يرجى اختيار فيديو أقصر أو مضغوط.');
     }
 
+    const activeModel = getModel();
     $('btnAnalyze').disabled = true;
-    say('⏳ جارٍ رفع وتحليل الفيديو بالذكاء الاصطناعي... قد يستغرق ذلك 30 إلى 60 ثانية.');
+    say('⏳ جارٍ تحليل الفيديو بواسطة ' + activeModel + ' ... قد يستغرق ذلك عدة ثوانٍ.');
 
     try {
       const b64 = await new Promise((resolve, reject) => {
@@ -747,7 +725,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         'Also pick one overall look matching the mood: dark, light, or blue. ' +
         'Return JSON only: {"look":"dark","captions":[{"s":0.0,"e":1.2,"text":"...","emph":["..."],"fx":"pop"}]}';
 
-      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + getModel() + ':generateContent', {
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(activeModel) + ':generateContent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
         body: JSON.stringify({
@@ -787,9 +765,9 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       renderCaps();
       drawFrame();
       document.querySelector('.tabs button[data-t="caps"]').click();
-      say('✅ تم استخراج ' + caps.length + ' جملة بنجاح! راجعها أو اضغط إنشاء الفيديو النهائي.');
+      say('✅ تم استخراج ' + caps.length + ' جملة عبر ' + activeModel + ' بنجاح!');
     } catch (err) {
-      say('❌ خطأ في التحليل: ' + err.message);
+      say('❌ خطأ في التحليل (' + activeModel + '): ' + err.message);
     } finally {
       $('btnAnalyze').disabled = false;
     }
@@ -872,7 +850,10 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     }
   });
 
-  // تهيئة التطبيق عند الفتح
+  // تهيئة التطبيق وضمان تعيين gemini-3.8-flash افتراضياً
+  if (!store('gemini_model')) {
+    store('gemini_model', DEFAULT_MODEL);
+  }
   updateChip();
   drawEmptyScreen();
   if (document.fonts && document.fonts.load) {
