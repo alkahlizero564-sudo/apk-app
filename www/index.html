@@ -313,7 +313,129 @@ async function fixBuild(i){closeSheet();toast('جاري إصلاح الكود...
   try{const out=await ai(SYS+'الكود الحالي:\n```html\n'+S.apps[i].code+'\n```\n\nفشل بناء التطبيق بهذا الخطأ:\n'+(LOGS[i]||'')+'\n\nأصلح الكود ليعمل ويُبنى بنجاح.');
     pushVersion(i);S.apps[i].code=clean(out);save();build(i)}catch(e){toast(arErr(e))}}
 
+/* ---------- Kotlin ---------- */
+function vBuild(){return `<div class="card"><h2>🏗️ قائمة البناء</h2><p class="note">بناء HTML عبر Capacitor، وبناء Kotlin كمشروع أندرويد أصلي يعرض تطبيقك.</p></div>`+
+S.apps.map((a,i)=>`<div class="card"><h2>${esc(a.name)}</h2><p class="note">المجلد: apps/${esc(slugOf(a.name)||'← اكتب اسماً إنجليزياً في قائمة الكود')}</p><div class="row"><button onclick="build(${i})">بناء HTML</button><button class="acc" onclick="buildKotlin(${i})">بناء Kotlin</button></div>${a.apk?`<a class="btn acc" style="margin-top:8px" href="${esc(a.apk)}" target="_blank">⬇ آخر APK (HTML)</a>`:''}${a.apkKt?`<a class="btn" style="margin-top:8px;background:#243557" href="${esc(a.apkKt)}" target="_blank">⬇ آخر APK (Kotlin)</a>`:''}</div>`).join('')}
+
+async function buildKotlin(i){const a=S.apps[i],key=slugOf(a.name);
+  if(!key)return toast('اكتب اسم التطبيق بالإنجليزية (حروف وأرقام فقط)');
+  if(S.apps.some((x,j)=>j!==i&&slugOf(x.name)===key))return toast('هذا الاسم مستخدم للتطبيق الآخر، غيّره');
+  if(!a.code.trim())return toast('اكتب الكود أولاً');
+  if(!S.keys.ghToken)return toast('أدخل مفتاح GitHub في قائمة المفاتيح');
+  const P=progress('Kotlin: '+a.name,['التحقق من المستودع','رفع مشروع Kotlin إلى apps/'+key,'تشغيل البناء','جاري بناء ملف APK','تجهيز ملف التحميل']);
+  let step=0;
+  try{
+    P.set(0,'run');const repo=await repoFull();const info=await gh('/repos/'+repo);const branch=info.default_branch||'main';
+    try{await gh('/repos/'+repo+'/contents/.github/workflows/build-kotlin.yml?ref='+branch)}catch(e){if(e.status===404)throw new Error('ملف build-kotlin.yml غير موجود في .github/workflows');throw e}
+    P.set(0,'ok','المستودع: '+repo);
+    step=1;P.set(1,'run');
+    const d='apps/'+key,pk='com.myapps.k'+key,nm=String(a.name).replace(/[&<>"]/g,'');
+    const files={
+      'settings.gradle':`pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
+dependencyResolutionManagement { repositories { google(); mavenCentral() } }
+rootProject.name = '${key}'
+include ':app'
+`,
+      'build.gradle':`plugins {
+  id 'com.android.application' version '8.5.2' apply false
+  id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+}
+`,
+      'gradle.properties':`org.gradle.jvmargs=-Xmx2g
+android.useAndroidX=true
+`,
+      'app/build.gradle':`plugins {
+  id 'com.android.application'
+  id 'org.jetbrains.kotlin.android'
+}
+android {
+  namespace '${pk}'
+  compileSdk 34
+  defaultConfig {
+    applicationId '${pk}'
+    minSdk 24
+    targetSdk 34
+    versionCode 1
+    versionName '1.0'
+  }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+  kotlinOptions { jvmTarget = '17' }
+}
+`,
+      'app/src/main/AndroidManifest.xml':`<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<uses-permission android:name="android.permission.INTERNET"/>
+<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+<application android:label="${nm}"${a.icon?' android:icon="@mipmap/ic_launcher"':''} android:usesCleartextTraffic="true" android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+<activity android:name=".MainActivity" android:exported="true">
+<intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
+</activity>
+</application>
+</manifest>
+`,
+      'app/src/main/assets/index.html':a.code
+    };
+    files['app/src/main/java/'+pk.replace(/\./g,'/')+'/MainActivity.kt']=`package ${pk}
+
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.os.Bundle
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
+
+class MainActivity : Activity() {
+    private lateinit var web: WebView
+
+    @SuppressLint("SetJavaScriptEnabled")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        web = WebView(this)
+        web.settings.javaScriptEnabled = true
+        web.settings.domStorageEnabled = true
+        web.webViewClient = WebViewClient()
+        web.webChromeClient = WebChromeClient()
+        setContentView(web)
+        web.loadUrl("file:///android_asset/index.html")
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (web.canGoBack()) web.goBack() else super.onBackPressed()
+    }
+}
+`;
+    for(const p in files)await put(repo,branch,d+'/'+p,files[p]);
+    if(a.icon)await putB64(repo,branch,d+'/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',a.icon.split(',')[1]);
+    P.set(1,'ok');
+    step=2;P.set(2,'run');const t0=Date.now();
+    for(let n=0;n<8;n++){try{await gh('/repos/'+repo+'/actions/workflows/build-kotlin.yml/dispatches',{method:'POST',body:JSON.stringify({ref:branch,inputs:{app:key}})});break}
+      catch(e){if((e.status===404||e.status===422)&&n<7){P.set(2,'run','بانتظار تجهيز خطوات البناء...');await sleep(4000)}else throw e}}
+    P.set(2,'ok');step=3;P.set(3,'run','بانتظار الخادم...');
+    let run=null;const lim=Date.now()+30*60000;
+    while(Date.now()<lim){await sleep(6000);
+      const rs=await gh('/repos/'+repo+'/actions/workflows/build-kotlin.yml/runs?event=workflow_dispatch&per_page=5');
+      run=rs.workflow_runs.find(x=>new Date(x.created_at).getTime()>=t0-30000)||null;
+      if(run){P.set(3,'run',run.status==='completed'?'انتهى':'جاري البناء... (قد يستغرق 4-8 دقائق)');if(run.status==='completed')break}}
+    if(!run||run.status!=='completed')throw new Error('انتهى وقت الانتظار. حاول مرة أخرى.');
+    if(run.conclusion!=='success'){
+      const jobs=await gh('/repos/'+repo+'/actions/runs/'+run.id+'/jobs');
+      const job=jobs.jobs.find(j=>j.conclusion==='failure')||jobs.jobs[0];
+      const fs=(job.steps||[]).find(s=>s.conclusion==='failure');
+      let log='';try{log=(await ghText('/repos/'+repo+'/actions/jobs/'+job.id+'/logs')).slice(-1500)}catch(e){}
+      P.set(3,'bad','فشل البناء'+(fs?' في خطوة: '+fs.name:''));
+      P.extra('<div class="errbox" style="direction:ltr;text-align:left">'+esc(log)+'</div>');return}
+    P.set(3,'ok');step=4;P.set(4,'run');
+    const tag='kotlin-'+key+'-build-'+run.run_number;let asset=null;
+    for(let n=0;n<8&&!asset;n++){try{const rel=await gh('/repos/'+repo+'/releases/tags/'+tag);asset=(rel.assets||[]).find(x=>/\.apk$/.test(x.name))}catch(e){}if(!asset)await sleep(3000)}
+    if(!asset)throw new Error('تم البناء لكن لم أجد ملف APK.');
+    a.apkKt=asset.browser_download_url;save();P.set(4,'ok');
+    P.extra('<a class="btn acc" style="margin-top:10px" href="'+esc(a.apkKt)+'" target="_blank">⬇ تحميل APK</a>');
+  }catch(e){P.set(step,'bad',arErr(e))}}
+
 render();
 </script>
 </body>
-</html>
+</html> 
