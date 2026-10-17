@@ -1,0 +1,1861 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>موشن كرافت AI | MotionCraft Studio</title>
+    <style>
+        :root {
+            --bg-base: #0a0e17;
+            --bg-card: #131a29;
+            --bg-surface: #1e283d;
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --accent: #06b6d4;
+            --accent-hot: #f43f5e;
+            --amber: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #2e3b55;
+            --radius-lg: 18px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --brand-primary: #6366f1;
+            --brand-secondary: #06b6d4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background: rgba(19, 26, 41, 0.95);
+            backdrop-filter: blur(12px);
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand-icon {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .brand-title {
+            font-size: 1.15rem;
+            font-weight: 800;
+            background: linear-gradient(to left, #fff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-sub {
+            font-size: 0.65rem;
+            color: var(--accent);
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        main {
+            flex: 1;
+            padding: 16px;
+            padding-bottom: 95px;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .tab-view {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-view.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-main);
+        }
+
+        .btn {
+            background: var(--bg-surface);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 14px 18px;
+            border-radius: var(--radius-md);
+            font-size: 0.95rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 100%;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            border: none;
+            box-shadow: 0 4px 18px var(--primary-glow);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent), #0891b2);
+            color: #042f2e;
+            border: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            border: none;
+            color: #fff;
+            box-shadow: 0 4px 18px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-sm {
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            width: auto;
+            border-radius: var(--radius-sm);
+        }
+
+        .input-group {
+            margin-bottom: 14px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        textarea, input[type="text"], select {
+            width: 100%;
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea:focus, input[type="text"]:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-glow);
+        }
+
+        .presets-scroller {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            margin-bottom: 14px;
+            scrollbar-width: none;
+        }
+
+        .presets-scroller::-webkit-scrollbar { display: none; }
+
+        .preset-chip {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 0.78rem;
+            white-space: nowrap;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .preset-chip:active, .preset-chip.active {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+        .style-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .style-card {
+            background: var(--bg-surface);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .style-card.selected {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.15);
+        }
+
+        .style-icon {
+            font-size: 1.6rem;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .style-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+
+        .style-desc {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .player-wrapper {
+            position: relative;
+            background: #000;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            margin-bottom: 12px;
+        }
+
+        .player-wrapper.ratio-9-16 {
+            height: 480px;
+            width: 270px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .player-wrapper.ratio-16-9 {
+            width: 100%;
+            height: 220px;
+        }
+
+        .player-wrapper.ratio-1-1 {
+            width: 100%;
+            max-width: 320px;
+            height: 320px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .ratio-selector {
+            display: flex;
+            gap: 6px;
+            background: var(--bg-surface);
+            padding: 4px;
+            border-radius: var(--radius-md);
+            margin-bottom: 12px;
+        }
+
+        .ratio-btn {
+            flex: 1;
+            padding: 8px 4px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 700;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+
+        .ratio-btn.active {
+            background: var(--bg-card);
+            color: var(--text-main);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 10px 14px;
+            margin-bottom: 16px;
+        }
+
+        .play-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: none;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .timeline-bar {
+            flex: 1;
+            height: 8px;
+            background: var(--bg-surface);
+            border-radius: 4px;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+        }
+
+        .timeline-progress {
+            position: absolute;
+            top: 0;
+            right: 0;
+            height: 100%;
+            background: linear-gradient(to left, var(--accent), var(--primary));
+            width: 0%;
+            transition: width 0.05s linear;
+        }
+
+        .time-display {
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-muted);
+            min-width: 48px;
+            text-align: left;
+        }
+
+        .scenes-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .scene-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+        }
+
+        .scene-card.current {
+            border-color: var(--accent);
+            background: rgba(6, 182, 212, 0.08);
+        }
+
+        .scene-number {
+            width: 28px;
+            height: 28px;
+            background: var(--bg-card);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 800;
+            color: var(--accent);
+            flex-shrink: 0;
+        }
+
+        .scene-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .scene-headline {
+            font-size: 0.85rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .scene-meta {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            display: flex;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        .color-picker-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .color-box {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-surface);
+            padding: 8px 12px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+        }
+
+        .color-input {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(19, 26, 41, 0.96);
+            backdrop-filter: blur(16px);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 12px;
+            z-index: 100;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+            transition: all 0.2s;
+        }
+
+        .nav-item.active {
+            color: var(--accent);
+            background: rgba(6, 182, 212, 0.12);
+        }
+
+        .nav-icon {
+            font-size: 1.3rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%) translateY(50px);
+            background: #1e293b;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 30px;
+            border: 1px solid var(--border);
+            font-size: 0.85rem;
+            font-weight: 600;
+            opacity: 0;
+            pointer-events: none;
+            transition: 0.3s;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            z-index: 10000;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .toggle-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .toggle-sub {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            transition: .3s;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: .3s;
+        }
+
+        input:checked + .slider {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(18px);
+        }
+
+        .badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 700;
+            background: rgba(255,255,255,0.1);
+        }
+        .badge.accent { background: rgba(6,182,212,0.2); color: var(--accent); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand-badge">
+            <div class="brand-icon">🎬</div>
+            <div>
+                <div class="brand-title">موشن كرافت AI</div>
+                <div class="brand-sub">استوديو الموشن جرافيك والأتمتة السينمائية</div>
+            </div>
+        </div>
+        <button class="btn btn-sm btn-primary" id="quickRenderBtn" onclick="generateFromScript()">توليد فوري ⚡</button>
+    </header>
+
+    <main>
+        <section id="tab-create" class="tab-view active">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">📝 اكتب فكرتك أو السكريبت الإعلاني</span>
+                    <span class="badge accent">Text-to-Motion</span>
+                </div>
+
+                <label>أفكار سريعة بنقرة واحدة:</label>
+                <div class="presets-scroller">
+                    <span class="preset-chip" onclick="applyPreset('fintech')">📈 إعلان تطبيق استثمار ومالية</span>
+                    <span class="preset-chip" onclick="applyPreset('ecommerce')">🛍️ عرض خصومات متجر إلكتروني</span>
+                    <span class="preset-chip" onclick="applyPreset('whiteboard')">✍️ شرح تعليمي وايت بورد</span>
+                    <span class="preset-chip" onclick="applyPreset('typography')">⚡ تحفيز نصوص حركية ثلاثية</span>
+                </div>
+
+                <div class="input-group">
+                    <textarea id="scriptInput" rows="5" placeholder="اكتب فكرتك هنا...">ودّع ساعات المونتاج الطويلة!
+تطبيق موشن كرافت يصنع لك فيديوهات سينمائية بضغطة زر واحدة.
+نمو أرباحك بنسبة 250% يبدأ من هنا.
+جرّب الآن مجاناً ولا تفوت الفرصة! 🚀</textarea>
+                </div>
+
+                <div class="input-group">
+                    <label>نوع ونمط الموشن جرافيك (Motion Style):</label>
+                    <div class="style-grid">
+                        <div class="style-card selected" data-style="3d" onclick="setStyle('3d', this)">
+                            <span class="style-icon">🔮</span>
+                            <div class="style-title">موشن 3D & 2D ديناميكي</div>
+                            <div class="style-desc">أشكال مجسمة، تدرجات عصرية، وعناصر حيوية</div>
+                        </div>
+                        <div class="style-card" data-style="kinetic" onclick="setStyle('kinetic', this)">
+                            <span class="style-icon">💥</span>
+                            <div class="style-title">نصوص حركية (Typography)</div>
+                            <div class="style-desc">كلمات عملاقة متزامنة، إيقاع سريع وجريء</div>
+                        </div>
+                        <div class="style-card" data-style="infographic" onclick="setStyle('infographic', this)">
+                            <span class="style-icon">📊</span>
+                            <div class="style-title">إنفوجرافيك متحرك</div>
+                            <div class="style-desc">مخططات بيانية، أرقام متصاعدة، وإحصائيات</div>
+                        </div>
+                        <div class="style-card" data-style="whiteboard" onclick="setStyle('whiteboard', this)">
+                            <span class="style-icon">✏️</span>
+                            <div class="style-title">وايت بورد (Whiteboard)</div>
+                            <div class="style-desc">رسم يدوي متدرج وتوضيحات سبورة تفاعلية</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px;">
+                    <div class="toggle-row">
+                        <div>
+                            <div class="toggle-label">توليد اللقطات التكميلية (Auto B-Roll)</div>
+                            <div class="toggle-sub">إضافة مؤثرات بصرية وخلفيات متغيرة مع الكلمات المفتاحية</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="brollToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div>
+                            <div class="toggle-label">هندسة صوتية متزامنة (Synced Audio FX)</div>
+                            <div class="toggle-sub">مؤثرات الانتقال، ووش (Whoosh)، ونغمات إيقاعية</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="audioFxToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="toggle-row">
+                        <div>
+                            <div class="toggle-label">تعليق صوتي ذكي (AI Voiceover)</div>
+                            <div class="toggle-sub">قراءة آلية بالعربية متزامنة مع المشاهد</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="voiceToggle" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="generateFromScript()">
+                    <span>🚀 تحليل النص وصناعة الموشن جرافيك</span>
+                </button>
+            </div>
+        </section>
+
+        <section id="tab-studio" class="tab-view">
+            <div class="ratio-selector">
+                <button class="ratio-btn active" onclick="setRatio('9:16', this)">📱 عمودي (9:16) تيك توك وريلز</button>
+                <button class="ratio-btn" onclick="setRatio('16:9', this)">💻 أفقي (16:9) يوتيوب</button>
+                <button class="ratio-btn" onclick="setRatio('1:1', this)">🟦 مربع (1:1)</button>
+            </div>
+
+            <div class="player-wrapper ratio-9-16" id="playerContainer">
+                <canvas id="motionCanvas" width="1080" height="1920"></canvas>
+            </div>
+
+            <div class="playback-controls">
+                <button class="play-btn" id="masterPlayBtn" onclick="togglePlay()">▶</button>
+                <div class="timeline-bar" onclick="seekTimeline(event)">
+                    <div class="timeline-progress" id="playbackProgress"></div>
+                </div>
+                <div class="time-display" id="timeLabel">00:00</div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">🎞️ مشاهد الموشن التلقائية المُولّدة (<span id="sceneCount">0</span>)</span>
+                    <button class="btn btn-sm btn-accent" onclick="exportVideoSimulated()">تصدير سينمائي 4K 📥</button>
+                </div>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button class="btn btn-success" onclick="saveToGallery('video')">
+                        <span>📲 حفظ الفيديو في المعرض</span>
+                    </button>
+                    <button class="btn btn-sm btn-accent" onclick="saveToGallery('image')" style="white-space: nowrap;">
+                        🖼️ حفظ اللقطة
+                    </button>
+                </div>
+                <div class="scenes-list" id="scenesContainer"></div>
+            </div>
+        </section>
+
+        <section id="tab-brand" class="tab-view">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">🎨 هوية العلامة التجارية (Brand Kit)</span>
+                    <span class="badge accent">تخصيص تلقائي</span>
+                </div>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;">
+                    يتم تطبيق هذه الإعدادات وألوان علامتك تلقائياً على كل فيديوهات الموشن والعناصر البصرية.
+                </p>
+
+                <div class="input-group">
+                    <label>اسم العلامة التجارية / الحساب:</label>
+                    <input type="text" id="brandNameInput" value="علامتك التجارية" oninput="saveBrandKit()">
+                </div>
+
+                <div class="input-group">
+                    <label>ألوان علامتك التجارية:</label>
+                    <div class="color-picker-row">
+                        <div class="color-box">
+                            <input type="color" id="brandColor1" value="#6366f1" class="color-input" onchange="saveBrandKit()">
+                            <div>
+                                <div style="font-size: 0.75rem; font-weight:700;">اللون الأساسي</div>
+                                <div style="font-size: 0.65rem; color:var(--text-muted);" id="color1Hex">#6366f1</div>
+                            </div>
+                        </div>
+                        <div class="color-box">
+                            <input type="color" id="brandColor2" value="#06b6d4" class="color-input" onchange="saveBrandKit()">
+                            <div>
+                                <div style="font-size: 0.75rem; font-weight:700;">اللون الثانوي</div>
+                                <div style="font-size: 0.65rem; color:var(--text-muted);" id="color2Hex">#06b6d4</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>شعار العلامة (رمز تعبيري أو مونوغرام):</label>
+                    <input type="text" id="brandLogoInput" value="🚀" maxlength="4" oninput="saveBrandKit()">
+                </div>
+
+                <div class="toggle-row">
+                    <div>
+                        <div class="toggle-label">إظهار العلامة المائية للشعار بالفيديو</div>
+                        <div class="toggle-sub">عرض الشعار بزاوية الفيديو طوال المشاهد</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="brandWatermarkToggle" checked onchange="saveBrandKit()">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <button class="btn btn-primary" style="margin-top: 14px;" onclick="saveBrandKit(true)">
+                    حفظ إعدادات الهوية البصرية 💾
+                </button>
+            </div>
+        </section>
+
+        <section id="tab-projects" class="tab-view">
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">📁 مكتبة الفيديوهات والمشاريع</span>
+                    <button class="btn btn-sm btn-primary" onclick="switchTab('create')">+ مشروع جديد</button>
+                </div>
+                <div id="projectsList" style="display:flex; flex-direction:column; gap:10px;"></div>
+            </div>
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <button class="nav-item active" onclick="switchTab('create')">
+            <span class="nav-icon">✨</span>
+            <span>الإنشاء الذكي</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('studio')">
+            <span class="nav-icon">🎬</span>
+            <span>الاستوديو والعرض</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('brand')">
+            <span class="nav-icon">🎨</span>
+            <span>الهوية البصرية</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('projects')">
+            <span class="nav-icon">📁</span>
+            <span>مشاريعي</span>
+        </button>
+    </nav>
+
+    <div class="toast" id="toastMessage">تم الحفظ بنجاح!</div>
+
+    <script>
+        const state = {
+            activeTab: 'create',
+            motionStyle: '3d',
+            aspectRatio: '9:16',
+            isPlaying: false,
+            currentTime: 0,
+            totalDuration: 0,
+            scenes: [],
+            currentSceneIndex: 0,
+            brand: {
+                name: 'علامتك التجارية',
+                color1: '#6366f1',
+                color2: '#06b6d4',
+                logo: '🚀',
+                watermark: true
+            },
+            audioCtx: null,
+            speechSynth: window.speechSynthesis || null,
+            lastFrameTime: 0,
+            isRecording: false
+        };
+
+        const PRESETS = {
+            fintech: {
+                script: "هل تبحث عن استثمار آمن ومضمون؟\nحققت محفظتنا الذكية عائداً بنسبة 45% لعملائنا.\nتقارير أداء فورية وتداول ذكي بالذكاء الاصطناعي.\nابدأ رحلتك المالية اليوم وضاعف مدخراتك!",
+                style: "infographic"
+            },
+            ecommerce: {
+                script: "أقوى عروض الموسم وصلت أخيراً!\nخصم استثنائي 50% على جميع المنتجات الحصرية.\nشحن سريع ومجاني حتى باب منزلك.\nاطلب الآن قبل نفاد الكميات المحدودة! 🛍️",
+                style: "kinetic"
+            },
+            whiteboard: {
+                script: "كيف يعمل التعلم الآلي والذكاء الاصطناعي؟\nالخطوة الأولى: جمع وتحليل ملايين البيانات بدقة.\nالخطوة الثانية: تدريب النماذج للتعرف على الأنماط.\nالنتيجة: قرارات فائقة السرعة تسهل حياتك اليومية!",
+                style: "whiteboard"
+            },
+            typography: {
+                script: "لا تنتظر الفرصة بل اصنعها بنفسك!\nالنجاح لا يأتي بالصدفة بل بالإصرار والعمل.\nحوّل كل فكرة إلى إنجاز تاريخي مبهر.\nأنت بطل قصتك، انطلق اليوم ولا تتردد! ⚡",
+                style: "3d"
+            }
+        };
+
+        const canvas = document.getElementById('motionCanvas');
+        const ctx = canvas.getContext('2d');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadBrandKit();
+            loadProjects();
+            generateFromScript();
+            setupCanvasSize();
+            requestAnimationFrame(renderLoop);
+        });
+
+        function switchTab(tabId) {
+            state.activeTab = tabId;
+            document.querySelectorAll('.tab-view').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            
+            const selectedView = document.getElementById(`tab-${tabId}`);
+            if (selectedView) selectedView.classList.add('active');
+
+            const tabOrder = ['create', 'studio', 'brand', 'projects'];
+            const navButtons = document.querySelectorAll('.nav-item');
+            const idx = tabOrder.indexOf(tabId);
+            if (idx !== -1 && navButtons[idx]) {
+                navButtons[idx].classList.add('active');
+            }
+
+            if (tabId === 'studio') {
+                setupCanvasSize();
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toastMessage');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function applyPreset(presetKey) {
+            const data = PRESETS[presetKey];
+            if (!data) return;
+            document.getElementById('scriptInput').value = data.script;
+            setStyle(data.style, document.querySelector(`[data-style="${data.style}"]`));
+            showToast('تم تطبيق النموذج بنجاح!');
+        }
+
+        function setStyle(styleKey, el) {
+            state.motionStyle = styleKey;
+            document.querySelectorAll('.style-card').forEach(c => c.classList.remove('selected'));
+            if (el) el.classList.add('selected');
+        }
+
+        function setRatio(ratio, el) {
+            state.aspectRatio = ratio;
+            document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+            if (el) el.classList.add('active');
+
+            const container = document.getElementById('playerContainer');
+            container.className = 'player-wrapper';
+            if (ratio === '9:16') {
+                container.classList.add('ratio-9-16');
+                canvas.width = 1080;
+                canvas.height = 1920;
+            } else if (ratio === '16:9') {
+                container.classList.add('ratio-16-9');
+                canvas.width = 1920;
+                canvas.height = 1080;
+            } else {
+                container.classList.add('ratio-1-1');
+                canvas.width = 1080;
+                canvas.height = 1080;
+            }
+            showToast(`تم التغيير إلى المقاس ${ratio}`);
+        }
+
+        function setupCanvasSize() {
+            if (state.aspectRatio === '9:16') {
+                canvas.width = 1080; canvas.height = 1920;
+            } else if (state.aspectRatio === '16:9') {
+                canvas.width = 1920; canvas.height = 1080;
+            } else {
+                canvas.width = 1080; canvas.height = 1080;
+            }
+        }
+
+        function generateFromScript() {
+            const rawText = document.getElementById('scriptInput').value.trim();
+            if (!rawText) {
+                showToast('يرجى كتابة نص أو فكرة أولاً');
+                return;
+            }
+
+            const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            const generatedScenes = [];
+            let cumulativeTime = 0;
+
+            lines.forEach((line, index) => {
+                const duration = Math.max(2.8, Math.min(5.5, line.split(' ').length * 0.75));
+                let icon = '✨';
+                let statValue = null;
+                const lower = line.toLowerCase();
+
+                if (/خصم|عرض|تخفيض|مبيعات|تسوق|متجر/.test(lower)) icon = '🛍️';
+                else if (/ربح|أرباح|نمو|مضاعفة|استثمار|مالية|\%|[0-9]/.test(lower)) {
+                    icon = '📈';
+                    const numMatch = line.match(/\d+/);
+                    statValue = numMatch ? parseInt(numMatch[0]) : 85;
+                }
+                else if (/سرعة|سريع|دقائق|ثواني|فوري|الآن/.test(lower)) icon = '⚡';
+                else if (/فكرة|ذكاء|اصطناعي|تقنية|برنامج|تطبيق/.test(lower)) icon = '🤖';
+                else if (/هدف|نجاح|قمة|انطلق|بطل/.test(lower)) icon = '🎯';
+                else if (/سؤال|هل|كيف|لماذا/.test(lower)) icon = '💡';
+
+                generatedScenes.push({
+                    id: 'scene_' + (index + 1),
+                    text: line,
+                    duration: duration,
+                    startTime: cumulativeTime,
+                    endTime: cumulativeTime + duration,
+                    icon: icon,
+                    statValue: statValue,
+                    style: state.motionStyle,
+                    brollType: (index % 3 === 0) ? 'particles' : (index % 3 === 1 ? 'waves' : 'grid')
+                });
+
+                cumulativeTime += duration;
+            });
+
+            state.scenes = generatedScenes;
+            state.totalDuration = cumulativeTime;
+            state.currentTime = 0;
+            state.currentSceneIndex = 0;
+
+            renderScenesList();
+            saveProjectToStorage(rawText);
+            switchTab('studio');
+            playAudioFX('ding');
+            showToast('تم توليد الموشن جرافيك بنجاح! 🚀');
+        }
+
+        function renderScenesList() {
+            const container = document.getElementById('scenesContainer');
+            document.getElementById('sceneCount').textContent = state.scenes.length;
+            container.innerHTML = '';
+
+            state.scenes.forEach((sc, i) => {
+                const el = document.createElement('div');
+                el.className = `scene-card ${i === state.currentSceneIndex ? 'current' : ''}`;
+                el.id = `sc-item-${i}`;
+                el.onclick = () => {
+                    seekTo(sc.startTime);
+                };
+                el.innerHTML = `
+                    <div class="scene-number">${i + 1}</div>
+                    <div class="scene-info">
+                        <div class="scene-headline">${sc.icon} ${escapeHTML(sc.text)}</div>
+                        <div class="scene-meta">
+                            <span>⏱️ ${sc.duration.toFixed(1)} ث</span>
+                            <span>🎨 ${getStyleName(sc.style)}</span>
+                            <span>🌊 B-Roll: ${sc.brollType}</span>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function getStyleName(st) {
+            const map = { '3d': '3D مجسم', 'kinetic': 'نصوص حركية', 'infographic': 'إنفوجرافيك', 'whiteboard': 'وايت بورد' };
+            return map[st] || st;
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag] || tag));
+        }
+
+        function initAudioContext() {
+            if (!state.audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                state.audioCtx = new AudioContext();
+            }
+            if (state.audioCtx.state === 'suspended') {
+                state.audioCtx.resume();
+            }
+        }
+
+        function playAudioFX(type) {
+            if (!document.getElementById('audioFxToggle').checked) return;
+            try {
+                initAudioContext();
+                const now = state.audioCtx.currentTime;
+                const osc = state.audioCtx.createOscillator();
+                const gain = state.audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(state.audioCtx.destination);
+
+                if (type === 'whoosh') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.exponentialRampToValueAtTime(800, now + 0.18);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+                    osc.start(now);
+                    osc.stop(now + 0.22);
+                } else if (type === 'pop') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(500, now);
+                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.08);
+                    gain.gain.setValueAtTime(0.4, now);
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+                    osc.start(now);
+                    osc.stop(now + 0.1);
+                } else if (type === 'ding') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(987.77, now);
+                    gain.gain.setValueAtTime(0.3, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+                    osc.start(now);
+                    osc.stop(now + 0.4);
+                }
+            } catch(e) {}
+        }
+
+        function speakSceneText(text) {
+            if (!document.getElementById('voiceToggle').checked) return;
+            if (!('speechSynthesis' in window)) return;
+            try {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'ar-SA';
+                utterance.rate = 1.05;
+                window.speechSynthesis.speak(utterance);
+            } catch(e) {}
+        }
+
+        function togglePlay() {
+            initAudioContext();
+            state.isPlaying = !state.isPlaying;
+            document.getElementById('masterPlayBtn').innerHTML = state.isPlaying ? '⏸' : '▶';
+            
+            if (state.isPlaying) {
+                if (state.currentTime >= state.totalDuration) {
+                    state.currentTime = 0;
+                }
+                playAudioFX('pop');
+                speakCurrentScene();
+            } else {
+                if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            }
+        }
+
+        function seekTimeline(e) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const clickPos = (rect.right - e.clientX) / rect.width;
+            seekTo(clickPos * state.totalDuration);
+        }
+
+        function seekTo(sec) {
+            state.currentTime = Math.max(0, Math.min(sec, state.totalDuration));
+            updateActiveSceneIndex();
+            updateUIProgress();
+        }
+
+        function updateActiveSceneIndex() {
+            let foundIdx = 0;
+            for (let i = 0; i < state.scenes.length; i++) {
+                if (state.currentTime >= state.scenes[i].startTime && state.currentTime < state.scenes[i].endTime) {
+                    foundIdx = i;
+                    break;
+                }
+            }
+
+            if (foundIdx !== state.currentSceneIndex) {
+                state.currentSceneIndex = foundIdx;
+                playAudioFX('whoosh');
+                speakCurrentScene();
+                
+                document.querySelectorAll('.scene-card').forEach((c, idx) => {
+                    c.classList.toggle('current', idx === foundIdx);
+                });
+                const curElem = document.getElementById(`sc-item-${foundIdx}`);
+                if (curElem) curElem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function speakCurrentScene() {
+            if (state.isPlaying && state.scenes[state.currentSceneIndex]) {
+                speakSceneText(state.scenes[state.currentSceneIndex].text);
+            }
+        }
+
+        function updateUIProgress() {
+            const pct = state.totalDuration > 0 ? (state.currentTime / state.totalDuration) * 100 : 0;
+            document.getElementById('playbackProgress').style.width = pct + '%';
+            
+            const curM = Math.floor(state.currentTime / 60);
+            const curS = Math.floor(state.currentTime % 60);
+            const totM = Math.floor(state.totalDuration / 60);
+            const totS = Math.floor(state.totalDuration % 60);
+            document.getElementById('timeLabel').textContent = 
+                `${curM}:${curS < 10 ? '0'+curS : curS} / ${totM}:${totS < 10 ? '0'+totS : totS}`;
+        }
+
+        function renderLoop(timestamp) {
+            if (!state.lastFrameTime) state.lastFrameTime = timestamp;
+            const delta = (timestamp - state.lastFrameTime) / 1000;
+            state.lastFrameTime = timestamp;
+
+            if (state.isPlaying && state.totalDuration > 0) {
+                state.currentTime += delta;
+                if (state.currentTime >= state.totalDuration) {
+                    state.currentTime = state.totalDuration;
+                    state.isPlaying = false;
+                    document.getElementById('masterPlayBtn').innerHTML = '▶';
+                }
+                updateActiveSceneIndex();
+                updateUIProgress();
+            }
+
+            drawFrame(state.currentTime);
+            requestAnimationFrame(renderLoop);
+        }
+
+        function drawFrame(curTime) {
+            const w = canvas.width;
+            const h = canvas.height;
+            const currentScene = state.scenes[state.currentSceneIndex] || {
+                text: "موشن كرافت AI",
+                style: state.motionStyle,
+                icon: "🚀",
+                startTime: 0,
+                duration: 4,
+                brollType: 'particles'
+            };
+
+            const sceneProgress = Math.max(0, Math.min(1, (curTime - currentScene.startTime) / (currentScene.duration || 1)));
+
+            drawDynamicBackground(ctx, w, h, sceneProgress, currentScene.style);
+
+            if (document.getElementById('brollToggle').checked) {
+                drawBrollLayer(ctx, w, h, curTime, currentScene.brollType);
+            }
+
+            switch (currentScene.style) {
+                case 'kinetic':
+                    renderKineticScene(ctx, w, h, currentScene, sceneProgress);
+                    break;
+                case 'infographic':
+                    renderInfographicScene(ctx, w, h, currentScene, sceneProgress);
+                    break;
+                case 'whiteboard':
+                    renderWhiteboardScene(ctx, w, h, currentScene, sceneProgress);
+                    break;
+                case '3d':
+                default:
+                    render3DMotionScene(ctx, w, h, currentScene, sceneProgress);
+                    break;
+            }
+
+            if (state.brand.watermark) {
+                drawBrandWatermark(ctx, w, h);
+            }
+        }
+
+        function drawDynamicBackground(c, w, h, p, style) {
+            if (style === 'whiteboard') {
+                c.fillStyle = '#fdfdfb';
+                c.fillRect(0, 0, w, h);
+                c.strokeStyle = 'rgba(210, 215, 225, 0.4)';
+                c.lineWidth = 1;
+                const grid = 60;
+                for (let x = 0; x < w; x += grid) {
+                    c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke();
+                }
+                for (let y = 0; y < h; y += grid) {
+                    c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
+                }
+                return;
+            }
+
+            const grad = c.createRadialGradient(
+                w / 2 + Math.sin(p * Math.PI) * 100,
+                h / 2 + Math.cos(p * Math.PI) * 100,
+                50,
+                w / 2, h / 2, Math.max(w, h) * 0.8
+            );
+
+            const c1 = state.brand.color1 || '#6366f1';
+            const c2 = state.brand.color2 || '#06b6d4';
+
+            grad.addColorStop(0, hexToRgba(c1, 0.35));
+            grad.addColorStop(0.5, '#0b0f19');
+            grad.addColorStop(1, '#05070d');
+
+            c.fillStyle = grad;
+            c.fillRect(0, 0, w, h);
+        }
+
+        function drawBrollLayer(c, w, h, t, type) {
+            c.save();
+            if (type === 'particles') {
+                const count = 35;
+                for (let i = 0; i < count; i++) {
+                    const seed = i * 997;
+                    const px = (seed + t * 45) % w;
+                    const py = (seed * 1.5 + Math.sin(t + i) * 60) % h;
+                    const size = (i % 4) + 2;
+                    c.fillStyle = (i % 2 === 0) ? state.brand.color2 : '#ffffff';
+                    c.globalAlpha = 0.2 + (Math.sin(t * 3 + i) * 0.15);
+                    c.beginPath();
+                    c.arc(px, py, size, 0, Math.PI * 2);
+                    c.fill();
+                }
+            } else if (type === 'waves') {
+                c.strokeStyle = state.brand.color2;
+                c.lineWidth = 2;
+                c.globalAlpha = 0.15;
+                for (let j = 0; j < 3; j++) {
+                    c.beginPath();
+                    for (let x = 0; x < w; x += 30) {
+                        const y = (h * 0.3) + (j * 160) + Math.sin((x * 0.005) + t * 2 + j) * 40;
+                        if (x === 0) c.moveTo(x, y); else c.lineTo(x, y);
+                    }
+                    c.stroke();
+                }
+            } else if (type === 'grid') {
+                c.strokeStyle = state.brand.color1;
+                c.lineWidth = 1.5;
+                c.globalAlpha = 0.1;
+                const offset = (t * 40) % 80;
+                for (let y = offset; y < h; y += 80) {
+                    c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
+                }
+            }
+            c.restore();
+        }
+
+        function render3DMotionScene(c, w, h, scene, p) {
+            c.save();
+            const rotX = p * Math.PI * 1.5;
+            const rotY = p * Math.PI * 2;
+            const centerX = w / 2;
+            const centerY = h * 0.4;
+            const cubeSize = Math.min(w, h) * 0.22;
+
+            drawWireframeCube(c, centerX, centerY, cubeSize, rotX, rotY, state.brand.color2);
+
+            c.font = `${cubeSize * 0.65}px system-ui`;
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.shadowColor = state.brand.color1;
+            c.shadowBlur = 30;
+            const bounce = Math.sin(p * Math.PI * 4) * 12;
+            c.fillText(scene.icon, centerX, centerY + bounce);
+            c.shadowBlur = 0;
+
+            const textScale = Math.min(1, p * 3.5);
+            c.save();
+            c.translate(centerX, h * 0.73);
+            c.scale(textScale, textScale);
+            
+            c.fillStyle = '#ffffff';
+            c.font = `bold ${w * 0.062}px system-ui`;
+            c.textAlign = 'center';
+            c.shadowColor = 'rgba(0,0,0,0.8)';
+            c.shadowBlur = 20;
+
+            wrapArabicText(c, scene.text, 0, 0, w * 0.82, w * 0.08);
+            c.restore();
+            c.restore();
+        }
+
+        function drawWireframeCube(c, cx, cy, size, rx, ry, color) {
+            const nodes = [
+                [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
+                [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
+            ];
+            const edges = [
+                [0,1],[1,2],[2,3],[3,0],
+                [4,5],[5,6],[6,7],[7,4],
+                [0,4],[1,5],[2,6],[3,7]
+            ];
+
+            const projected = [];
+            for (let i = 0; i < nodes.length; i++) {
+                let [x, y, z] = nodes[i];
+                let y1 = y * Math.cos(rx) - z * Math.sin(rx);
+                let z1 = y * Math.sin(rx) + z * Math.cos(rx);
+                let x2 = x * Math.cos(ry) + z1 * Math.sin(ry);
+                let z2 = -x * Math.sin(ry) + z1 * Math.cos(ry);
+
+                const fov = 350;
+                const distance = 4;
+                const pz = z2 + distance;
+                const px = (x2 * fov) / pz + cx;
+                const py = (y1 * fov) / pz + cy;
+                projected.push([px, py]);
+            }
+
+            c.strokeStyle = color;
+            c.lineWidth = 3;
+            c.globalAlpha = 0.8;
+            for (let e = 0; e < edges.length; e++) {
+                const [n1, n2] = edges[e];
+                c.beginPath();
+                c.moveTo(projected[n1][0], projected[n1][1]);
+                c.lineTo(projected[n2][0], projected[n2][1]);
+                c.stroke();
+            }
+            c.globalAlpha = 1.0;
+        }
+
+        function renderKineticScene(c, w, h, scene, p) {
+            c.save();
+            const words = scene.text.split(' ');
+            const wordIndex = Math.min(words.length - 1, Math.floor(p * words.length * 1.2));
+            const activeWord = words[wordIndex] || words[0];
+
+            const flash = (Math.sin(p * Math.PI * 6) + 1) * 0.5;
+            c.fillStyle = hexToRgba(state.brand.color1, 0.15 * flash);
+            c.fillRect(0, 0, w, h);
+
+            c.font = `${w * 0.28}px system-ui`;
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(scene.icon, w / 2, h * 0.35);
+
+            c.save();
+            c.translate(w / 2, h * 0.62);
+            const scale = 1 + (1 - (p * words.length) % 1) * 0.3;
+            c.scale(scale, scale);
+
+            c.fillStyle = state.brand.color2;
+            c.font = `900 ${w * 0.12}px system-ui`;
+            c.textAlign = 'center';
+            c.fillText(activeWord, 4, 4);
+
+            c.fillStyle = '#ffffff';
+            c.fillText(activeWord, 0, 0);
+            c.restore();
+
+            c.font = `600 ${w * 0.05}px system-ui`;
+            c.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            c.textAlign = 'center';
+            wrapArabicText(c, scene.text, w / 2, h * 0.8, w * 0.85, w * 0.07);
+            c.restore();
+        }
+
+        function renderInfographicScene(c, w, h, scene, p) {
+            c.save();
+            const targetVal = scene.statValue || 85;
+            const currentVal = Math.min(targetVal, Math.floor(p * targetVal * 1.3));
+
+            const cx = w / 2;
+            const cy = h * 0.4;
+            const radius = Math.min(w, h) * 0.22;
+
+            c.beginPath();
+            c.arc(cx, cy, radius, 0, Math.PI * 2);
+            c.strokeStyle = 'rgba(255,255,255,0.08)';
+            c.lineWidth = 24;
+            c.stroke();
+
+            const angle = (currentVal / 100) * (Math.PI * 2);
+            c.beginPath();
+            c.arc(cx, cy, radius, -Math.PI / 2, -Math.PI / 2 + angle);
+            c.strokeStyle = state.brand.color2;
+            c.lineWidth = 24;
+            c.lineCap = 'round';
+            c.shadowColor = state.brand.color2;
+            c.shadowBlur = 25;
+            c.stroke();
+            c.shadowBlur = 0;
+
+            c.fillStyle = '#ffffff';
+            c.font = `bold ${w * 0.11}px system-ui`;
+            c.textAlign = 'center';
+            c.textBaseline = 'middle';
+            c.fillText(`+${currentVal}%`, cx, cy);
+
+            c.font = `${w * 0.05}px system-ui`;
+            c.fillStyle = state.brand.color1;
+            c.fillText(scene.icon + ' مؤشر النمو', cx, cy + radius * 0.55);
+
+            c.fillStyle = '#ffffff';
+            c.font = `bold ${w * 0.058}px system-ui`;
+            wrapArabicText(c, scene.text, cx, h * 0.75, w * 0.82, w * 0.08);
+            c.restore();
+        }
+
+        function renderWhiteboardScene(c, w, h, scene, p) {
+            c.save();
+            const cx = w / 2;
+            const cy = h * 0.42;
+            const r = Math.min(w, h) * 0.24;
+
+            c.strokeStyle = '#1e293b';
+            c.lineWidth = 6;
+            c.lineCap = 'round';
+
+            const drawLimit = p * Math.PI * 2;
+            c.beginPath();
+            for (let a = 0; a <= drawLimit; a += 0.1) {
+                const wobble = Math.sin(a * 14) * 3;
+                const px = cx + (r + wobble) * Math.cos(a);
+                const py = cy + (r + wobble) * Math.sin(a);
+                if (a === 0) c.moveTo(px, py); else c.lineTo(px, py);
+            }
+            c.stroke();
+
+            if (p > 0.4) {
+                c.font = `${r * 0.9}px system-ui`;
+                c.textAlign = 'center';
+                c.textBaseline = 'middle';
+                c.fillText(scene.icon, cx, cy);
+            }
+
+            c.fillStyle = '#0f172a';
+            c.font = `bold ${w * 0.06}px system-ui`;
+            c.textAlign = 'center';
+            
+            const charLimit = Math.floor(scene.text.length * Math.min(1, p * 1.4));
+            const revealedText = scene.text.substring(0, charLimit);
+            wrapArabicText(c, revealedText, cx, h * 0.74, w * 0.85, w * 0.08);
+
+            if (p < 0.95) {
+                const penX = cx + r * Math.cos(drawLimit);
+                const penY = cy + r * Math.sin(drawLimit);
+                c.font = `${w * 0.08}px system-ui`;
+                c.fillText('✏️', penX + 25, penY - 25);
+            }
+
+            c.restore();
+        }
+
+        function drawBrandWatermark(c, w, h) {
+            c.save();
+            const pad = w * 0.05;
+            c.font = `bold ${w * 0.038}px system-ui`;
+            c.textAlign = 'right';
+            c.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            c.shadowColor = 'rgba(0,0,0,0.7)';
+            c.shadowBlur = 8;
+            c.fillText(`${state.brand.logo} ${state.brand.name}`, w - pad, pad + w * 0.035);
+            c.restore();
+        }
+
+        function wrapArabicText(context, text, x, y, maxWidth, lineHeight) {
+            const words = text.split(' ');
+            let line = '';
+            const lines = [];
+
+            for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                const metrics = context.measureText(testLine);
+                if (metrics.width > maxWidth && n > 0) {
+                    lines.push(line);
+                    line = words[n] + ' ';
+                } else {
+                    line = testLine;
+                }
+            }
+            lines.push(line);
+
+            const totalHeight = (lines.length - 1) * lineHeight;
+            let startY = y - (totalHeight / 2);
+
+            for (let k = 0; k < lines.length; k++) {
+                context.fillText(lines[k].trim(), x, startY + (k * lineHeight));
+            }
+        }
+
+        function hexToRgba(hex, alpha) {
+            let c;
+            if (/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+                c = hex.substring(1).split('');
+                if (c.length === 3) c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+                c = '0x' + c.join('');
+                return `rgba(${[(c>>16)&255, (c>>8)&255, c&255].join(',')},${alpha})`;
+            }
+            return `rgba(99,102,241,${alpha})`;
+        }
+
+        function loadBrandKit() {
+            try {
+                const saved = localStorage.getItem('motioncraft_brand');
+                if (saved) {
+                    state.brand = JSON.parse(saved);
+                    document.getElementById('brandNameInput').value = state.brand.name || 'علامتك التجارية';
+                    document.getElementById('brandColor1').value = state.brand.color1 || '#6366f1';
+                    document.getElementById('brandColor2').value = state.brand.color2 || '#06b6d4';
+                    document.getElementById('color1Hex').textContent = state.brand.color1;
+                    document.getElementById('color2Hex').textContent = state.brand.color2;
+                    document.getElementById('brandLogoInput').value = state.brand.logo || '🚀';
+                    document.getElementById('brandWatermarkToggle').checked = state.brand.watermark !== false;
+                }
+            } catch(e) {}
+        }
+
+        function saveBrandKit(showMessage = false) {
+            state.brand = {
+                name: document.getElementById('brandNameInput').value.trim() || 'علامتك التجارية',
+                color1: document.getElementById('brandColor1').value,
+                color2: document.getElementById('brandColor2').value,
+                logo: document.getElementById('brandLogoInput').value.trim() || '🚀',
+                watermark: document.getElementById('brandWatermarkToggle').checked
+            };
+            document.getElementById('color1Hex').textContent = state.brand.color1;
+            document.getElementById('color2Hex').textContent = state.brand.color2;
+
+            localStorage.setItem('motioncraft_brand', JSON.stringify(state.brand));
+            if (showMessage) showToast('تم حفظ الهوية البصرية بنجاح! 🎨');
+        }
+
+        function saveProjectToStorage(scriptText) {
+            try {
+                let projects = JSON.parse(localStorage.getItem('motioncraft_projects') || '[]');
+                const newProj = {
+                    id: 'proj_' + Date.now(),
+                    date: new Date().toLocaleDateString('ar-SA'),
+                    title: scriptText.split('\n')[0].substring(0, 35) + '...',
+                    script: scriptText,
+                    style: state.motionStyle,
+                    duration: state.totalDuration.toFixed(1)
+                };
+                projects.unshift(newProj);
+                projects = projects.slice(0, 15);
+                localStorage.setItem('motioncraft_projects', JSON.stringify(projects));
+                loadProjects();
+            } catch(e) {}
+        }
+
+        function loadProjects() {
+            try {
+                const container = document.getElementById('projectsList');
+                const projects = JSON.parse(localStorage.getItem('motioncraft_projects') || '[]');
+                if (projects.length === 0) {
+                    container.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:20px;">لا توجد مشاريع محفوظة حالياً</div>';
+                    return;
+                }
+                container.innerHTML = '';
+                projects.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'scene-card';
+                    item.innerHTML = `
+                        <div class="scene-number">🎬</div>
+                        <div class="scene-info">
+                            <div class="scene-headline">${escapeHTML(p.title)}</div>
+                            <div class="scene-meta">
+                                <span>📅 ${p.date}</span>
+                                <span>⏱️ ${p.duration} ث</span>
+                                <span>🎨 ${getStyleName(p.style)}</span>
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-primary" onclick="openProject('${p.id}')">فتح ⚡</button>
+                    `;
+                    container.appendChild(item);
+                });
+            } catch(e) {}
+        }
+
+        function openProject(id) {
+            try {
+                const projects = JSON.parse(localStorage.getItem('motioncraft_projects') || '[]');
+                const proj = projects.find(x => x.id === id);
+                if (proj) {
+                    document.getElementById('scriptInput').value = proj.script;
+                    setStyle(proj.style, document.querySelector(`[data-style="${proj.style}"]`));
+                    generateFromScript();
+                    showToast('تم فتح المشروع بنجاح!');
+                }
+            } catch(e) {}
+        }
+
+        /* --- نظام الحفظ المباشر في معرض أندرويد (Save to Android Gallery Engine) --- */
+        async function saveToGallery(type = 'video') {
+            if (type === 'image') {
+                saveImageToGallery();
+                return;
+            }
+
+            if (state.isRecording) {
+                showToast('هناك عملية تصدير جارية بالفعل');
+                return;
+            }
+
+            if (!window.MediaRecorder) {
+                showToast('تطبيق الحفظ المباشر للفيديو غير مدعوم، جاري حفظ لقطة...');
+                saveImageToGallery();
+                return;
+            }
+
+            state.isRecording = true;
+            const originalPlaying = state.isPlaying;
+            state.isPlaying = false;
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+            showToast('جاري تسجيل وحفظ الموشن جرافيك في المعرض... ⏳');
+
+            const overlay = document.createElement('div');
+            overlay.id = 'renderProgressModal';
+            overlay.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(10, 14, 23, 0.95); backdrop-filter: blur(12px);
+                display: flex; flex-direction: column; align-items: center; justify-content: center;
+                z-index: 9999; color: white; padding: 24px; text-align: center;
+            `;
+            overlay.innerHTML = `
+                <div style="font-size: 3.2rem; margin-bottom: 14px;">📲</div>
+                <h3 style="font-size: 1.25rem; font-weight:800; margin-bottom: 8px;">جاري التصدير إلى المعرض (Gallery)...</h3>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 18px;">يرجى الانتظار، يتم تصيير الفيديو وإرساله إلى ألبوم الهاتف</p>
+                <div style="width: 85%; max-width: 320px; height: 10px; background: var(--bg-surface); border-radius: 5px; overflow: hidden; margin-bottom: 12px;">
+                    <div id="renderProgressFill" style="height: 100%; width: 0%; background: linear-gradient(to left, var(--accent), var(--primary)); transition: width 0.1s linear;"></div>
+                </div>
+                <div id="renderPercent" style="font-size: 0.85rem; color: var(--accent); font-weight:700;">0%</div>
+            `;
+            document.body.appendChild(overlay);
+
+            try {
+                const stream = canvas.captureStream(30);
+                const mimeTypes = [
+                    'video/mp4;codecs=h264',
+                    'video/mp4',
+                    'video/webm;codecs=vp9',
+                    'video/webm;codecs=vp8',
+                    'video/webm'
+                ];
+                let selectedMime = '';
+                for (let m of mimeTypes) {
+                    if (MediaRecorder.isTypeSupported(m)) {
+                        selectedMime = m;
+                        break;
+                    }
+                }
+
+                const options = selectedMime ? { mimeType: selectedMime } : {};
+                const recorder = new MediaRecorder(stream, options);
+                const chunks = [];
+
+                recorder.ondataavailable = (e) => {
+                    if (e.data && e.data.size > 0) chunks.push(e.data);
+                };
+
+                recorder.onstop = async () => {
+                    const ext = selectedMime.includes('mp4') ? 'mp4' : 'webm';
+                    const fileMime = selectedMime || 'video/mp4';
+                    const videoBlob = new Blob(chunks, { type: fileMime });
+                    const fileName = `MotionCraft_${Date.now()}.${ext}`;
+
+                    await dispatchFileToGallery(videoBlob, fileName, fileMime, 'فيديو');
+                    state.isRecording = false;
+                    const modal = document.getElementById('renderProgressModal');
+                    if (modal) modal.remove();
+                };
+
+                recorder.start();
+                state.currentTime = 0;
+                state.isPlaying = true;
+
+                const durationMs = state.totalDuration * 1000;
+                const startTime = performance.now();
+
+                const progressInterval = setInterval(() => {
+                    const elapsed = performance.now() - startTime;
+                    const ratio = Math.min(1, elapsed / durationMs);
+                    const fill = document.getElementById('renderProgressFill');
+                    const perc = document.getElementById('renderPercent');
+                    if (fill) fill.style.width = Math.round(ratio * 100) + '%';
+                    if (perc) perc.textContent = Math.round(ratio * 100) + '%';
+
+                    if (elapsed >= durationMs) {
+                        clearInterval(progressInterval);
+                        state.isPlaying = false;
+                        recorder.stop();
+                    }
+                }, 100);
+
+            } catch (err) {
+                state.isRecording = false;
+                const modal = document.getElementById('renderProgressModal');
+                if (modal) modal.remove();
+                showToast('تعذر تصدير الفيديو، سيتم حفظ صورة بديلة في المعرض');
+                saveImageToGallery();
+            }
+        }
+
+        async function saveImageToGallery() {
+            try {
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        showToast('حدث خطأ أثناء معالجة الصورة');
+                        return;
+                    }
+                    const fileName = `MotionCraft_Poster_${Date.now()}.png`;
+                    await dispatchFileToGallery(blob, fileName, 'image/png', 'صورة');
+                }, 'image/png');
+            } catch(e) {
+                downloadFallback(canvas.toDataURL('image/png'), `MotionCraft_${Date.now()}.png`);
+            }
+        }
+
+        async function dispatchFileToGallery(blob, fileName, mimeType, typeLabel) {
+            // 1. دعم جسور أندرويد المخصصة (Android WebView Interface)
+            if (window.Android && typeof window.Android.saveToGallery === 'function') {
+                const reader = new FileReader();
+                reader.onloadend = function() {
+                    const base64Data = reader.result.split(',')[1];
+                    window.Android.saveToGallery(base64Data, fileName, mimeType);
+                    showToast(`تم إرسال الـ ${typeLabel} بنجاح إلى المعرض! ✅`);
+                };
+                reader.readAsDataURL(blob);
+                return;
+            }
+
+            const file = new File([blob], fileName, { type: mimeType });
+
+            // 2. استخدام Web Share API للمشاركة والحفظ المباشر داخل ألبوم الصور بالأندرويد
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        files: [file],
+                        title: 'حفظ في المعرض',
+                        text: 'تم إنشاء هذا الفيديو عبر موشن كرافت AI'
+                    });
+                    showToast(`تم حفظ الـ ${typeLabel} بنجاح في المعرض! 📲`);
+                    return;
+                } catch(shareErr) {
+                    if (shareErr.name === 'AbortError') {
+                        showToast('تم إلغاء الحفظ');
+                        return;
+                    }
+                }
+            }
+
+            // 3. طريقة التنزيل التلقائي إلى مجلد التنزيلات/المعرض في أندرويد
+            const blobUrl = URL.createObjectURL(blob);
+            downloadFallback(blobUrl, fileName);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 8000);
+            showToast(`تم تنزيل الـ ${typeLabel} وجارٍ إضافته للمعرض بنجاح! 📥`);
+        }
+
+        function downloadFallback(url, fileName) {
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+            }, 500);
+        }
+
+        function exportVideoSimulated() {
+            saveToGallery('video');
+        }
+
+        function downloadCanvasSnapshot() {
+            saveToGallery('image');
+        }
+    </script>
+</body>
+</html>
