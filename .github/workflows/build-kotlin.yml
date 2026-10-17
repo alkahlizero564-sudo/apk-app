@@ -16,6 +16,9 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
       - name: Find app folder
         id: find
         run: |
@@ -34,8 +37,12 @@ jobs:
       - name: Build
         working-directory: ${{ steps.find.outputs.dir }}
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          if [ -f gradlew ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug
+          else
+            gradle assembleDebug
+          fi
       - name: Find and rename APK
         id: apk
         run: |
@@ -48,4 +55,4 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: kotlin-${{ steps.find.outputs.name }}-build-${{ github.run_number }}
-          files: ${{ steps.apk.outputs.path }}
+          files: ${{ steps.apk.outputs.path }} 
