@@ -28,7 +28,6 @@ button:disabled{opacity:.5}
 .desc[hidden]{display:none}
 .desc{margin-top:8px;border:1px dashed var(--acc);border-radius:12px;padding:8px}
 .note{color:var(--mut);font-size:12px;line-height:1.7}
-.kind{color:var(--acc);font-size:13px;line-height:1.7;margin:6px 0}
 .errbox{color:var(--bad);font-size:13px;margin-top:8px;white-space:pre-wrap}
 .edit[hidden]{display:none}
 .edit{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
@@ -61,13 +60,12 @@ nav button.on{color:var(--acc)}
 
 <script>
 const MODELS={gemini:'gemini-3.8-flash',claude:'claude-sonnet-5-5'};
-const GEMINI_LIST=[MODELS.gemini,'gemini-3.5-flash'];
 const $=s=>document.querySelector(s);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const newApp=n=>({name:n,code:'',versions:[],err:'',apk:'',apkKt:'',icon:'',pref:''});
+const newApp=n=>({name:n,code:'',versions:[],err:'',apk:'',icon:''});
 function slugOf(n){let s=String(n||'').toLowerCase().replace(/[^a-z0-9]/g,'');if(/^[0-9]/.test(s))s='a'+s;return s}
-function load(){try{const x=JSON.parse(localStorage.getItem('apkapp')||'null');if(x&&x.apps){x.apps.forEach(a=>{if(a.pref==null)a.pref=''});return x}}catch(e){}
+function load(){try{const x=JSON.parse(localStorage.getItem('apkapp')||'null');if(x&&x.apps)return x}catch(e){}
   return {keys:{provider:'gemini',repo:'apk-app'},apps:[newApp('first'),newApp('second')]}}
 let S=load(),tab='keys';
 const save=()=>localStorage.setItem('apkapp',JSON.stringify(S));
@@ -78,17 +76,6 @@ function arErr(e){const m=String((e&&e.message)||e);
   if(/bad credentials|unauthorized|invalid.*(key|token)|API key|401/i.test(m))return 'المفتاح غير صحيح أو انتهت صلاحيته. راجع قائمة المفاتيح.\n('+m+')';
   return m}
 
-/* ---------- اللغة: تلقائي أو بالزرين ---------- */
-function isKotlinCode(c){c=c||'';return /class\s+MainActivity|^\s*package\s+[\w.]+|^\s*import\s+(android|androidx|java|kotlin)/m.test(c)&&!/<html|<!doctype/i.test(c)}
-function detectKind(t,pref){
-  if(pref==='html')return 'html';
-  if(pref==='kotlin')return 'kotlin';
-  return /kotlin|كوتلن|كوتلين|native|نيتف|أصلي|اصلي/i.test(String(t||''))?'kotlin':'html'}
-function kindOf(i){const a=S.apps[i];return a.code.trim()?(isKotlinCode(a.code)?'kotlin':'html'):(a.pref==='kotlin'?'kotlin':'html')}
-function setPref(i,v){const a=S.apps[i];a.pref=a.pref===v?'':v;save();
-  const y=window.scrollY;render();window.scrollTo(0,y);
-  toast(a.pref==='html'?'اللغة: HTML':a.pref==='kotlin'?'اللغة: Kotlin':'رجع الاختيار التلقائي')}
-
 /* ---------- الواجهات ---------- */
 const FIELDS=[['ghToken','مفتاح GitHub (Token)','password','صلاحيات: repo + workflow'],['repo','اسم المستودع','text','apk-app'],['sbToken','مفتاح Supabase (Access Token)','password','يبدأ بـ sbp_'],['sbRef','Supabase project ref','text',''],['fbUrl','رابط Firebase (Realtime Database URL)','text','https://xxxx-default-rtdb.firebaseio.com'],['fbKey','مفتاح Firebase (Web API Key) - اختياري','password','يبدأ بـ AIza'],['gemini','مفتاح Gemini API','password',''],['gemini2','مفتاح Gemini إضافي 2 (من مشروع آخر) - اختياري','password',''],['gemini3','مفتاح Gemini إضافي 3 (من مشروع آخر) - اختياري','password',''],['claude','مفتاح Claude API','password',''],['orKey','مفتاح OpenRouter','password','يبدأ بـ sk-or-'],['orModel','اسم نموذج OpenRouter (انسخه من openrouter.ai/models)','text','مثال: openai/gpt-oss-120b:free'],['gqKey','مفتاح Groq','password','يبدأ بـ gsk_'],['gqModel','اسم نموذج Groq (اختياري)','text','openai/gpt-oss-120b']];
 function vKeys(){return `<div class="card"><h2>🔑 قائمة المفاتيح</h2>
@@ -97,38 +84,35 @@ ${FIELDS.map(f=>`<label>${f[1]}</label><input type="${f[2]}" value="${esc(S.keys
 <select onchange="S.keys.provider=this.value;save()">${[['gemini','Gemini'],['claude','Claude'],['openrouter','OpenRouter'],['groq','Groq']].map(p=>`<option value="${p[0]}" ${(S.keys.provider||'gemini')===p[0]?'selected':''}>${p[1]}</option>`).join('')}</select>
 <p class="note">تُحفظ المفاتيح تلقائياً داخل التطبيق على جهازك.</p></div>`}
 
-function vCode(){const card=i=>{const a=S.apps[i],kt=kindOf(i)==='kotlin';return `<section class="card">
+function vCode(){const card=i=>{const a=S.apps[i];return `<section class="card">
 <input class="name" value="${esc(a.name)}" placeholder="اسم التطبيق بالإنجليزية (مثل awad)" oninput="S.apps[${i}].name=this.value;save()">
 <p class="note">اسم التطبيق يصير اسم المجلد: حروف إنجليزية وأرقام فقط</p>
-<div class="row"><button class="${a.pref==='html'?'acc':'sec'}" onclick="setPref(${i},'html')">🌐 HTML</button><button class="${a.pref==='kotlin'?'acc':'sec'}" onclick="setPref(${i},'kotlin')">🤖 Kotlin</button></div>
-<p class="kind">لغة الكتابة: ${a.pref==='html'?'HTML (اخترتها)':a.pref==='kotlin'?'Kotlin (اخترتها)':'تلقائي'}<br>الكود الحالي: ${kt?'Kotlin أصلي':'HTML'} · اضغط الزر المحدد مرة ثانية للرجوع للتلقائي</p>
 <div class="row" style="align-items:center"><img id="ic${i}" src="${a.icon||'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='}" style="width:56px;height:56px;border-radius:14px;background:#0e1730;border:1px solid var(--line);object-fit:cover;flex:none"><button class="sec" onclick="document.getElementById('icf${i}').click()">🖼 ${a.icon?'تغيير الأيقونة':'اختر أيقونة'}</button><input type="file" accept="image/*" id="icf${i}" hidden onchange="pickIcon(${i},this)"></div>
 <button class="acc" style="width:100%;margin-top:8px" onclick="toggleDesc(${i})">✨ اكتب وصف التطبيق</button>
 <div class="desc" id="desc${i}" hidden>
 <textarea class="req" id="dsc${i}" placeholder="اكتب وصف التطبيق بكلمات بسيطة، مثال: تطبيق لتسجيل مصاريف البيت اليومية مع المجموع الشهري"></textarea>
-<button class="acc" style="width:100%;margin-top:8px" onclick="aiCreate(${i},this)">🚀 أنشئ التطبيق</button>
+<button class="acc" style="width:100%;margin-top:8px" onclick="aiCreate(${i},this)">🚀 أنشئ التطبيق وعاين</button>
 <p class="note">لو في كود قديم، يتحفظ في "النسخ السابقة" وتقدر ترجع له.</p>
 </div>
 <textarea class="code" id="code${i}" placeholder="الصق كود التطبيق هنا" oninput="S.apps[${i}].code=this.value;save()">${esc(a.code)}</textarea>
-${kt?`<p class="note">تطبيق Kotlin أصلي: لا توجد معاينة هنا. اضغط "بناء Kotlin" وتراه بعد تثبيت الـ APK.</p><div class="row"><button class="sec" onclick="toggleEdit(${i})">✏️ تعديل الكود</button></div>`:`<iframe id="pv${i}" sandbox="allow-scripts allow-forms allow-modals"></iframe>
-<div class="row"><button onclick="preview(${i})">▶ المعاينة الفعلية</button><button class="sec" onclick="toggleEdit(${i})">✏️ تعديل الكود</button></div>`}
-<div class="row">${kt?'':`<button onclick="build(${i})">🏗️ بناء HTML</button>`}<button class="acc" onclick="buildKotlin(${i})">🟣 بناء Kotlin</button></div>
+<iframe id="pv${i}" sandbox="allow-scripts allow-forms allow-modals"></iframe>
+<div class="row"><button onclick="preview(${i})">▶ المعاينة الفعلية</button><button class="sec" onclick="toggleEdit(${i})">✏️ تعديل الكود</button></div>
 <div class="edit" id="edit${i}" hidden>
 <textarea class="req" id="req${i}" placeholder="اكتب التعديل المطلوب، مثال: غيّر لون الخلفية للأحمر"></textarea>
-<div class="row"><button class="acc" onclick="aiEdit(${i},this)">نفّذ التعديل</button><button class="sec" onclick="aiFix(${i},this)">${kt?'🛠 صلّح من سجل البناء':'🛠 صلّح الخطأ'}</button></div>
+<div class="row"><button class="acc" onclick="aiEdit(${i},this)">نفّذ التعديل</button><button class="sec" onclick="aiFix(${i},this)">🛠 صلّح الخطأ</button></div>
 <div class="errbox" id="err${i}">${esc(a.err)}</div>
 <details><summary>النسخ السابقة (${a.versions.length})</summary>${a.versions.map((v,j)=>`<div class="ver"><span>${esc(v.t)}</span><button class="sec" onclick="restore(${i},${j})">رجوع</button></div>`).join('')||'<p>لا توجد نسخ بعد</p>'}</details>
 </div></section>`};
 return card(0)+`<div class="link"><button class="acc" onclick="linkApps(this)">🔗 ربط عبر Supabase</button><button class="acc" onclick="linkFirebase(this)">🔥 ربط عبر Firebase</button></div>`+card(1)}
 
-function vBuild(){return `<div class="card"><h2>🏗️ قائمة البناء</h2><p class="note">بناء HTML عبر Capacitor، وبناء Kotlin كمشروع أندرويد أصلي: يغلّف تطبيق HTML، أو يبني كود Kotlin إذا كان الكود نفسه Kotlin.</p></div>`+
-S.apps.map((a,i)=>`<div class="card"><h2>${esc(a.name)}</h2><p class="note">المجلد: apps/${esc(slugOf(a.name)||'← اكتب اسماً إنجليزياً في قائمة الكود')}<br>الكود الحالي: ${kindOf(i)==='kotlin'?'Kotlin أصلي':'HTML'}</p><div class="row"><button onclick="build(${i})">بناء HTML</button><button class="acc" onclick="buildKotlin(${i})">بناء Kotlin</button></div>${a.apk?`<a class="btn acc" style="margin-top:8px" href="${esc(a.apk)}" target="_blank">⬇ آخر APK (HTML)</a>`:''}${a.apkKt?`<a class="btn" style="margin-top:8px;background:#243557" href="${esc(a.apkKt)}" target="_blank">⬇ آخر APK (Kotlin)</a>`:''}</div>`).join('')}
+function vBuild(){return `<div class="card"><h2>🏗️ قائمة البناء</h2><p class="note">اضغط بناء وسيتم رفع الكود إلى مجلد باسم التطبيق وبناء ملف APK تلقائياً، وتتابع المراحل هنا.</p></div>`+
+S.apps.map((a,i)=>`<div class="card"><h2>${esc(a.name)}</h2><p class="note">المجلد: apps/${esc(slugOf(a.name)||'← اكتب اسماً إنجليزياً في قائمة الكود')}</p><button onclick="build(${i})">بناء ${esc(a.name)}</button>${a.apk?`<a class="btn acc" style="margin-top:8px" href="${esc(a.apk)}" target="_blank">⬇ تحميل آخر APK</a>`:''}</div>`).join('')}
 
 function go(t){tab=t;render()}
 function render(){
   $('#main').innerHTML=tab==='keys'?vKeys():tab==='code'?vCode():vBuild();
   ['keys','code','build'].forEach(k=>$('#n-'+k).classList.toggle('on',k===tab));
-  if(tab==='code')S.apps.forEach((a,i)=>{if(a.code.trim()&&kindOf(i)!=='kotlin')preview(i)});
+  if(tab==='code')S.apps.forEach((a,i)=>{if(a.code.trim())preview(i)});
   window.scrollTo(0,0)}
 function toggleEdit(i){const e=$('#edit'+i);e.hidden=!e.hidden}
 
@@ -164,33 +148,22 @@ async function ai(prompt){const k=S.keys;
   if(!gk.length)throw new Error('أدخل مفتاح Gemini في قائمة المفاتيح');
   let last;
   for(let n=0;n<gk.length;n++){
-    let quota=false;
-    for(const model of GEMINI_LIST){
-      const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(gk[n]),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
-      const j=await r.json().catch(()=>({}));
-      if(r.ok){if(!j.candidates||!j.candidates[0]||!j.candidates[0].content)throw new Error('رد فارغ من Gemini، حاول مرة أخرى.');return (j.candidates[0].content.parts||[]).map(p=>p.text||'').join('')}
-      const msg=(j.error&&j.error.message)||'فشل الاتصال بـ Gemini';
-      last=new Error(msg);
-      if(r.status===429||/quota|exhaust/i.test(msg)){quota=true;break}
-      if(r.status===503||r.status===404||/high demand|no longer available|not found|overload/i.test(msg))continue;
-      throw last}
-    if(quota&&n<gk.length-1)toast('حصة المفتاح '+(n+1)+' خلصت، التحويل للمفتاح '+(n+2))}
+    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS.gemini+':generateContent?key='+encodeURIComponent(gk[n]),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok){if(!j.candidates||!j.candidates[0]||!j.candidates[0].content)throw new Error('رد فارغ من Gemini، حاول مرة أخرى.');return (j.candidates[0].content.parts||[]).map(p=>p.text||'').join('')}
+    const msg=(j.error&&j.error.message)||'فشل الاتصال بـ Gemini';
+    last=new Error(msg);
+    if(!(r.status===429||/quota|exhaust/i.test(msg)))throw last;
+    if(n<gk.length-1)toast('حصة المفتاح '+(n+1)+' خلصت، التحويل للمفتاح '+(n+2))}
   throw last}
 function clean(t){const m=t.match(/```(?:\w+)?\n([\s\S]*?)```/);return (m?m[1]:t).trim()}
 const SYS='أنت مبرمج محترف. التطبيق مكتوب بـ HTML وCSS وJavaScript في ملف واحد index.html ويعمل داخل تطبيق أندرويد. أعد الكود الكامل فقط داخل كتلة ```html بدون أي شرح.\n\n';
-const SYS_KT='أنت مبرمج أندرويد محترف بلغة Kotlin. اكتب ملفاً واحداً فقط اسمه MainActivity.kt يحتوي الكلاس MainActivity الذي يرث من android.app.Activity (وليس AppCompatActivity). القواعد الصارمة:\n- لا تكتب سطر package.\n- لا توجد ملفات XML ولا موارد ولا كلاس R: ابنِ الواجهة كلها بالكود (LinearLayout وTextView وButton وEditText وScrollView وListView).\n- لا تستخدم أي مكتبة خارج أندرويد الأساسي: لا AppCompat ولا Material ولا Compose ولا Coroutines ولا Retrofit.\n- للاتصال بالإنترنت استخدم HttpURLConnection داخل Thread وحدّث الواجهة عبر runOnUiThread. الصلاحية المتاحة: INTERNET فقط.\n- احفظ البيانات في SharedPreferences.\n- الواجهة عربية من اليمين لليسار ومناسبة للهاتف، بأزرار كبيرة وألوان جميلة.\n- minSdk 24 وcompileSdk 34 وKotlin 1.9.\nأعد الكود الكامل فقط داخل كتلة ```kotlin بدون أي شرح.\n\n';
-const sysOf=i=>kindOf(i)==='kotlin'?SYS_KT:SYS;
-const fenceOf=i=>kindOf(i)==='kotlin'?'kotlin':'html';
 async function busy(btn,fn){const t=btn.textContent;btn.disabled=true;btn.textContent='⏳ جاري العمل...';try{await fn()}catch(e){toast(arErr(e))}finally{btn.disabled=false;btn.textContent=t}}
-function setCode(i,c){pushVersion(i);S.apps[i].code=c;save();const t=$('#code'+i);if(t)t.value=c;if(kindOf(i)!=='kotlin')preview(i)}
+function setCode(i,c){pushVersion(i);S.apps[i].code=c;save();const t=$('#code'+i);if(t)t.value=c;preview(i)}
 function aiEdit(i,btn){busy(btn,async()=>{const req=$('#req'+i).value.trim();if(!req)throw new Error('اكتب التعديل المطلوب');
-  const out=await ai(sysOf(i)+'الكود الحالي:\n```'+fenceOf(i)+'\n'+S.apps[i].code+'\n```\n\nالتعديل المطلوب: '+req);
+  const out=await ai(SYS+'الكود الحالي:\n```html\n'+S.apps[i].code+'\n```\n\nالتعديل المطلوب: '+req);
   setCode(i,clean(out));$('#req'+i).value='';toast('تم التعديل ✔')})}
-function aiFix(i,btn){busy(btn,async()=>{
-  if(kindOf(i)==='kotlin'){const log=LOGS[i];if(!log)throw new Error('ابنِ التطبيق أولاً ليظهر سجل الأخطاء، ثم اضغط صلّح.');
-    const out=await ai(SYS_KT+'الكود الحالي:\n```kotlin\n'+S.apps[i].code+'\n```\n\nفشل البناء بهذا الخطأ:\n'+log+'\n\nأصلح الكود.');
-    setCode(i,clean(out));toast('تم إصلاح الكود ✔ أعد البناء');return}
-  preview(i);await sleep(1500);const err=S.apps[i].err;
+function aiFix(i,btn){busy(btn,async()=>{preview(i);await sleep(1500);const err=S.apps[i].err;
   const out=await ai(SYS+'الكود الحالي:\n```html\n'+S.apps[i].code+'\n```\n\n'+(err?'الأخطاء الظاهرة عند التشغيل:\n'+err:'لم تظهر أخطاء صريحة، افحص الكود وأصلح أي مشكلة تمنع عمله.')+'\n\nأصلح الخطأ.');
   setCode(i,clean(out));toast('تم إصلاح الكود ✔')})}
 
@@ -208,7 +181,6 @@ async function sb(path,opt){opt=opt||{};const r=await fetch('https://api.supabas
   return j}
 function parseSections(t){const m=t.match(/===SQL===([\s\S]*?)===APP1===([\s\S]*?)===APP2===([\s\S]*)$/);if(!m)throw new Error('رد الذكاء الاصطناعي غير مكتمل، حاول مرة أخرى.');return {sql:clean(m[1]),a1:clean(m[2]),a2:clean(m[3])}}
 function linkApps(btn){busy(btn,async()=>{const k=S.keys;
-  if(S.apps.some(a=>isKotlinCode(a.code)))throw new Error('الربط يعمل مع تطبيقات HTML فقط، وأحد التطبيقين Kotlin أصلي.');
   if(!k.sbToken||!k.sbRef)throw new Error('أدخل مفتاح Supabase والـ project ref في قائمة المفاتيح');
   if(!S.apps[0].code.trim()||!S.apps[1].code.trim())throw new Error('اكتب كود التطبيقين أولاً');
   const P=progress('ربط التطبيقين عبر Supabase',['قراءة بيانات المشروع','الذكاء الاصطناعي يصمم الجداول والصلاحيات','تنفيذ الجداول في قاعدة البيانات','تعديل كود التطبيقين للاتصال']);
@@ -235,25 +207,16 @@ function linkApps(btn){busy(btn,async()=>{const k=S.keys;
 function toggleDesc(i){const e=$('#desc'+i);e.hidden=!e.hidden}
 function aiCreate(i,btn){busy(btn,async()=>{const d=$('#dsc'+i).value.trim();
   if(!d)throw new Error('اكتب وصف التطبيق أولاً');
-  const kind=detectKind(d,S.apps[i].pref);
   const o=S.apps[1-i];
-  let p;
-  if(kind==='kotlin'){
-    p=SYS_KT+'أنشئ تطبيقاً كاملاً يعمل من الصفر حسب هذا الوصف. أضف كل ما يلزم ليكون التطبيق مفيداً وكاملاً.\n\nوصف التطبيق:\n'+d;
-  }else{
-    p=SYS+'أنشئ تطبيقاً كاملاً يعمل من الصفر حسب هذا الوصف. اجعل الواجهة عربية من اليمين لليسار، مناسبة لشاشة الهاتف، بأزرار كبيرة وألوان جميلة، وبدون أي مكتبات خارجية. أضف كل ما يلزم ليكون التطبيق مفيداً وكاملاً.\n\nوصف التطبيق:\n'+d;
-    if(o.code.trim()&&!isKotlinCode(o.code))p+='\n\nمهم جداً: هذا التطبيق مكمّل للتطبيق الآخر أدناه ويتشاركان نفس البيانات. استخدم نفس أسماء الجداول والحقول وشكل البيانات ونفس طريقة الحفظ والاتصال (نفس الروابط والمفاتيح والمسارات) الموجودة في كوده، بدون أي اختلاف في الأسماء، واجعل التصميم والألوان متناسقة معه. لا تعدّل التطبيق الآخر، اكتب هذا التطبيق فقط.\n\nكود التطبيق الآخر:\n```html\n'+o.code+'\n```';
-    else p+='\n\nاحفظ البيانات في localStorage.';
-  }
+  let p=SYS+'أنشئ تطبيقاً كاملاً يعمل من الصفر حسب هذا الوصف. اجعل الواجهة عربية من اليمين لليسار، مناسبة لشاشة الهاتف، بأزرار كبيرة وألوان جميلة، وبدون أي مكتبات خارجية. أضف كل ما يلزم ليكون التطبيق مفيداً وكاملاً.\n\nوصف التطبيق:\n'+d;
+  if(o.code.trim())p+='\n\nمهم جداً: هذا التطبيق مكمّل للتطبيق الآخر أدناه ويتشاركان نفس البيانات. استخدم نفس أسماء الجداول والحقول وشكل البيانات ونفس طريقة الحفظ والاتصال (نفس الروابط والمفاتيح والمسارات) الموجودة في كوده، بدون أي اختلاف في الأسماء، واجعل التصميم والألوان متناسقة معه. لا تعدّل التطبيق الآخر، اكتب هذا التطبيق فقط.\n\nكود التطبيق الآخر:\n```html\n'+o.code+'\n```';
+  else p+='\n\nاحفظ البيانات في localStorage.';
   const out=await ai(p);
-  setCode(i,clean(out));$('#dsc'+i).value='';$('#desc'+i).hidden=true;
-  toast('تم الإنشاء ✔ اللغة: '+(kind==='kotlin'?'Kotlin أصلي':'HTML'));
-  const y=window.scrollY;render();window.scrollTo(0,y)})}
+  setCode(i,clean(out));$('#dsc'+i).value='';$('#desc'+i).hidden=true;toast('تم إنشاء التطبيق ✔ شاهد المعاينة')})}
 
 /* ---------- Firebase ---------- */
 function parseApps(t){const m=t.match(/===APP1===([\s\S]*?)===APP2===([\s\S]*)$/);if(!m)throw new Error('رد الذكاء الاصطناعي غير مكتمل، حاول مرة أخرى.');return {a1:clean(m[1]),a2:clean(m[2])}}
 function linkFirebase(btn){busy(btn,async()=>{const k=S.keys;
-  if(S.apps.some(a=>isKotlinCode(a.code)))throw new Error('الربط يعمل مع تطبيقات HTML فقط، وأحد التطبيقين Kotlin أصلي.');
   if(!k.fbUrl)throw new Error('أدخل رابط Firebase في قائمة المفاتيح');
   const url=k.fbUrl.trim().replace(/\/+$/,'');
   if(!/^https:\/\/[a-z0-9.-]+\.(firebaseio\.com|firebasedatabase\.app)$/i.test(url))throw new Error('رابط Firebase غير صحيح. شكله: https://اسم-مشروعك-default-rtdb.firebaseio.com');
@@ -306,7 +269,6 @@ async function build(i){const a=S.apps[i],key=slugOf(a.name);
   if(S.apps.some((x,j)=>j!==i&&slugOf(x.name)===key))return toast('هذا الاسم مستخدم للتطبيق الآخر، غيّره');
   if(!a.code.trim())return toast('اكتب الكود أولاً');
   if(!S.keys.ghToken)return toast('أدخل مفتاح GitHub في قائمة المفاتيح');
-  if(isKotlinCode(a.code))return buildKotlin(i);
   const P=progress('بناء: '+a.name,['التحقق من الحساب والمستودع','رفع الكود إلى apps/'+key,'تشغيل البناء','جاري بناء ملف APK','تجهيز ملف التحميل']);
   let step=0;
   try{
@@ -348,38 +310,26 @@ async function build(i){const a=S.apps[i],key=slugOf(a.name);
   }catch(e){P.set(step,'bad',arErr(e))}}
 
 async function fixBuild(i){closeSheet();toast('جاري إصلاح الكود...');
-  try{const out=await ai(sysOf(i)+'الكود الحالي:\n```'+fenceOf(i)+'\n'+S.apps[i].code+'\n```\n\nفشل بناء التطبيق بهذا الخطأ:\n'+(LOGS[i]||'')+'\n\nأصلح الكود ليعمل ويُبنى بنجاح.');
+  try{const out=await ai(SYS+'الكود الحالي:\n```html\n'+S.apps[i].code+'\n```\n\nفشل بناء التطبيق بهذا الخطأ:\n'+(LOGS[i]||'')+'\n\nأصلح الكود ليعمل ويُبنى بنجاح.');
     pushVersion(i);S.apps[i].code=clean(out);save();build(i)}catch(e){toast(arErr(e))}}
 
 /* ---------- Kotlin ---------- */
+function vBuild(){return `<div class="card"><h2>🏗️ قائمة البناء</h2><p class="note">بناء HTML عبر Capacitor، وبناء Kotlin كمشروع أندرويد أصلي يعرض تطبيقك.</p></div>`+
+S.apps.map((a,i)=>`<div class="card"><h2>${esc(a.name)}</h2><p class="note">المجلد: apps/${esc(slugOf(a.name)||'← اكتب اسماً إنجليزياً في قائمة الكود')}</p><div class="row"><button onclick="build(${i})">بناء HTML</button><button class="acc" onclick="buildKotlin(${i})">بناء Kotlin</button></div>${a.apk?`<a class="btn acc" style="margin-top:8px" href="${esc(a.apk)}" target="_blank">⬇ آخر APK (HTML)</a>`:''}${a.apkKt?`<a class="btn" style="margin-top:8px;background:#243557" href="${esc(a.apkKt)}" target="_blank">⬇ آخر APK (Kotlin)</a>`:''}</div>`).join('')}
+
 async function buildKotlin(i){const a=S.apps[i],key=slugOf(a.name);
   if(!key)return toast('اكتب اسم التطبيق بالإنجليزية (حروف وأرقام فقط)');
   if(S.apps.some((x,j)=>j!==i&&slugOf(x.name)===key))return toast('هذا الاسم مستخدم للتطبيق الآخر، غيّره');
   if(!a.code.trim())return toast('اكتب الكود أولاً');
   if(!S.keys.ghToken)return toast('أدخل مفتاح GitHub في قائمة المفاتيح');
-  const pure=isKotlinCode(a.code);
-  const P=progress((pure?'Kotlin أصلي: ':'Kotlin: ')+a.name,['التحقق من المستودع','رفع مشروع Kotlin إلى apps/'+key,'تشغيل البناء','جاري بناء ملف APK','تجهيز ملف التحميل']);
+  const P=progress('Kotlin: '+a.name,['التحقق من المستودع','رفع مشروع Kotlin إلى apps/'+key,'تشغيل البناء','جاري بناء ملف APK','تجهيز ملف التحميل']);
   let step=0;
   try{
     P.set(0,'run');const repo=await repoFull();const info=await gh('/repos/'+repo);const branch=info.default_branch||'main';
     try{await gh('/repos/'+repo+'/contents/.github/workflows/build-kotlin.yml?ref='+branch)}catch(e){if(e.status===404)throw new Error('ملف build-kotlin.yml غير موجود في .github/workflows');throw e}
-    let hasKey=false;try{await gh('/repos/'+repo+'/contents/keys/shared.keystore?ref='+branch);hasKey=true}catch(e){}
-    P.set(0,'ok','المستودع: '+repo+(hasKey?' (توقيع ثابت)':''));
+    P.set(0,'ok','المستودع: '+repo);
     step=1;P.set(1,'run');
     const d='apps/'+key,pk='com.myapps.k'+key,nm=String(a.name).replace(/[&<>"]/g,'');
-    const sign=hasKey?`
-  signingConfigs {
-    shared {
-      storeFile file('../../../keys/shared.keystore')
-      storePassword 'android123'
-      keyAlias 'shared'
-      keyPassword 'android123'
-    }
-  }
-  buildTypes {
-    debug { signingConfig signingConfigs.shared }
-    release { signingConfig signingConfigs.shared }
-  }`:'';
     const files={
       'settings.gradle':`pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }
 dependencyResolutionManagement { repositories { google(); mavenCentral() } }
@@ -412,7 +362,7 @@ android {
     sourceCompatibility JavaVersion.VERSION_17
     targetCompatibility JavaVersion.VERSION_17
   }
-  kotlinOptions { jvmTarget = '17' }${sign}
+  kotlinOptions { jvmTarget = '17' }
 }
 `,
       'app/src/main/AndroidManifest.xml':`<manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -424,15 +374,10 @@ android {
 </activity>
 </application>
 </manifest>
-`
+`,
+      'app/src/main/assets/index.html':a.code
     };
-    const ktPath='app/src/main/java/'+pk.replace(/\./g,'/')+'/MainActivity.kt';
-    if(pure){
-      const body=a.code.replace(/^\s*package\s+[\w.]+\s*;?\s*$/mg,'').trim();
-      files[ktPath]='package '+pk+'\n\n'+body+'\n';
-    }else{
-      files['app/src/main/assets/index.html']=a.code;
-      files[ktPath]=`package ${pk}
+    files['app/src/main/java/'+pk.replace(/\./g,'/')+'/MainActivity.kt']=`package ${pk}
 
 import android.annotation.SuppressLint
 import android.app.Activity
@@ -462,7 +407,6 @@ class MainActivity : Activity() {
     }
 }
 `;
-    }
     for(const p in files)await put(repo,branch,d+'/'+p,files[p]);
     if(a.icon)await putB64(repo,branch,d+'/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png',a.icon.split(',')[1]);
     P.set(1,'ok');
@@ -480,10 +424,9 @@ class MainActivity : Activity() {
       const jobs=await gh('/repos/'+repo+'/actions/runs/'+run.id+'/jobs');
       const job=jobs.jobs.find(j=>j.conclusion==='failure')||jobs.jobs[0];
       const fs=(job.steps||[]).find(s=>s.conclusion==='failure');
-      let log='';try{log=(await ghText('/repos/'+repo+'/actions/jobs/'+job.id+'/logs')).slice(-5000)}catch(e){}
-      LOGS[i]=log;
+      let log='';try{log=(await ghText('/repos/'+repo+'/actions/jobs/'+job.id+'/logs')).slice(-1500)}catch(e){}
       P.set(3,'bad','فشل البناء'+(fs?' في خطوة: '+fs.name:''));
-      P.extra('<div class="errbox" style="direction:ltr;text-align:left">'+esc(log.slice(-1500))+'</div>'+(pure?'<button class="acc" style="margin-top:10px" onclick="fixBuild('+i+')">🛠 صلّح تلقائياً وأعد البناء</button>':''));return}
+      P.extra('<div class="errbox" style="direction:ltr;text-align:left">'+esc(log)+'</div>');return}
     P.set(3,'ok');step=4;P.set(4,'run');
     const tag='kotlin-'+key+'-build-'+run.run_number;let asset=null;
     for(let n=0;n<8&&!asset;n++){try{const rel=await gh('/repos/'+repo+'/releases/tags/'+tag);asset=(rel.assets||[]).find(x=>/\.apk$/.test(x.name))}catch(e){}if(!asset)await sleep(3000)}
@@ -493,6 +436,20 @@ class MainActivity : Activity() {
   }catch(e){P.set(step,'bad',arErr(e))}}
 
 render();
+  /* أزرار البناء داخل قائمة الكود */
+const _render0=render;
+render=function(){
+  _render0();
+  if(tab==='code'){
+    document.querySelectorAll('#main section.card').forEach((sec,i)=>{
+      const d=document.createElement('div');
+      d.className='row';
+      d.innerHTML='<button onclick="build('+i+')">🏗️ بناء HTML</button><button class="acc" onclick="buildKotlin('+i+')">🟣 بناء Kotlin</button>';
+      sec.insertBefore(d,sec.querySelector('.edit'));
+    });
+  }
+};
+render();
 </script>
 </body>
-  </html>
+</html> 
