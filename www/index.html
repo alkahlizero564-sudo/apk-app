@@ -436,6 +436,20 @@ class MainActivity : Activity() {
   }catch(e){P.set(step,'bad',arErr(e))}}
 
 render();
+  /* أزرار البناء داخل قائمة الكود */
+const _render0=render;
+render=function(){
+  _render0();
+  if(tab==='code'){
+    document.querySelectorAll('#main section.card').forEach((sec,i)=>{
+      const d=document.createElement('div');
+      d.className='row';
+      d.innerHTML='<button onclick="build('+i+')">🏗️ بناء HTML</button><button class="acc" onclick="buildKotlin('+i+')">🟣 بناء Kotlin</button>';
+      sec.insertBefore(d,sec.querySelector('.edit'));
+    });
+  }
+};
+render();
 </script>
 </body>
 </html> 
