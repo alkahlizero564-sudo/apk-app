@@ -1,0 +1,1907 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>سوق المستعمل السودان - بيع واشتري بسهولة</title>
+    <style>
+        :root {
+            --primary: #10b981;
+            --primary-dark: #059669;
+            --primary-light: #d1fae5;
+            --whatsapp: #25d366;
+            --whatsapp-dark: #128c7e;
+            --accent: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 14px rgba(0,0,0,0.08);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            overflow-x: hidden;
+            padding-bottom: 75px;
+        }
+
+        /* Icons SVG */
+        .icon {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            stroke-width: 2;
+            stroke: currentColor;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            vertical-align: middle;
+        }
+
+        /* Top Header */
+        header {
+            background: var(--surface);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            padding: 12px 16px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .brand-logo {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .user-status-pill {
+            font-size: 0.8rem;
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Container View Logic */
+        .app-view {
+            display: none;
+            flex-direction: column;
+            width: 100%;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+
+        .app-view.active {
+            display: flex;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Bottom Nav */
+        nav.bottom-nav {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+            left: 0;
+            height: 64px;
+            background: var(--surface);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-top: 1px solid var(--border);
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
+            z-index: 100;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.72rem;
+            font-weight: 600;
+            gap: 4px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .nav-item.active {
+            color: var(--primary-dark);
+        }
+
+        .nav-item.add-btn {
+            position: relative;
+            top: -12px;
+        }
+
+        .nav-item.add-btn .add-circle {
+            background: var(--primary);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(16, 185, 129, 0.4);
+            border: 3px solid var(--surface);
+        }
+
+        /* Search & Filters */
+        .filter-section {
+            background: var(--surface);
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .search-bar {
+            display: flex;
+            align-items: center;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 4px 12px;
+            gap: 8px;
+        }
+
+        .search-bar input {
+            border: none;
+            background: transparent;
+            width: 100%;
+            padding: 8px 0;
+            font-size: 0.95rem;
+            outline: none;
+            color: var(--text-main);
+        }
+
+        .categories-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+        .categories-scroll::-webkit-scrollbar { display: none; }
+
+        .cat-chip {
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            background: var(--bg);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            white-space: nowrap;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .cat-chip.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .filter-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .filter-select {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text-main);
+            outline: none;
+        }
+
+        /* Product Cards Grid */
+        .products-grid {
+            padding: 16px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        @media (min-width: 600px) {
+            .products-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .card {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            position: relative;
+            transition: transform 0.1s ease;
+        }
+
+        .card:active {
+            transform: scale(0.98);
+        }
+
+        .card-img-wrap {
+            position: relative;
+            width: 100%;
+            padding-top: 75%;
+            background: #e2e8f0;
+            overflow: hidden;
+        }
+
+        .card-img-wrap img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-condition {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            background: rgba(15, 23, 42, 0.75);
+            color: white;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            border-radius: 12px;
+            backdrop-filter: blur(4px);
+        }
+
+        .sold-badge {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.65);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            z-index: 2;
+        }
+
+        .card-body {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            flex-grow: 1;
+        }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-main);
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .card-price {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+        }
+
+        .card-footer {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            border-top: 1px solid #f1f5f9;
+            padding-top: 6px;
+        }
+
+        /* Detail View */
+        .detail-container {
+            padding: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .carousel-view {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            background: #000;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .carousel-view img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .thumbs-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .thumb {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-sm);
+            border: 2px solid transparent;
+            overflow: hidden;
+            cursor: pointer;
+            flex-shrink: 0;
+            background: #e2e8f0;
+        }
+
+        .thumb.active {
+            border-color: var(--primary);
+        }
+
+        .thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .detail-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 16px;
+        }
+
+        .detail-price-box {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .detail-price {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--primary-dark);
+        }
+
+        .detail-tag {
+            background: #e2e8f0;
+            color: var(--text-main);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .detail-title {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .detail-meta {
+            display: flex;
+            gap: 14px;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            margin-bottom: 14px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .detail-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .detail-desc-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: var(--text-muted);
+        }
+
+        .detail-desc {
+            font-size: 0.95rem;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            color: var(--text-main);
+        }
+
+        .seller-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg);
+            border-radius: var(--radius-md);
+            margin-top: 16px;
+        }
+
+        .seller-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+        }
+
+        /* Buttons */
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 18px;
+            border-radius: var(--radius-md);
+            font-weight: 700;
+            font-size: 0.95rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            width: 100%;
+        }
+
+        .btn-whatsapp {
+            background-color: var(--whatsapp);
+            color: white;
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
+        }
+
+        .btn-whatsapp:active {
+            background-color: var(--whatsapp-dark);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:active {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--bg);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+        }
+
+        .btn-danger {
+            background: #fee2e2;
+            color: var(--danger);
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            border-radius: var(--radius-sm);
+            width: auto;
+        }
+
+        /* Forms */
+        .form-wrap {
+            padding: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .form-card {
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            padding: 18px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .form-group label {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            font-size: 0.95rem;
+            outline: none;
+            background: var(--bg);
+            color: var(--text-main);
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            background: #fff;
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 90px;
+        }
+
+        /* Photo Upload Picker */
+        .photo-picker {
+            border: 2px dashed var(--border);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            text-align: center;
+            background: var(--bg);
+            cursor: pointer;
+            margin-bottom: 12px;
+            position: relative;
+        }
+
+        .photo-picker input[type="file"] {
+            display: none;
+        }
+
+        .photo-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .preview-box {
+            position: relative;
+            padding-top: 100%;
+            background: #e2e8f0;
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .preview-box img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-box .remove-img {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        /* My Listings List */
+        .my-item-card {
+            background: var(--surface);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            padding: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .my-item-top {
+            display: flex;
+            gap: 12px;
+        }
+
+        .my-item-img {
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-sm);
+            object-fit: cover;
+            background: #e2e8f0;
+            flex-shrink: 0;
+        }
+
+        .my-item-info {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 4px;
+        }
+
+        .my-item-actions {
+            display: flex;
+            gap: 8px;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        /* Profile Styles */
+        .profile-header {
+            text-align: center;
+            padding: 24px 16px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .profile-avatar-big {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state svg {
+            width: 60px;
+            height: 60px;
+            margin-bottom: 10px;
+            stroke: #cbd5e1;
+        }
+
+        /* Modal Dialogs */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 200;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-body {
+            background: var(--surface);
+            width: 100%;
+            max-width: 440px;
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-lg);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 0.88rem;
+            z-index: 300;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="brand-logo" onclick="app.navigate('home')">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+            <span>سوق المستعمل - السودان</span>
+        </div>
+        <div id="authStatusBtn" class="user-status-pill" onclick="app.onUserStatusClick()">
+            <!-- Rendered by JS -->
+        </div>
+    </header>
+
+    <!-- 1. Home View -->
+    <main id="view-home" class="app-view active">
+        <section class="filter-section">
+            <div class="search-bar">
+                <svg class="icon" style="color:var(--text-muted)" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" id="searchInput" placeholder="ابحث عن موبايلات، سيارات، أثاث..." oninput="app.filterProducts()">
+            </div>
+            
+            <div class="categories-scroll" id="categoryScroll">
+                <!-- Injected via JS -->
+            </div>
+
+            <div class="filter-row">
+                <select id="cityFilter" class="filter-select" onchange="app.filterProducts()">
+                    <option value="">جميع الولايات والمدن</option>
+                    <option value="بورتسودان">بورتسودان</option>
+                    <option value="الخرطوم">الخرطوم</option>
+                    <option value="أم درمان">أم درمان</option>
+                    <option value="بحري">بحري</option>
+                    <option value="عطبرة">عطبرة</option>
+                    <option value="شندي">شندي</option>
+                    <option value="كسلا">كسلا</option>
+                    <option value="القضارف">القضارف</option>
+                    <option value="ود مدني">ود مدني</option>
+                    <option value="سنار">سنار</option>
+                    <option value="كوستي">كوستي</option>
+                    <option value="الأبيض">الأبيض</option>
+                    <option value="دنقلا">دنقلا</option>
+                    <option value="مروي">مروي</option>
+                    <option value="الفاشر">الفاشر</option>
+                    <option value="نيالا">نيالا</option>
+                </select>
+
+                <select id="sortFilter" class="filter-select" onchange="app.filterProducts()">
+                    <option value="newest">الأحدث نشرًا</option>
+                    <option value="price-asc">السعر: من الأقل</option>
+                    <option value="price-desc">السعر: من الأعلى</option>
+                </select>
+            </div>
+        </section>
+
+        <section class="products-grid" id="productsContainer">
+            <!-- Product cards injected -->
+        </section>
+    </main>
+
+    <!-- 2. Product Details View -->
+    <main id="view-detail" class="app-view">
+        <div class="detail-container">
+            <button class="btn btn-secondary btn-sm" style="margin-bottom: 12px; width: fit-content;" onclick="app.navigate('home')">
+                <svg class="icon" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+                رجوع للقائمة
+            </button>
+
+            <div class="carousel-view" id="detailMainImgWrap">
+                <!-- Main big image -->
+            </div>
+            <div class="thumbs-row" id="detailThumbs"></div>
+
+            <div class="detail-card">
+                <div class="detail-price-box">
+                    <span class="detail-price" id="detailPrice"></span>
+                    <span class="detail-tag" id="detailCondition"></span>
+                </div>
+                <h1 class="detail-title" id="detailTitle"></h1>
+                
+                <div class="detail-meta">
+                    <span class="detail-meta-item">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                        <span id="detailCity"></span>
+                    </span>
+                    <span class="detail-meta-item">
+                        <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        <span id="detailDate"></span>
+                    </span>
+                    <span class="detail-meta-item">
+                        <svg class="icon" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+                        <span id="detailCategory"></span>
+                    </span>
+                </div>
+
+                <div class="detail-desc-title">الوصف:</div>
+                <div class="detail-desc" id="detailDescription"></div>
+
+                <div class="seller-box">
+                    <div class="seller-avatar" id="detailSellerInitial">م</div>
+                    <div>
+                        <strong style="display:block; font-size:0.95rem;" id="detailSellerName">اسم البائع</strong>
+                        <span style="font-size:0.8rem; color:var(--text-muted);">بائع موثوق عبر واتساب في السودان</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detailActionBox" style="position: sticky; bottom: 74px; z-index: 40; background: var(--bg); padding: 8px 0;">
+                <!-- WhatsApp Contact CTA -->
+            </div>
+        </div>
+    </main>
+
+    <!-- 3. Add Listing View -->
+    <main id="view-add" class="app-view">
+        <div class="form-wrap">
+            <h2 style="font-size:1.3rem; margin-bottom: 14px;">أضف غرض للبيع</h2>
+            <div class="form-card">
+                <form id="addListingForm" onsubmit="app.handleAddListing(event)">
+                    
+                    <div class="form-group">
+                        <label>صور الإعلان (حتى 5 صور)</label>
+                        <div class="photo-picker" onclick="document.getElementById('fileInput').click()">
+                            <svg class="icon" style="width:36px; height:36px; color:var(--primary)" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:6px;">اضغط هنا لاختيار أو تصوير الأغراض</p>
+                            <input type="file" id="fileInput" accept="image/*" multiple onchange="app.handleImageFiles(this.files)">
+                        </div>
+                        <div class="photo-preview-grid" id="photoPreviewGrid"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>عنوان الإعلان *</label>
+                        <input type="text" id="addTitle" class="form-control" placeholder="مثلاً: هاتف سامسونج نظيف جداً" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>القسم *</label>
+                        <select id="addCategory" class="form-control" required>
+                            <option value="إلكترونيات وموبايل">إلكترونيات وموبايل</option>
+                            <option value="سيارات ومركبات">سيارات ومركبات</option>
+                            <option value="أثاث ومنزل">أثاث ومنزل</option>
+                            <option value="أجهزة ومولدات">أجهزة ومولدات كهربائية</option>
+                            <option value="ملابس وموضة">ملابس وموضة</option>
+                            <option value="عقارات وإيجار">عقارات وإيجار</option>
+                            <option value="أخرى">أخرى</option>
+                        </select>
+                    </div>
+
+                    <div class="form-row" style="display:flex; gap:10px;">
+                        <div class="form-group" style="flex:1;">
+                            <label>السعر المطلوب (بالجنيه السوداني) *</label>
+                            <input type="number" id="addPrice" class="form-control" placeholder="مثلاً: 350000" required min="1">
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label>الحالة *</label>
+                            <select id="addCondition" class="form-control" required>
+                                <option value="شبه جديد">شبه جديد (كالجديد)</option>
+                                <option value="مستعمل - ممتاز">مستعمل - ممتاز</option>
+                                <option value="مستعمل - جيد">مستعمل - جيد</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row" style="display:flex; gap:10px;">
+                        <div class="form-group" style="flex:1;">
+                            <label>المدينة / الولاية *</label>
+                            <select id="addCity" class="form-control" required>
+                                <option value="بورتسودان">بورتسودان</option>
+                                <option value="الخرطوم">الخرطوم</option>
+                                <option value="أم درمان">أم درمان</option>
+                                <option value="بحري">بحري</option>
+                                <option value="عطبرة">عطبرة</option>
+                                <option value="شندي">شندي</option>
+                                <option value="كسلا">كسلا</option>
+                                <option value="القضارف">القضارف</option>
+                                <option value="ود مدني">ود مدني</option>
+                                <option value="سنار">سنار</option>
+                                <option value="كوستي">كوستي</option>
+                                <option value="الأبيض">الأبيض</option>
+                                <option value="دنقلا">دنقلا</option>
+                                <option value="مروي">مروي</option>
+                                <option value="الفاشر">الفاشر</option>
+                                <option value="نيالا">نيالا</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <label>رقم الواتساب للتواصل *</label>
+                            <input type="tel" id="addPhone" class="form-control" placeholder="مثال: 0912345678 أو 249..." required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>الوصف التفصيلي *</label>
+                        <textarea id="addDescription" class="form-control" placeholder="وضح مواصفات الغرض، مدة الاستخدام، الحي/المنطقة، إمكانية المعاينة..." required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="margin-top: 10px;">
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                        نشر الإعلان الآن
+                    </button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- 4. My Listings (لوحة إعلاناتي) -->
+    <main id="view-my-listings" class="app-view">
+        <div class="form-wrap">
+            <h2 style="font-size:1.3rem; margin-bottom: 4px;">إعلاناتي المعروضة</h2>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom: 14px;">تحكّم في منتجاتك، عدّل الأسعار أو حدد المنتج كـ "تم البيع".</p>
+            <div id="myListingsContainer">
+                <!-- Rendered dynamically -->
+            </div>
+        </div>
+    </main>
+
+    <!-- 5. Profile & Auth View -->
+    <main id="view-profile" class="app-view">
+        <div id="profileLoggedSection" style="display:none;">
+            <div class="profile-header">
+                <div class="profile-avatar-big" id="profileLetter">م</div>
+                <h2 id="profileName" style="font-size:1.2rem;"></h2>
+                <p id="profilePhone" style="font-size:0.85rem; color:var(--text-muted); direction:ltr; display:inline-block; margin-top:2px;"></p>
+                <p id="profileCity" style="font-size:0.85rem; color:var(--text-muted); margin-top:4px;"></p>
+            </div>
+            
+            <div class="form-wrap" style="display:flex; flex-direction:column; gap:10px;">
+                <button class="btn btn-secondary" onclick="app.navigate('my-listings')">
+                    <svg class="icon" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+                    إدارة إعلاناتي (<span id="userAdsCount">0</span>)
+                </button>
+                <button class="btn btn-secondary" onclick="app.navigate('add')">
+                    <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>
+                    إضافة إعلان جديد
+                </button>
+                <button class="btn btn-danger" onclick="app.logout()">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+                    تسجيل الخروج
+                </button>
+            </div>
+        </div>
+
+        <div id="profileAuthSection" class="form-wrap">
+            <div class="form-card">
+                <div style="display:flex; gap:8px; margin-bottom:16px;">
+                    <button id="tabLogin" class="btn btn-primary" style="flex:1;" onclick="app.switchAuthTab('login')">تسجيل الدخول</button>
+                    <button id="tabRegister" class="btn btn-secondary" style="flex:1;" onclick="app.switchAuthTab('register')">حساب جديد</button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="loginForm" onsubmit="app.handleLogin(event)">
+                    <div class="form-group">
+                        <label>رقم الهاتف</label>
+                        <input type="tel" id="loginPhone" class="form-control" placeholder="0912345678" required>
+                    </div>
+                    <div class="form-group">
+                        <label>كلمة المرور</label>
+                        <input type="password" id="loginPassword" class="form-control" placeholder="******" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top:10px;">دخول</button>
+                </form>
+
+                <!-- Register Form -->
+                <form id="registerForm" style="display:none;" onsubmit="app.handleRegister(event)">
+                    <div class="form-group">
+                        <label>الاسم الكامل</label>
+                        <input type="text" id="regName" class="form-control" placeholder="مثال: محمد عثمان" required>
+                    </div>
+                    <div class="form-group">
+                        <label>رقم الهاتف والواتساب (سوداني)</label>
+                        <input type="tel" id="regPhone" class="form-control" placeholder="مثال: 0912345678 أو 0123456789" required>
+                    </div>
+                    <div class="form-group">
+                        <label>المدينة / الولاية</label>
+                        <select id="regCity" class="form-control" required>
+                            <option value="بورتسودان">بورتسودان</option>
+                            <option value="الخرطوم">الخرطوم</option>
+                            <option value="أم درمان">أم درمان</option>
+                            <option value="بحري">بحري</option>
+                            <option value="عطبرة">عطبرة</option>
+                            <option value="شندي">شندي</option>
+                            <option value="كسلا">كسلا</option>
+                            <option value="القضارف">القضارف</option>
+                            <option value="ود مدني">ود مدني</option>
+                            <option value="سنار">سنار</option>
+                            <option value="كوستي">كوستي</option>
+                            <option value="الأبيض">الأبيض</option>
+                            <option value="دنقلا">دنقلا</option>
+                            <option value="مروي">مروي</option>
+                            <option value="الفاشر">الفاشر</option>
+                            <option value="نيالا">نيالا</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>كلمة المرور</label>
+                        <input type="password" id="regPassword" class="form-control" placeholder="اختر كلمة مرور" required minlength="4">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="margin-top:10px;">إنشاء الحساب</button>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Edit Price / Listing Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-body">
+            <h3 style="margin-bottom:12px;">تعديل بيانات الإعلان</h3>
+            <form id="editListingForm" onsubmit="app.saveEditedListing(event)">
+                <input type="hidden" id="editItemId">
+                <div class="form-group">
+                    <label>عنوان الإعلان</label>
+                    <input type="text" id="editTitle" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>السعر (ج.س)</label>
+                    <input type="number" id="editPrice" class="form-control" required min="1">
+                </div>
+                <div class="form-group">
+                    <label>المدينة / الولاية</label>
+                    <select id="editCity" class="form-control" required>
+                        <option value="بورتسودان">بورتسودان</option>
+                        <option value="الخرطوم">الخرطوم</option>
+                        <option value="أم درمان">أم درمان</option>
+                        <option value="بحري">بحري</option>
+                        <option value="عطبرة">عطبرة</option>
+                        <option value="شندي">شندي</option>
+                        <option value="كسلا">كسلا</option>
+                        <option value="القضارف">القضارف</option>
+                        <option value="ود مدني">ود مدني</option>
+                        <option value="سنار">سنار</option>
+                        <option value="كوستي">كوستي</option>
+                        <option value="الأبيض">الأبيض</option>
+                        <option value="دنقلا">دنقلا</option>
+                        <option value="مروي">مروي</option>
+                        <option value="الفاشر">الفاشر</option>
+                        <option value="نيالا">نيالا</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>الوصف</label>
+                    <textarea id="editDesc" class="form-control" rows="3" required></textarea>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:14px;">
+                    <button type="submit" class="btn btn-primary" style="flex:1;">حفظ التعديلات</button>
+                    <button type="button" class="btn btn-secondary" style="flex:1;" onclick="app.closeModal('editModal')">إلغاء</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bottom App Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" id="nav-home" onclick="app.navigate('home')">
+            <svg class="icon" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>الرئيسية</span>
+        </button>
+
+        <button class="nav-item" id="nav-my-listings" onclick="app.navigate('my-listings')">
+            <svg class="icon" viewBox="0 0 24 24"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+            <span>إعلاناتي</span>
+        </button>
+
+        <button class="nav-item add-btn" onclick="app.navigate('add')">
+            <div class="add-circle">
+                <svg class="icon" style="width:26px; height:26px; stroke-width: 2.5;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </div>
+            <span>بيع الآن</span>
+        </button>
+
+        <button class="nav-item" id="nav-profile" onclick="app.navigate('profile')">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span id="navProfileText">حسابي</span>
+        </button>
+    </nav>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        /* ======================== APP LOGIC ======================== */
+        const STORAGE_PRODUCTS_KEY = 'souq_sudan_products_v1';
+        const STORAGE_USERS_KEY = 'souq_sudan_users_v1';
+        const STORAGE_AUTH_KEY = 'souq_sudan_auth_v1';
+
+        const CATEGORIES = ['الكل', 'إلكترونيات وموبايل', 'سيارات ومركبات', 'أثاث ومنزل', 'أجهزة ومولدات', 'ملابس وموضة', 'عقارات وإيجار', 'أخرى'];
+
+        function createPlaceholderSvg(text, bg = '#0284c7') {
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+                <rect width="100%" height="100%" fill="${bg}"/>
+                <circle cx="200" cy="130" r="45" fill="rgba(255,255,255,0.2)"/>
+                <text x="50%" y="65%" dominant-baseline="middle" text-anchor="middle" fill="#ffffff" font-size="20" font-weight="bold" font-family="system-ui, sans-serif">${text}</text>
+                <text x="50%" y="78%" dominant-baseline="middle" text-anchor="middle" fill="rgba(255,255,255,0.7)" font-size="13" font-family="system-ui, sans-serif">سوق المستعمل - السودان</text>
+            </svg>`;
+            return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+        }
+
+        const SEED_PRODUCTS = [
+            {
+                id: 'prod_sd_1',
+                title: 'سامسونج جالكسي A54 نظيف جداً 256 قيقا',
+                category: 'إلكترونيات وموبايل',
+                price: 480000,
+                condition: 'شبه جديد',
+                city: 'بورتسودان',
+                sellerName: 'محمد عثمان',
+                sellerPhone: '0912345678',
+                sellerId: 'user_seed_sd_1',
+                desc: 'الجهاز استخدام خفيف أقل من شهرين، الشاشة نظيفة والبطارية ممتازة جداً 5000 ملي أمبير، معاه الشاحن الأصلي والكرتونة كاملة، المعاينة في السوق الكبير بورتسودان.',
+                images: [
+                    createPlaceholderSvg('Samsung A54', '#1e293b'),
+                    createPlaceholderSvg('الشاشة والعلبة', '#334155')
+                ],
+                status: 'available',
+                createdAt: Date.now() - 3600000 * 3
+            },
+            {
+                id: 'prod_sd_2',
+                title: 'طقم جلوس تركي فاخر 7 مقاعد بحالة ممتازة',
+                category: 'أثاث ومنزل',
+                price: 950000,
+                condition: 'مستعمل - ممتاز',
+                city: 'أم درمان',
+                sellerName: 'آمنة أحمد',
+                sellerPhone: '0922345678',
+                sellerId: 'user_seed_sd_2',
+                desc: 'طقم كنب تركي إسفنج مضغوط وقماش شامواه عالي الجودة ونظيف جداً بدون أي عيوب أو هبوط. البيع لداعي السفر.',
+                images: [
+                    createPlaceholderSvg('طقم جلوس تركي', '#854d0e')
+                ],
+                status: 'available',
+                createdAt: Date.now() - 3600000 * 18
+            },
+            {
+                id: 'prod_sd_3',
+                title: 'تويوتا كورولا 2015 ترخيص وفحص ساري',
+                category: 'سيارات ومركبات',
+                price: 18500000,
+                condition: 'مستعمل - ممتاز',
+                city: 'عطبرة',
+                sellerName: 'عمر التوم',
+                sellerPhone: '0123456789',
+                sellerId: 'user_seed_sd_3',
+                desc: 'كورولا شاذة خالية من الحوادث، تكييف شغال مية المية، قير وماكينة وفلتر على الشرط، ترخيص ساري في ولاية نهر النيل.',
+                images: [
+                    createPlaceholderSvg('Toyota Corolla', '#b91c1c')
+                ],
+                status: 'available',
+                createdAt: Date.now() - 3600000 * 36
+            },
+            {
+                id: 'prod_sd_4',
+                title: 'مولد كهربائي استيراد 5.5 كيلو كاتم صوت',
+                category: 'أجهزة ومولدات',
+                price: 1300000,
+                condition: 'شبه جديد',
+                city: 'كسلا',
+                sellerName: 'إبراهيم مصطفى',
+                sellerPhone: '0991234567',
+                sellerId: 'user_seed_sd_4',
+                desc: 'مولد بنزين أصلي ماركة يابانية تشغيل سلف ومارش، استهلاك اقتصادي للوقود، يشغل مكيف وثلاجة وإضاءة البيت كامل، تم البيع مسبقاً.',
+                images: [
+                    createPlaceholderSvg('مولد كهربائي 5.5KVA', '#475569')
+                ],
+                status: 'sold',
+                createdAt: Date.now() - 3600000 * 72
+            }
+        ];
+
+        class UsedMarketApp {
+            constructor() {
+                this.currentUser = null;
+                this.products = [];
+                this.users = [];
+                this.activeCategory = 'الكل';
+                this.tempImages = [];
+                this.currentDetailProduct = null;
+            }
+
+            init() {
+                this.loadData();
+                this.renderCategoriesBar();
+                this.renderUserStatus();
+                this.filterProducts();
+            }
+
+            loadData() {
+                try {
+                    const savedProducts = localStorage.getItem(STORAGE_PRODUCTS_KEY);
+                    this.products = savedProducts ? JSON.parse(savedProducts) : SEED_PRODUCTS;
+                    if (!savedProducts) {
+                        this.saveProducts();
+                    }
+
+                    const savedUsers = localStorage.getItem(STORAGE_USERS_KEY);
+                    this.users = savedUsers ? JSON.parse(savedUsers) : [];
+
+                    const savedAuth = localStorage.getItem(STORAGE_AUTH_KEY);
+                    this.currentUser = savedAuth ? JSON.parse(savedAuth) : null;
+                } catch (e) {
+                    console.error("Storage load error:", e);
+                    this.products = SEED_PRODUCTS;
+                }
+            }
+
+            saveProducts() {
+                localStorage.setItem(STORAGE_PRODUCTS_KEY, JSON.stringify(this.products));
+            }
+
+            saveUsers() {
+                localStorage.setItem(STORAGE_USERS_KEY, JSON.stringify(this.users));
+            }
+
+            saveAuth(user) {
+                this.currentUser = user;
+                if (user) {
+                    localStorage.setItem(STORAGE_AUTH_KEY, JSON.stringify(user));
+                } else {
+                    localStorage.removeItem(STORAGE_AUTH_KEY);
+                }
+                this.renderUserStatus();
+            }
+
+            showToast(msg) {
+                const toast = document.getElementById('toast');
+                toast.textContent = msg;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2500);
+            }
+
+            /* Navigation & Views */
+            navigate(viewId, param = null) {
+                document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+
+                const target = document.getElementById(`view-${viewId}`);
+                if (target) {
+                    target.classList.add('active');
+                    window.scrollTo({ top: 0, behavior: 'instant' });
+                }
+
+                const navBtn = document.getElementById(`nav-${viewId}`);
+                if (navBtn) navBtn.classList.add('active');
+
+                if (viewId === 'home') {
+                    this.filterProducts();
+                } else if (viewId === 'detail' && param) {
+                    this.renderDetailView(param);
+                } else if (viewId === 'add') {
+                    this.prepareAddView();
+                } else if (viewId === 'my-listings') {
+                    this.renderMyListings();
+                } else if (viewId === 'profile') {
+                    this.renderProfileView();
+                }
+            }
+
+            renderUserStatus() {
+                const container = document.getElementById('authStatusBtn');
+                const navProfileText = document.getElementById('navProfileText');
+                if (this.currentUser) {
+                    container.innerHTML = `
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <span>${this.currentUser.name.split(' ')[0]}</span>
+                    `;
+                    navProfileText.textContent = this.currentUser.name.split(' ')[0];
+                } else {
+                    container.innerHTML = `
+                        <svg class="icon" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" x2="3" y1="12" y2="12"/></svg>
+                        <span>دخول / تسجيل</span>
+                    `;
+                    navProfileText.textContent = 'حسابي';
+                }
+            }
+
+            onUserStatusClick() {
+                this.navigate('profile');
+            }
+
+            /* Category Bar */
+            renderCategoriesBar() {
+                const scroll = document.getElementById('categoryScroll');
+                scroll.innerHTML = CATEGORIES.map(cat => `
+                    <div class="cat-chip ${this.activeCategory === cat ? 'active' : ''}" onclick="app.selectCategory('${cat}')">
+                        ${cat}
+                    </div>
+                `).join('');
+            }
+
+            selectCategory(cat) {
+                this.activeCategory = cat;
+                this.renderCategoriesBar();
+                this.filterProducts();
+            }
+
+            /* Product Filtering & Home Display */
+            filterProducts() {
+                const query = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+                const city = document.getElementById('cityFilter').value;
+                const sortBy = document.getElementById('sortFilter').value;
+
+                let list = [...this.products];
+
+                if (this.activeCategory && this.activeCategory !== 'الكل') {
+                    list = list.filter(p => p.category === this.activeCategory);
+                }
+
+                if (city) {
+                    list = list.filter(p => p.city === city);
+                }
+
+                if (query) {
+                    list = list.filter(p => 
+                        p.title.toLowerCase().includes(query) || 
+                        p.desc.toLowerCase().includes(query) ||
+                        p.category.toLowerCase().includes(query) ||
+                        p.city.toLowerCase().includes(query)
+                    );
+                }
+
+                if (sortBy === 'price-asc') {
+                    list.sort((a,b) => a.price - b.price);
+                } else if (sortBy === 'price-desc') {
+                    list.sort((a,b) => b.price - a.price);
+                } else {
+                    list.sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0));
+                }
+
+                this.renderProductCards(list);
+            }
+
+            renderProductCards(items) {
+                const container = document.getElementById('productsContainer');
+                if (!items.length) {
+                    container.innerHTML = `
+                        <div class="empty-state" style="grid-column: 1 / -1;">
+                            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></svg>
+                            <h3>لا توجد معروضات مطابقة</h3>
+                            <p style="font-size:0.85rem; margin-top:4px;">جرّب اختيار ولاية أخرى أو تغيير كلمة البحث</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = items.map(p => {
+                    const thumb = (p.images && p.images.length > 0) ? p.images[0] : createPlaceholderSvg(p.title);
+                    const isSold = p.status === 'sold';
+                    return `
+                        <div class="card" onclick="app.navigate('detail', '${p.id}')">
+                            <div class="card-img-wrap">
+                                <img src="${thumb}" alt="${p.title}" loading="lazy">
+                                <span class="card-condition">${p.condition}</span>
+                                ${isSold ? '<div class="sold-badge">تم البيع</div>' : ''}
+                            </div>
+                            <div class="card-body">
+                                <div class="card-title">${p.title}</div>
+                                <div class="card-price">${Number(p.price).toLocaleString()} ج.س</div>
+                                <div class="card-footer">
+                                    <span>${p.city}</span>
+                                    <span>${p.category}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            /* Product Details & WhatsApp Link */
+            renderDetailView(productId) {
+                const product = this.products.find(p => p.id === productId);
+                if (!product) {
+                    this.navigate('home');
+                    return;
+                }
+                this.currentDetailProduct = product;
+
+                // Elements
+                document.getElementById('detailTitle').textContent = product.title;
+                document.getElementById('detailPrice').textContent = `${Number(product.price).toLocaleString()} جنيه سوداني`;
+                document.getElementById('detailCondition').textContent = product.condition;
+                document.getElementById('detailCity').textContent = product.city;
+                document.getElementById('detailCategory').textContent = product.category;
+                document.getElementById('detailDescription').textContent = product.desc;
+                document.getElementById('detailSellerName').textContent = product.sellerName || 'مستخدم سوداني';
+                document.getElementById('detailSellerInitial').textContent = (product.sellerName || 'م').charAt(0);
+                
+                const dateObj = new Date(product.createdAt || Date.now());
+                document.getElementById('detailDate').textContent = dateObj.toLocaleDateString('ar-SD');
+
+                // Gallery
+                const mainWrap = document.getElementById('detailMainImgWrap');
+                const thumbsWrap = document.getElementById('detailThumbs');
+                thumbsWrap.innerHTML = '';
+
+                const imgs = (product.images && product.images.length > 0) 
+                    ? product.images 
+                    : [createPlaceholderSvg(product.title)];
+
+                mainWrap.innerHTML = `<img id="detailActiveImg" src="${imgs[0]}" alt="${product.title}">`;
+
+                if (imgs.length > 1) {
+                    imgs.forEach((imgSrc, idx) => {
+                        const thumb = document.createElement('div');
+                        thumb.className = `thumb ${idx === 0 ? 'active' : ''}`;
+                        thumb.innerHTML = `<img src="${imgSrc}" alt="صورة ${idx+1}">`;
+                        thumb.onclick = () => {
+                            document.querySelectorAll('.thumbs-row .thumb').forEach(t => t.classList.remove('active'));
+                            thumb.classList.add('active');
+                            document.getElementById('detailActiveImg').src = imgSrc;
+                        };
+                        thumbsWrap.appendChild(thumb);
+                    });
+                    thumbsWrap.style.display = 'flex';
+                } else {
+                    thumbsWrap.style.display = 'none';
+                }
+
+                // WhatsApp Action button
+                const actionBox = document.getElementById('detailActionBox');
+                const isSold = product.status === 'sold';
+
+                if (isSold) {
+                    actionBox.innerHTML = `
+                        <button class="btn btn-secondary" disabled style="opacity:0.7; cursor:not-allowed;">
+                            <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" x2="19.07" y1="4.93" y2="19.07"/></svg>
+                            تم بيع هذا الغرض مسبقاً
+                        </button>
+                    `;
+                } else {
+                    actionBox.innerHTML = `
+                        <button class="btn btn-whatsapp" onclick="app.openWhatsAppChat('${product.id}')">
+                            <svg class="icon" style="width:24px; height:24px;" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                            تواصل مع البائع عبر واتساب
+                        </button>
+                    `;
+                }
+            }
+
+            formatSudanPhone(phoneStr) {
+                let cleaned = (phoneStr || '').replace(/[^0-9]/g, '');
+                if (cleaned.startsWith('00249')) {
+                    cleaned = cleaned.substring(2);
+                } else if (cleaned.startsWith('0')) {
+                    cleaned = '249' + cleaned.substring(1);
+                } else if (!cleaned.startsWith('249') && (cleaned.length === 9 || cleaned.length === 10)) {
+                    cleaned = '249' + cleaned;
+                }
+                return cleaned;
+            }
+
+            openWhatsAppChat(productId) {
+                const product = this.products.find(p => p.id === productId);
+                if (!product) return;
+
+                const formattedPhone = this.formatSudanPhone(product.sellerPhone);
+                if (!formattedPhone || formattedPhone.length < 10) {
+                    this.showToast('رقم الهاتف المسجل غير صالح للتواصل');
+                    return;
+                }
+
+                const msg = `السلام عليكم ورحمة الله، أنا مهتم بشراء معروضكم في (سوق المستعمل السودان):\n"${product.title}"\nالمعروض بسعر: ${Number(product.price).toLocaleString()} ج.س\nالمدينة: ${product.city}\nهل الغرض ما زال متوفراً؟`;
+                const encodedMsg = encodeURIComponent(msg);
+                const waUrl = `https://wa.me/${formattedPhone}?text=${encodedMsg}`;
+
+                window.open(waUrl, '_blank');
+            }
+
+            /* Image Upload Handling */
+            handleImageFiles(files) {
+                if (!files || !files.length) return;
+                const remainingSlots = 5 - this.tempImages.length;
+                if (remainingSlots <= 0) {
+                    this.showToast('الحد الأقصى للصور هو 5 صور');
+                    return;
+                }
+
+                const allowedFiles = Array.from(files).slice(0, remainingSlots);
+
+                allowedFiles.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.compressImage(e.target.result, 800, 0.7, (compressedBase64) => {
+                            this.tempImages.push(compressedBase64);
+                            this.renderPhotoPreviews();
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            compressImage(dataUrl, maxDimension, quality, callback) {
+                const img = new Image();
+                img.onload = () => {
+                    let w = img.width;
+                    let h = img.height;
+                    if (w > maxDimension || h > maxDimension) {
+                        if (w > h) {
+                            h = Math.round((h * maxDimension) / w);
+                            w = maxDimension;
+                        } else {
+                            w = Math.round((w * maxDimension) / h);
+                            h = maxDimension;
+                        }
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    callback(canvas.toDataURL('image/jpeg', quality));
+                };
+                img.src = dataUrl;
+            }
+
+            removeTempImage(index) {
+                this.tempImages.splice(index, 1);
+                this.renderPhotoPreviews();
+            }
+
+            renderPhotoPreviews() {
+                const grid = document.getElementById('photoPreviewGrid');
+                grid.innerHTML = this.tempImages.map((src, i) => `
+                    <div class="preview-box">
+                        <img src="${src}" alt="preview">
+                        <button type="button" class="remove-img" onclick="app.removeTempImage(${i})">✕</button>
+                    </div>
+                `).join('');
+            }
+
+            prepareAddView() {
+                if (!this.currentUser) {
+                    this.showToast('يرجى تسجيل الدخول أولاً لتتمكن من إضافة إعلان');
+                    this.navigate('profile');
+                    return;
+                }
+
+                document.getElementById('addPhone').value = this.currentUser.phone || '';
+                if (this.currentUser.city) {
+                    document.getElementById('addCity').value = this.currentUser.city;
+                }
+                this.tempImages = [];
+                this.renderPhotoPreviews();
+            }
+
+            handleAddListing(e) {
+                e.preventDefault();
+                if (!this.currentUser) {
+                    this.showToast('يجب تسجيل الدخول لإضافة إعلان');
+                    this.navigate('profile');
+                    return;
+                }
+
+                const title = document.getElementById('addTitle').value.trim();
+                const category = document.getElementById('addCategory').value;
+                const price = parseFloat(document.getElementById('addPrice').value);
+                const condition = document.getElementById('addCondition').value;
+                const city = document.getElementById('addCity').value;
+                const phone = document.getElementById('addPhone').value.trim();
+                const desc = document.getElementById('addDescription').value.trim();
+
+                if (!title || isNaN(price) || !city || !phone || !desc) {
+                    this.showToast('يرجى ملء جميع الحقول المطلوبة');
+                    return;
+                }
+
+                const finalImages = this.tempImages.length > 0 
+                    ? [...this.tempImages] 
+                    : [createPlaceholderSvg(title, '#10b981')];
+
+                const newProduct = {
+                    id: 'prod_' + Date.now(),
+                    title,
+                    category,
+                    price,
+                    condition,
+                    city,
+                    sellerPhone: phone,
+                    desc,
+                    images: finalImages,
+                    sellerName: this.currentUser.name,
+                    sellerId: this.currentUser.id,
+                    status: 'available',
+                    createdAt: Date.now()
+                };
+
+                this.products.unshift(newProduct);
+                this.saveProducts();
+
+                document.getElementById('addListingForm').reset();
+                this.tempImages = [];
+                this.renderPhotoPreviews();
+
+                this.showToast('تم نشر إعلانك في السودان بنجاح!');
+                this.navigate('detail', newProduct.id);
+            }
+
+            /* My Listings Management */
+            renderMyListings() {
+                if (!this.currentUser) {
+                    this.showToast('سجل دخولك لعرض إعلاناتك');
+                    this.navigate('profile');
+                    return;
+                }
+
+                const container = document.getElementById('myListingsContainer');
+                const userProducts = this.products.filter(p => p.sellerId === this.currentUser.id);
+
+                if (userProducts.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <svg class="icon" viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+                            <h3>ليس لديك إعلانات منشورة بعد</h3>
+                            <p style="font-size:0.85rem; margin-top:6px;">ابدأ الآن بعرض أغراضك المستعملة للبيع مباشرة بدون سماسرة</p>
+                            <button class="btn btn-primary btn-sm" style="margin: 14px auto 0;" onclick="app.navigate('add')">أضف إعلانك الأول</button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = userProducts.map(p => {
+                    const thumb = (p.images && p.images[0]) ? p.images[0] : createPlaceholderSvg(p.title);
+                    const isSold = p.status === 'sold';
+                    return `
+                        <div class="my-item-card">
+                            <div class="my-item-top">
+                                <img src="${thumb}" alt="${p.title}" class="my-item-img">
+                                <div class="my-item-info">
+                                    <strong style="font-size:0.95rem;">${p.title}</strong>
+                                    <span style="font-size:0.9rem; font-weight:700; color:var(--primary-dark);">${Number(p.price).toLocaleString()} ج.س</span>
+                                    <span style="font-size:0.75rem; color:var(--text-muted);">${p.city} - ${p.category}</span>
+                                </div>
+                            </div>
+                            <div class="my-item-actions">
+                                <button class="btn btn-secondary btn-sm" onclick="app.toggleSoldStatus('${p.id}')">
+                                    <svg class="icon" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                    ${isSold ? 'إعادة للعرض' : 'تحديد كـ "تم البيع"'}
+                                </button>
+
+                                <button class="btn btn-secondary btn-sm" onclick="app.openEditModal('${p.id}')">
+                                    <svg class="icon" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                    تعديل
+                                </button>
+
+                                <button class="btn btn-danger btn-sm" onclick="app.deleteProduct('${p.id}')">
+                                    <svg class="icon" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                                    حذف
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            toggleSoldStatus(id) {
+                const prod = this.products.find(p => p.id === id);
+                if (!prod) return;
+                prod.status = prod.status === 'sold' ? 'available' : 'sold';
+                this.saveProducts();
+                this.renderMyListings();
+                this.showToast(prod.status === 'sold' ? 'تم تحويل الحالة إلى تم البيع' : 'أصبح الغرض معروضاً للبيع مجدداً');
+            }
+
+            deleteProduct(id) {
+                if (!confirm('هل أنت متأكد من حذف هذا الإعلان نهائياً؟')) return;
+                this.products = this.products.filter(p => p.id !== id);
+                this.saveProducts();
+                this.renderMyListings();
+                this.showToast('تم حذف الإعلان');
+            }
+
+            /* Edit Listing Modal */
+            openEditModal(id) {
+                const prod = this.products.find(p => p.id === id);
+                if (!prod) return;
+
+                document.getElementById('editItemId').value = prod.id;
+                document.getElementById('editTitle').value = prod.title;
+                document.getElementById('editPrice').value = prod.price;
+                document.getElementById('editCity').value = prod.city;
+                document.getElementById('editDesc').value = prod.desc;
+
+                document.getElementById('editModal').classList.add('active');
+            }
+
+            closeModal(modalId) {
+                document.getElementById(modalId).classList.remove('active');
+            }
+
+            saveEditedListing(e) {
+                e.preventDefault();
+                const id = document.getElementById('editItemId').value;
+                const prod = this.products.find(p => p.id === id);
+                if (!prod) return;
+
+                prod.title = document.getElementById('editTitle').value.trim();
+                prod.price = parseFloat(document.getElementById('editPrice').value);
+                prod.city = document.getElementById('editCity').value;
+                prod.desc = document.getElementById('editDesc').value.trim();
+
+                this.saveProducts();
+                this.closeModal('editModal');
+                this.renderMyListings();
+                this.showToast('تم حفظ التعديلات بنجاح');
+            }
+
+            /* Authentication: Register & Login */
+            switchAuthTab(tab) {
+                const isLogin = tab === 'login';
+                document.getElementById('tabLogin').className = isLogin ? 'btn btn-primary' : 'btn btn-secondary';
+                document.getElementById('tabRegister').className = isLogin ? 'btn btn-secondary' : 'btn btn-primary';
+                document.getElementById('loginForm').style.display = isLogin ? 'block' : 'none';
+                document.getElementById('registerForm').style.display = isLogin ? 'none' : 'block';
+            }
+
+            renderProfileView() {
+                const loggedSec = document.getElementById('profileLoggedSection');
+                const authSec = document.getElementById('profileAuthSection');
+
+                if (this.currentUser) {
+                    loggedSec.style.display = 'block';
+                    authSec.style.display = 'none';
+
+                    document.getElementById('profileName').textContent = this.currentUser.name;
+                    document.getElementById('profileLetter').textContent = (this.currentUser.name || 'م').charAt(0);
+                    document.getElementById('profilePhone').textContent = this.currentUser.phone;
+                    document.getElementById('profileCity').textContent = this.currentUser.city || 'السودان';
+
+                    const userAds = this.products.filter(p => p.sellerId === this.currentUser.id);
+                    document.getElementById('userAdsCount').textContent = userAds.length;
+                } else {
+                    loggedSec.style.display = 'none';
+                    authSec.style.display = 'block';
+                }
+            }
+
+            handleRegister(e) {
+                e.preventDefault();
+                const name = document.getElementById('regName').value.trim();
+                let phone = document.getElementById('regPhone').value.trim();
+                const city = document.getElementById('regCity').value;
+                const password = document.getElementById('regPassword').value;
+
+                if (!name || !phone || !password || !city) {
+                    this.showToast('يرجى إكمال جميع الحقول');
+                    return;
+                }
+
+                const existing = this.users.find(u => u.phone === phone);
+                if (existing) {
+                    this.showToast('رقم الهاتف مسجل مسبقاً! قم بتسجيل الدخول.');
+                    this.switchAuthTab('login');
+                    return;
+                }
+
+                const newUser = {
+                    id: 'usr_' + Date.now(),
+                    name,
+                    phone,
+                    city,
+                    password
+                };
+
+                this.users.push(newUser);
+                this.saveUsers();
+                this.saveAuth(newUser);
+
+                this.showToast(`أهلاً بك يا ${name}! مرحباً بك في سوق السودان`);
+                this.navigate('home');
+            }
+
+            handleLogin(e) {
+                e.preventDefault();
+                let phone = document.getElementById('loginPhone').value.trim();
+                const password = document.getElementById('loginPassword').value;
+
+                const user = this.users.find(u => u.phone === phone && u.password === password);
+
+                if (!user) {
+                    if (this.users.length === 0 && phone.length >= 9) {
+                        const fallbackUser = {
+                            id: 'usr_' + Date.now(),
+                            name: 'مستخدم تجريبي',
+                            phone: phone,
+                            city: 'بورتسودان',
+                            password: password
+                        };
+                        this.users.push(fallbackUser);
+                        this.saveUsers();
+                        this.saveAuth(fallbackUser);
+                        this.showToast('تم تسجيل الدخول بنجاح');
+                        this.navigate('home');
+                        return;
+                    }
+                    this.showToast('بيانات الدخول غير صحيحة');
+                    return;
+                }
+
+                this.saveAuth(user);
+                this.showToast(`مرحباً بعودتك ${user.name}`);
+                this.navigate('home');
+            }
+
+            logout() {
+                this.saveAuth(null);
+                this.showToast('تم تسجيل الخروج بنجاح');
+                this.navigate('home');
+            }
+        }
+
+        const app = new UsedMarketApp();
+        document.addEventListener('DOMContentLoaded', () => {
+            app.init();
+        });
+    </script>
+</body>
+</html>
