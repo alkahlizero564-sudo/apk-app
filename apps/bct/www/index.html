@@ -26,8 +26,8 @@ body{background:var(--bg);color:var(--paper);font:500 14px Cairo,system-ui,sans-
 
 .app{display:grid;grid-template-columns:390px 1fr;gap:16px;padding:16px;max-width:1280px;margin:auto}
 .side{background:var(--pn);border:1px solid var(--ln);border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
-.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--ln);background:var(--pn2)}
-.tabs button{background:none;color:var(--mute);border:0;padding:12px 2px;border-bottom:2px solid transparent;font:inherit;font-size:12px;font-weight:700;cursor:pointer;transition:.2s}
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid var(--ln);background:var(--pn2)}
+.tabs button{background:none;color:var(--mute);border:0;padding:11px 2px;border-bottom:2px solid transparent;font:inherit;font-size:11px;font-weight:700;cursor:pointer;transition:.2s;text-align:center}
 .tabs button.on{color:var(--paper);border-color:var(--red);background:var(--pn)}
 .pane{display:none;padding:14px;flex-direction:column;gap:13px;max-height:75vh;overflow-y:auto}
 .pane.on{display:flex}
@@ -40,11 +40,11 @@ body{background:var(--bg);color:var(--paper);font:500 14px Cairo,system-ui,sans-
 .btn.sfx{padding:6px 10px;font-size:11px;border-radius:6px;background:var(--pn3)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 
-.sec-title{font-size:11px;font-weight:900;text-transform:uppercase;color:var(--gold);letter-spacing:1px;margin-top:4px}
+.sec-title{font-size:11px;font-weight:900;text-transform:uppercase;color:var(--gold);letter-spacing:0.5px;margin-top:6px;border-bottom:1px solid rgba(245,166,35,0.2);padding-bottom:3px}
 label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--mute)}
-label.chk{flex-direction:row;align-items:center;gap:8px;color:var(--paper);cursor:pointer;padding:4px 0}
-select,input[type=text],input[type=password],input[type=number]{background:var(--bg);color:var(--paper);border:1px solid var(--ln);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;width:100%;outline:none;transition:border-color .2s}
-select:focus,input:focus{border-color:var(--red)}
+label.chk{flex-direction:row;align-items:center;gap:8px;color:var(--paper);cursor:pointer;padding:3px 0}
+select,input[type=text],input[type=password],input[type=number],textarea{background:var(--bg);color:var(--paper);border:1px solid var(--ln);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;width:100%;outline:none;transition:border-color .2s}
+select:focus,input:focus,textarea:focus{border-color:var(--red)}
 input[type=range]{accent-color:var(--red);cursor:pointer}
 
 .finfo{background:var(--bg);border:1px dashed var(--ln);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--mute);line-height:1.7;word-break:break-all}
@@ -81,6 +81,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
 .tl{position:relative;flex:1;height:38px;background:var(--bg);border:1px solid var(--ln);border-radius:8px;direction:ltr;cursor:pointer;overflow:hidden}
 .blk{position:absolute;top:6px;bottom:6px;min-width:4px;background:#771920;border:1px solid var(--red);border-radius:4px;pointer-events:none;opacity:.9}
 .blk.gfx{background:#926806;border-color:var(--gold)}
+.blk.cut{background:#0284c7;border-color:#38bdf8}
 .ph{position:absolute;top:0;bottom:0;width:3px;background:#fff;box-shadow:0 0 6px #fff;pointer-events:none}
 
 .acts{display:flex;gap:8px}
@@ -90,11 +91,12 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
 #status{min-height:22px;color:var(--paper);margin:0;font-size:13px;font-weight:600;text-align:center;background:var(--pn);padding:8px 12px;border-radius:8px;border:1px solid var(--ln)}
 
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
-.modal-box{background:var(--pn);color:var(--paper);border:1px solid var(--ln);border-radius:14px;width:min(420px,100%);padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 50px #000}
+.modal-box{background:var(--pn);color:var(--paper);border:1px solid var(--ln);border-radius:14px;width:min(460px,100%);padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 20px 50px #000;max-height:90vh;overflow-y:auto}
 .modal-box h2{font-size:16px;font-weight:900}
 .hint{font-size:11px;color:var(--mute);line-height:1.6}
 .row{display:flex;gap:8px}
 .row .btn{flex:1}
+.key-box{display:flex;flex-direction:column;gap:8px;background:var(--pn2);padding:10px;border-radius:8px;border:1px solid var(--ln)}
 
 @media(max-width:860px){
   .app{grid-template-columns:1fr;padding:10px}
@@ -107,9 +109,9 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
 <body>
 
 <header class="top">
-  <div class="brand"><i></i>مونتير برو <small>VFX & SFX STUDIO</small></div>
+  <div class="brand"><i></i>مونتير برو <small>VFX, SFX & EDITING SUITE</small></div>
   <div class="tr">
-    <button id="btnSettings" class="chip" type="button">⚙ API</button>
+    <button id="btnSettings" class="chip" type="button">⚙ API Keys</button>
   </div>
 </header>
 
@@ -117,7 +119,8 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
   <aside class="side">
     <nav class="tabs">
       <button type="button" data-t="src" class="on">المصدر</button>
-      <button type="button" data-t="preset">المونتاج</button>
+      <button type="button" data-t="narrative">السرد والقص</button>
+      <button type="button" data-t="preset">الأنماط</button>
       <button type="button" data-t="vfx">VFX & SFX</button>
       <button type="button" data-t="caps">الجرافيكس</button>
     </nav>
@@ -128,13 +131,51 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       <button id="btnPick" class="btn primary" type="button">📁 اختيار فيديو من المعرض</button>
       <div class="finfo" id="finfo">لم يتم اختيار فيديو بعد</div>
       <button id="btnAnalyze" class="btn gold" type="button">✨ تفريغ ومونتاج بالذكاء الاصطناعي</button>
-      <button id="btnDemoCaps" class="btn ghost" type="button">📝 تطبيق باقة إبداعية تجريبية جاهزة</button>
-      <p class="hint">يفرغ الكلام تلقائياً، يزامن المؤثرات الصوتية والسينمائية، ويختار اللوك الأنسب لمقطعك.</p>
+      <button id="btnDemoCaps" class="btn ghost" type="button">📝 تطبيق باقة إبداعية تجريبية متكاملة</button>
+      <p class="hint">يحلل الفيديو باستخدام مفاتيح Gemini، يقطع السكتات، يحدد نمط السرد، ويزامن القطعات والمؤثرات.</p>
     </div>
 
-    <!-- تبويب 2: أنماط المونتاج الاحترافية -->
+    <!-- تبويب 2: البناء السردي وتقنيات القطع الحديثة -->
+    <div class="pane" id="p-narrative">
+      <div class="sec-title">البناء السردي والفني (Narrative Style)</div>
+      <label>أسلوب السرد السينمائي
+        <select id="narrativeMode">
+          <option value="linear">1. المونتاج الخطي (Linear / Continuity) - تسلسل واقعي متصل</option>
+          <option value="parallel">2. المونتاج المتوازي (Parallel / Cross-Cutting) - حدثان متزامنان</option>
+          <option value="montage">3. مونتاج التكثيف الزمني (Montage Sequence) - تتابع سريع متلاحق</option>
+          <option value="intellectual">4. المونتاج الذهني الفكري (Intellectual Montage) - توليد معنى بصري</option>
+          <option value="rhythmic">5. المونتاج الإيقاعي (Rhythmic / Beat-Sync) - مطابقة دقيقة للإيقاع</option>
+        </select>
+      </label>
+
+      <div class="sec-title">تقنيات القطع والانتقال (Cuts & Transitions)</div>
+      <label>نوع الانتقال المطبق في التايم لاين
+        <select id="cutTechnique">
+          <option value="hard">1. القطع القياسي (Hard / Standard Cut) - واقعي مباشر</option>
+          <option value="jump">2. قطع القفز (Jump Cut) - حذف الفراغات وتسريع الإيقاع</option>
+          <option value="jcut">3. قطع J (J-Cut) - الصوت يسبق الصورة بتمهيد</option>
+          <option value="lcut">4. قطع L (L-Cut) - الصوت يستمر فوق لقطة الغطاء</option>
+          <option value="match">5. قطع التطابق (Match Cut) - تشابه الحركة أو الشكل</option>
+          <option value="action">6. القطع على الحركة (Cutting on Action) - إخفاء القص بالحركة</option>
+          <option value="smash">7. القطع الخاطف (Smash Cut) - صدمة بصرية مفاجئة</option>
+        </select>
+      </label>
+
+      <div class="sec-title">أساليب المونتاج الحديث للإعلانات وReels</div>
+      <label class="chk"><input type="checkbox" id="retentionEditing" checked> مونتاج الاحتفاظ بالانتباه (Retention: زووم كل 2.5 ثانية + نصوص)</label>
+      <label class="chk"><input type="checkbox" id="soundDriven" checked> مونتاج التصميم الصوتي المهيمن (Sound-Driven: البناء على الصوت أولاً)</label>
+      <label class="chk"><input type="checkbox" id="speedRamp"> التلاعب بالسرعة والدمج البصري (Speed-Ramp & Whip Pan)</label>
+
+      <div class="sec-title">محاكاة لقطات التغطية B-Roll في الانتقالات</div>
+      <label class="chk"><input type="checkbox" id="brollSim" checked> تفعيل نوافذ المقارنة ولقطات B-Roll التوضيحية عند القطع</label>
+      <label>شدة تأثير الانتقالات
+        <input type="range" id="cutIntensity" min="10" max="100" value="70">
+      </label>
+    </div>
+
+    <!-- تبويب 3: الأنماط وفلاتر الألوان -->
     <div class="pane" id="p-preset">
-      <div class="sec-title">نوع ونمط المونتاج المعتمد</div>
+      <div class="sec-title">قوالب وتصنيفات المونتاج</div>
       <label>
         <select id="editPreset">
           <option value="reels">🔥 ريلز شورتس فيروسي (Hormozi / Viral Reels)</option>
@@ -164,7 +205,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       <label class="chk"><input type="checkbox" id="speedLines"> خطوط الحركة الرياضية السريعة (Speedlines)</label>
     </div>
 
-    <!-- تبويب 3: المؤثرات البصرية والصوتية -->
+    <!-- تبويب 4: VFX & SFX -->
     <div class="pane" id="p-vfx">
       <div class="sec-title">المؤثرات السينمائية البصرية (VFX)</div>
       <label class="chk"><input type="checkbox" id="letterbox" checked> شريط سينمائي عريض (Cinematic Letterbox)</label>
@@ -174,7 +215,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       <label class="chk"><input type="checkbox" id="filmBurns"> وميض احتراق شريط الفيلم (Warm Light Leaks)</label>
 
       <div class="sec-title">المؤثرات الصوتية (SFX Synthesizer)</div>
-      <label class="chk"><input type="checkbox" id="sfxAuto" checked> تشغيل صوت تلقائي مع كل ظهور جملة أو حركة</label>
+      <label class="chk"><input type="checkbox" id="sfxAuto" checked> تشغيل صوت تلقائي مع كل ظهور جملة أو نقلة</label>
       <label>نوع الصوت التلقائي
         <select id="sfxType">
           <option value="whoosh">💨 ووش سينمائي سريع (Fast Whoosh)</option>
@@ -183,6 +224,8 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
           <option value="glitch">⚡ تشويش كهربائي سايبر (Cyber Zap)</option>
           <option value="snap">📸 صوت التقاط كاميرا (Shutter Snap)</option>
           <option value="riser">🚀 تصاعد حماسي ملحمي (Cinematic Riser)</option>
+          <option value="whip">⚡ سوط وحركة سريعة (Whip Transition)</option>
+          <option value="subdrop">🌊 هبوط ترددي خفي (Sub Drop 40Hz)</option>
         </select>
       </label>
       <label>مستوى صوت المؤثرات (<span id="sfxVolVal">70</span>%)
@@ -195,10 +238,12 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         <button type="button" class="btn sfx" onclick="window.playSfx('glitch')">⚡ Glitch</button>
         <button type="button" class="btn sfx" onclick="window.playSfx('snap')">📸 Snap</button>
         <button type="button" class="btn sfx" onclick="window.playSfx('riser')">🚀 Riser</button>
+        <button type="button" class="btn sfx" onclick="window.playSfx('whip')">⚡ Whip</button>
+        <button type="button" class="btn sfx" onclick="window.playSfx('subdrop')">🌊 SubDrop</button>
       </div>
     </div>
 
-    <!-- تبويب 4: الجرافيكس والملصقات والجمل -->
+    <!-- تبويب 5: الجرافيكس والملصقات -->
     <div class="pane" id="p-caps">
       <div class="sec-title">مكتبة الجرافيكس والملصقات المتحركة</div>
       <div class="grid-btns">
@@ -213,7 +258,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       <div class="sec-title">تخصيص نصوص الترجمة والجمل</div>
       <label>حركة ظهور الجمل
         <select id="fx">
-          <option value="auto">تلقائي حسب نمط المونتاج</option>
+          <option value="auto">تلقائي حسب نمط المونتاج والسرد</option>
           <option value="pop">ارتداد ونبضة هرموزي (Pop Punch)</option>
           <option value="glow">نيون متوهج احترافي (Neon Glow)</option>
           <option value="box">صندوق سينمائي مفرغ (Cinematic Box)</option>
@@ -261,27 +306,42 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     </div>
 
     <div class="prog" id="prog" hidden><i id="bar"></i></div>
-    <p id="status">جاهز! اختر مقطع فيديو من هاتفك لتطبيق أقوى مؤثرات المونتاج.</p>
+    <p id="status">جاهز! اختر مقطع فيديو من هاتفك لتطبيق أحدث أساليب السرد والقطع الفني.</p>
   </section>
 </main>
 
-<!-- نافذة الإعدادات -->
+<!-- نافذة مفاتيح Gemini API المتعددة والإعدادات -->
 <div id="settingsModal" class="modal-bg" hidden>
   <div class="modal-box">
-    <h2>⚙ إعدادات مفتاح Gemini API</h2>
-    <label>مفتاح API
-      <input type="password" id="apiKeyInput" placeholder="AIzaSy..." autocomplete="off">
-    </label>
-    <label>الموديل الذكي
+    <h2>⚙ إدارة مفاتيح Gemini API المتعددة</h2>
+    <p class="hint">يدعم التطبيق التبديل الذكي بين عدة مفاتيح لتفادي انقطاع الحصة (Rate Limits) مع إمكانية تحديد مفتاح احتياطي لكل طلب.</p>
+    
+    <div class="key-box">
+      <label>المفتاح الأساسي (Primary API Key)
+        <input type="password" id="apiKey1" placeholder="AIzaSy... (المفتاح الأساسي)" autocomplete="off">
+      </label>
+      <label>المفتاح الاحتياطي الأول (Backup Key 1)
+        <input type="password" id="apiKey2" placeholder="AIzaSy... (اختياري عند نفاد الحصة)" autocomplete="off">
+      </label>
+      <label>المفتاح الاحتياطي الثاني (Backup Key 2)
+        <input type="password" id="apiKey3" placeholder="AIzaSy... (اختياري إضافي)" autocomplete="off">
+      </label>
+      <label>مفاتيح إضافية (مفتاح في كل سطر)
+        <textarea id="apiKeysExtra" rows="2" placeholder="مفاتيح إضافية إن وجدت..."></textarea>
+      </label>
+    </div>
+
+    <label>موديل الذكاء الاصطناعي الافتراضي
       <input type="text" id="modelInput" list="modelsList" value="gemini-2.5-flash" dir="ltr">
       <datalist id="modelsList">
-        <option value="gemini-2.5-flash">سريع ودقيق (موصى به)</option>
-        <option value="gemini-2.5-pro">أعلى دقة في التفريغ واللغات</option>
+        <option value="gemini-2.5-flash">gemini-2.5-flash (فائق السرعة - موصى به)</option>
+        <option value="gemini-2.5-pro">gemini-2.5-pro (دقة قصوى في السرد والفهم البصري)</option>
+        <option value="gemini-1.5-flash">gemini-1.5-flash</option>
       </datalist>
     </label>
-    <p class="hint">يُحفظ المفتاح محلياً على هاتفك فقط لتشغيل التفريغ الصوتي والمونتاج الذكي.</p>
+
     <div class="row">
-      <button id="btnSaveSet" class="btn primary" type="button">حفظ</button>
+      <button id="btnSaveSet" class="btn primary" type="button">حفظ المفاتيح</button>
       <button id="btnCloseSet" class="btn ghost" type="button">إلغاء</button>
     </div>
   </div>
@@ -295,6 +355,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
 
   let caps = [];
   let graphics = [];
+  let cutPoints = [];
   let curFile = null;
   let vidUrl = null;
   let hasFrame = false;
@@ -303,6 +364,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
   const DEFAULT_MODEL = 'gemini-2.5-flash';
 
   let lastActiveCap = null;
+  let lastRetentionPeriod = -1;
   let mediaRecorder = null;
   let recordedChunks = [];
 
@@ -324,6 +386,22 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       if (v === undefined) return memStore[k] || '';
       memStore[k] = v;
     }
+  }
+
+  function getAllApiKeys() {
+    const list = [];
+    const k1 = store('gemini_key_1').trim();
+    const k2 = store('gemini_key_2').trim();
+    const k3 = store('gemini_key_3').trim();
+    const kLegacy = store('gemini_key').trim();
+    const extra = (store('gemini_keys_extra') || '').split('\n').map(s => s.trim()).filter(Boolean);
+
+    if (k1) list.push(k1);
+    if (k2 && !list.includes(k2)) list.push(k2);
+    if (k3 && !list.includes(k3)) list.push(k3);
+    if (kLegacy && !list.includes(kLegacy)) list.push(kLegacy);
+    extra.forEach(k => { if (k && !list.includes(k)) list.push(k); });
+    return list;
   }
 
   function getModel() {
@@ -366,7 +444,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     ctx.fill();
   }
 
-  // --- محرك المؤثرات الصوتية السنثيسايزر الداخلي (Web Audio API) ---
+  // --- محرك المؤثرات الصوتية والسنثيسايزر الداخلي المتطور ---
   function getAudioCtx() {
     if (!ac) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -401,7 +479,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     const out = sfxGain || ctx.destination;
 
     if (type === 'whoosh') {
-      const bSize = ctx.sampleRate * 0.35;
+      const bSize = ctx.sampleRate * 0.32;
       const buf = ctx.createBuffer(1, bSize, ctx.sampleRate);
       const data = buf.getChannelData(0);
       for (let i = 0; i < bSize; i++) data[i] = (Math.random() * 2 - 1);
@@ -410,18 +488,18 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       const filter = ctx.createBiquadFilter();
       filter.type = 'bandpass';
       filter.frequency.setValueAtTime(250, now);
-      filter.frequency.exponentialRampToValueAtTime(3200, now + 0.16);
-      filter.frequency.exponentialRampToValueAtTime(300, now + 0.35);
+      filter.frequency.exponentialRampToValueAtTime(3200, now + 0.15);
+      filter.frequency.exponentialRampToValueAtTime(300, now + 0.32);
       filter.Q.value = 3.5;
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.01, now);
-      g.gain.linearRampToValueAtTime(0.9, now + 0.15);
-      g.gain.linearRampToValueAtTime(0.01, now + 0.35);
+      g.gain.linearRampToValueAtTime(0.9, now + 0.14);
+      g.gain.linearRampToValueAtTime(0.01, now + 0.32);
       noise.connect(filter);
       filter.connect(g);
       g.connect(out);
       noise.start(now);
-      noise.stop(now + 0.36);
+      noise.stop(now + 0.33);
     } else if (type === 'boom') {
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
@@ -484,6 +562,40 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       g.connect(out);
       osc.start(now);
       osc.stop(now + 0.85);
+    } else if (type === 'whip') {
+      const bSize = ctx.sampleRate * 0.22;
+      const buf = ctx.createBuffer(1, bSize, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bSize; i++) data[i] = (Math.random() * 2 - 1);
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(600, now);
+      filter.frequency.exponentialRampToValueAtTime(4500, now + 0.09);
+      filter.frequency.exponentialRampToValueAtTime(150, now + 0.22);
+      filter.Q.value = 5.0;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.05, now);
+      g.gain.linearRampToValueAtTime(1.0, now + 0.08);
+      g.gain.linearRampToValueAtTime(0.01, now + 0.22);
+      noise.connect(filter);
+      filter.connect(g);
+      g.connect(out);
+      noise.start(now);
+      noise.stop(now + 0.23);
+    } else if (type === 'subdrop') {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(95, now);
+      osc.frequency.exponentialRampToValueAtTime(32, now + 0.7);
+      g.gain.setValueAtTime(0.9, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.75);
+      osc.connect(g);
+      g.connect(out);
+      osc.start(now);
+      osc.stop(now + 0.75);
     }
   };
 
@@ -514,7 +626,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     if (!$('tabOut').disabled) setView('out');
   });
 
-  // --- شاشة البداية الفارغة ---
+  // --- شاشة البداية ---
   function drawEmptyScreen(msg) {
     const W = cv.width, H = cv.height;
     cx.fillStyle = '#0a0706';
@@ -525,10 +637,10 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     cx.fillStyle = '#f5ebd9';
     cx.font = '900 22px Cairo, sans-serif';
     cx.textAlign = 'center';
-    cx.fillText('مونتير برو - استوديو المونتاج والمؤثرات', W / 2, H / 2 - 15);
+    cx.fillText('مونتير برو - استوديو المونتاج والسرد', W / 2, H / 2 - 15);
     cx.fillStyle = '#9e8e7e';
     cx.font = '600 14px Cairo, sans-serif';
-    cx.fillText(msg || 'اضغط على "📁 اختيار فيديو من المعرض" لبدء المونتاج', W / 2, H / 2 + 25);
+    cx.fillText(msg || 'اختر فيديو لتطبيق أقوى استراتيجيات المونتاج السينمائي والريلز', W / 2, H / 2 + 25);
   }
 
   // --- استيراد الفيديو ---
@@ -568,6 +680,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     getAudioCtx();
     attachVidAudio();
     setView('live');
+    generateDefaultCutPoints();
     renderCaps();
     renderGfxList();
 
@@ -581,7 +694,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
           vid.currentTime = 0.05;
           hasFrame = true;
           drawFrame();
-          say('تم تجهيز الفيديو بنجاح! اختر المؤثرات ونوع المونتاج.');
+          say('تم تجهيز الفيديو بنجاح! اختر أسلوب السرد والقطع الفني.');
         }, 80);
       }).catch(() => {
         vid.muted = false;
@@ -592,6 +705,16 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       vid.currentTime = 0.05;
     }
   });
+
+  function generateDefaultCutPoints() {
+    cutPoints = [];
+    if (!vid.duration) return;
+    const step = 2.8;
+    for (let t = step; t < vid.duration - 0.5; t += step) {
+      cutPoints.push(Number(t.toFixed(2)));
+    }
+    renderTimeline();
+  }
 
   vid.addEventListener('loadeddata', () => { hasFrame = true; drawFrame(); });
   vid.addEventListener('seeked', () => { hasFrame = true; drawFrame(); });
@@ -612,8 +735,13 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     getAudioCtx();
     setView('live');
     try {
-      if (vid.paused) await vid.play();
-      else vid.pause();
+      if (vid.paused) {
+        if ($('speedRamp').checked) vid.playbackRate = 1.15;
+        else vid.playbackRate = 1.0;
+        await vid.play();
+      } else {
+        vid.pause();
+      }
     } catch(err){ say('خطأ بالتشغيل: ' + err.message); }
   });
 
@@ -625,7 +753,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     drawFrame();
   });
 
-  // --- حلقة الرسم والمحرك السينمائي المتكامل (Cinematic VFX & Canvas Engine) ---
+  // --- حلقة الرسم والمحرك السينمائي المتكامل (Advanced VFX, Cuts & Narrative Engine) ---
   function renderLoop() {
     if (hasFrame && !vid.paused) {
       drawFrame();
@@ -647,10 +775,25 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     const W = cv.width, H = cv.height;
     const t = vid.currentTime || 0;
     const preset = $('editPreset').value;
+    const narrative = $('narrativeMode').value;
+    const cutMode = $('cutTechnique').value;
     const L = LOOKS[getLookName()] || LOOKS.cinema;
     const activeCap = caps.find(c => t >= c.s && t <= c.e);
 
-    // تتبع تشغيل الصوت التلقائي عند بداية كل جملة
+    // متابعة مونتاج الاحتفاظ بالانتباه (Retention Editing) كل 2.5 ثانية
+    let retentionZoom = 1.0;
+    if ($('retentionEditing').checked) {
+      const period = Math.floor(t / 2.5);
+      if (period % 2 === 1) {
+        retentionZoom = 1.12; // زووم نبضي
+      }
+      if (period !== lastRetentionPeriod && period > 0) {
+        lastRetentionPeriod = period;
+        if ($('sfxAuto').checked) window.playSfx('pop');
+      }
+    }
+
+    // تتبع تشغيل الصوت عند بداية كل جملة أو نقلة
     if (activeCap && activeCap !== lastActiveCap) {
       lastActiveCap = activeCap;
       if ($('sfxAuto').checked) {
@@ -662,8 +805,8 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
 
     const prog = activeCap ? Math.min(1, Math.max(0, (t - activeCap.s) / 0.28)) : 1;
 
-    // 1. حساب زووم الكاميرا والاهتزاز الديناميكي
-    let zoom = 1.0;
+    // حساب زووم الكاميرا والاهتزاز
+    let zoom = retentionZoom;
     let shakeX = 0, shakeY = 0;
 
     if ($('punch').checked && activeCap) {
@@ -677,79 +820,147 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       shakeY = (Math.random() - 0.5) * intensity;
     }
 
-    if (preset === 'cinematic' || preset === 'podcast') {
+    if (preset === 'cinematic' || preset === 'podcast' || narrative === 'linear') {
       zoom += 0.02 + Math.sin(t * 0.4) * 0.015;
+    }
+
+    // كشف القرب من نقاط القطع والانتقال
+    const nearCut = cutPoints.find(cp => Math.abs(t - cp) < 0.22);
+    let cutProgress = 0;
+    if (nearCut) {
+      cutProgress = 1 - (Math.abs(t - nearCut) / 0.22);
+    }
+
+    // تطبيق مؤثرات تقنيات القطع (Cuts & Transitions)
+    if (cutProgress > 0) {
+      if (cutMode === 'smash') {
+        // فلاش أبيض ساطع مفاجئ
+        shakeX += (Math.random() - 0.5) * 14;
+        shakeY += (Math.random() - 0.5) * 14;
+      } else if (cutMode === 'jump') {
+        // قفزة زاوية سريعة
+        zoom += 0.15 * cutProgress;
+      } else if (cutMode === 'match' || cutMode === 'action') {
+        shakeX += Math.sin(t * 30) * 8 * cutProgress;
+      }
     }
 
     cx.save();
     cx.clearRect(0, 0, W, H);
 
-    // 2. تطبيق تأثيرات التشتت اللوني والـ Glitch
+    // تشتت لوني وسايبربانك
     const doGlitch = $('rgbGlitch').checked || (preset === 'cyber' && (Math.sin(t * 12) > 0.85 || (activeCap && prog < 0.2)));
 
     if (L.filter) cx.filter = L.filter;
 
-    if (doGlitch) {
-      const off = 5 + Math.random() * 6;
+    // محاكاة المونتاج المتوازي (Parallel / Cross-Cutting) أو التكثيف الزمني
+    if (narrative === 'parallel' && (Math.sin(t * 0.7) > 0.3)) {
+      // شاشة مقسمة لإظهار حدثين متزامنين
+      const splitX = W * 0.5;
       cx.save();
-      cx.translate(W / 2 + shakeX + off, H / 2 + shakeY);
-      cx.scale(zoom, zoom);
-      cx.globalCompositeOperation = 'screen';
-      cx.fillStyle = 'rgba(255,0,0,0.4)';
-      cx.drawImage(vid, -W / 2, -H / 2, W, H);
+      cx.beginPath();
+      cx.rect(0, 0, splitX, H);
+      cx.clip();
+      cx.drawImage(vid, 0, 0, W, H);
       cx.restore();
 
       cx.save();
-      cx.translate(W / 2 + shakeX - off, H / 2 + shakeY);
-      cx.scale(zoom, zoom);
-      cx.globalCompositeOperation = 'screen';
-      cx.fillStyle = 'rgba(0,255,255,0.4)';
-      cx.drawImage(vid, -W / 2, -H / 2, W, H);
+      cx.beginPath();
+      cx.rect(splitX, 0, W - splitX, H);
+      cx.clip();
+      cx.translate(W, 0);
+      cx.scale(-1, 1); // محاكاة زاوية المشهد المقابل
+      cx.drawImage(vid, 0, 0, W, H);
       cx.restore();
+
+      cx.strokeStyle = '#00f0ff';
+      cx.lineWidth = 3;
+      cx.beginPath();
+      cx.moveTo(splitX, 0);
+      cx.lineTo(splitX, H);
+      cx.stroke();
+
+    } else {
+      // الرسم المعتاد مع الزووم والاهتزاز
+      if (doGlitch) {
+        const off = 5 + Math.random() * 6;
+        cx.save();
+        cx.translate(W / 2 + shakeX + off, H / 2 + shakeY);
+        cx.scale(zoom, zoom);
+        cx.globalCompositeOperation = 'screen';
+        cx.fillStyle = 'rgba(255,0,0,0.4)';
+        cx.drawImage(vid, -W / 2, -H / 2, W, H);
+        cx.restore();
+
+        cx.save();
+        cx.translate(W / 2 + shakeX - off, H / 2 + shakeY);
+        cx.scale(zoom, zoom);
+        cx.globalCompositeOperation = 'screen';
+        cx.fillStyle = 'rgba(0,255,255,0.4)';
+        cx.drawImage(vid, -W / 2, -H / 2, W, H);
+        cx.restore();
+      }
+
+      cx.translate(W / 2 + shakeX, H / 2 + shakeY);
+      cx.scale(zoom, zoom);
+      try {
+        cx.drawImage(vid, -W / 2, -H / 2, W, H);
+      } catch(e){}
     }
 
-    cx.translate(W / 2 + shakeX, H / 2 + shakeY);
-    cx.scale(zoom, zoom);
-    try {
-      cx.drawImage(vid, -W / 2, -H / 2, W, H);
-    } catch(e){}
     cx.restore();
     cx.filter = 'none';
 
-    // 3. طبقة تلوين اللوك (Color Overlay)
+    // طبقة تلوين اللوك
     if (L.overlay) {
       cx.fillStyle = L.overlay;
       cx.fillRect(0, 0, W, H);
     }
 
-    // 4. خطوط الحركة الرياضية السريعة (Speedlines)
-    if ($('speedLines').checked || preset === 'anime') {
+    // محاكاة لقطات B-Roll والانتقالات الفنية (J-Cut / L-Cut / Match Cut)
+    if ($('brollSim').checked && nearCut && cutProgress > 0.2) {
+      drawBRollSimulation(W, H, cutMode, cutProgress);
+    }
+
+    // وميض القطع الخاطف (Smash Cut Flash)
+    if (cutMode === 'smash' && nearCut && cutProgress > 0.4) {
+      cx.fillStyle = 'rgba(255,255,255,' + (cutProgress * 0.75) + ')';
+      cx.fillRect(0, 0, W, H);
+    }
+
+    // تأثير Whip Pan أثناء الانتقال السريع
+    if ($('speedRamp').checked && nearCut) {
+      drawWhipPanBlur(W, H, cutProgress);
+    }
+
+    // خطوط الحركة السريعة
+    if ($('speedLines').checked || preset === 'anime' || narrative === 'rhythmic') {
       drawSpeedLines(W, H, t);
     }
 
-    // 5. توهج وعدسات آنامورفيك سينمائية (Anamorphic Lens Flare)
+    // عدسات آنامورفيك سينمائية
     if ($('lensFlares').checked && (preset === 'cinematic' || Math.sin(t * 0.8) > 0.4)) {
       drawAnamorphicFlare(W, H, t);
     }
 
-    // 6. تسريبات الضوء السينمائي واحتراق الفيلم (Light Leaks / Film Burns)
+    // تسريبات الضوء واحتراق الفيلم
     if ($('filmBurns').checked || preset === 'vintage') {
       drawLightLeak(W, H, t);
     }
 
-    // 7. تظليل الفينييت (Vignette)
+    // تظليل الفينييت
     const vig = cx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.82);
     vig.addColorStop(0, 'rgba(0,0,0,0)');
     vig.addColorStop(1, 'rgba(0,0,0,' + L.vig + ')');
     cx.fillStyle = vig;
     cx.fillRect(0, 0, W, H);
 
-    // 8. محاكاة حبيبات الأفلام وخدوش الأرشيف (Film Grain & Scratches)
+    // حبيبات وخدوش الأفلام
     if ($('filmGrain').checked || preset === 'vintage') {
       drawFilmTexture(W, H, preset === 'vintage');
     }
 
-    // 9. تأثيرات شريط السينما العريض (Letterbox 2.39:1)
+    // شريط السينما العريض
     if ($('letterbox').checked || preset === 'cinematic') {
       const barH = Math.round(H * 0.125);
       cx.fillStyle = '#000000';
@@ -757,16 +968,68 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       cx.fillRect(0, H - barH, W, barH);
     }
 
-    // 10. رسم طبقات مكتبة الجرافيكس النشطة
+    // شارات تعريف النمط والانتقال في المعاينة
+    drawEditingBadges(W, H, narrative, cutMode);
+
+    // رسم طبقات الجرافيكس والملصقات
     drawGraphicsOverlays(W, H, t);
 
-    // 11. رسم جملة الترجمة الحالية
+    // رسم نصوص الترجمة
     if (activeCap) {
-      drawCaption(activeCap, prog, L, preset, t);
+      drawCaption(activeCap, prog, L, preset, narrative, t);
     }
   }
 
-  // --- دوال المؤثرات البصرية التفصيلية ---
+  // --- محاكاة لقطات B-Roll ونافذة الشرح في التايم لاين ---
+  function drawBRollSimulation(W, H, cutMode, progress) {
+    cx.save();
+    const bw = W * 0.38, bh = bw * 0.65;
+    const bx = W - bw - 16, by = 24;
+
+    cx.fillStyle = 'rgba(10, 8, 8, 0.85)';
+    cx.strokeStyle = '#38bdf8';
+    cx.lineWidth = 2;
+    fillRoundRect(cx, bx, by, bw, bh, 8);
+    cx.stroke();
+
+    // تصغير داخل نافذة B-Roll
+    cx.drawImage(vid, bx + 2, by + 2, bw - 4, bh - 4);
+
+    cx.fillStyle = '#38bdf8';
+    cx.font = '800 10px Cairo, sans-serif';
+    cx.textAlign = 'right';
+    let label = 'B-ROLL INSERT';
+    if (cutMode === 'jcut') label = 'J-CUT AUDIO PRE-SYNC';
+    else if (cutMode === 'lcut') label = 'L-CUT OVERLAP';
+    else if (cutMode === 'match') label = 'MATCH CUT SYNC';
+    cx.fillText(label, bx + bw - 6, by + bh - 6);
+    cx.restore();
+  }
+
+  function drawWhipPanBlur(W, H, progress) {
+    cx.save();
+    cx.fillStyle = 'rgba(255, 255, 255, ' + (progress * 0.18) + ')';
+    for (let i = 0; i < 6; i++) {
+      const h = Math.random() * H;
+      cx.fillRect(0, h, W, 8);
+    }
+    cx.restore();
+  }
+
+  function drawEditingBadges(W, H, narrative, cutMode) {
+    cx.save();
+    cx.font = '700 11px Cairo, monospace';
+    cx.textAlign = 'left';
+    cx.fillStyle = 'rgba(0,0,0,0.6)';
+    fillRoundRect(cx, 16, H - 34, 185, 22, 5);
+
+    cx.fillStyle = '#00f0ff';
+    const nLabel = narrative.toUpperCase();
+    const cLabel = cutMode.toUpperCase();
+    cx.fillText('[' + nLabel + ' | ' + cLabel + ']', 24, H - 19);
+    cx.restore();
+  }
+
   function drawAnamorphicFlare(W, H, t) {
     const flareY = H * (0.35 + Math.sin(t * 0.5) * 0.15);
     const g = cx.createLinearGradient(0, flareY, W, flareY);
@@ -799,7 +1062,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       cx.fillRect(Math.random() * W, Math.random() * H, 1.2, 1.2);
     }
     if (isVintage) {
-      // خدوش رأسية عتيقة
       cx.strokeStyle = 'rgba(255, 240, 220, 0.18)';
       cx.lineWidth = 1;
       if (Math.random() > 0.6) {
@@ -830,14 +1092,13 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     cx.restore();
   }
 
-  // --- رسم طبقات مكتبة الجرافيكس (Motion Graphics Library) ---
+  // --- رسم طبقات مكتبة الجرافيكس النشطة ---
   function drawGraphicsOverlays(W, H, t) {
     graphics.forEach(g => {
       if (t < g.s || t > g.e) return;
       cx.save();
 
       if (g.type === 'rec') {
-        // علامة التسجيل REC مع شبكة التصوير
         if (Math.floor(t * 2) % 2 === 0) {
           cx.fillStyle = '#ff1e2d';
           cx.beginPath();
@@ -849,21 +1110,15 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         cx.textAlign = 'left';
         cx.fillText('REC [' + fmt(t) + ']', 54, 43);
 
-        // زوايا شبكة الكاميرا
         cx.strokeStyle = 'rgba(255,255,255,0.4)';
         cx.lineWidth = 2;
         const pad = 24, len = 16;
-        // top-left
         cx.beginPath(); cx.moveTo(pad, pad + len); cx.lineTo(pad, pad); cx.lineTo(pad + len, pad); cx.stroke();
-        // top-right
         cx.beginPath(); cx.moveTo(W - pad, pad + len); cx.lineTo(W - pad, pad); cx.lineTo(W - pad - len, pad); cx.stroke();
-        // bottom-left
         cx.beginPath(); cx.moveTo(pad, H - pad - len); cx.lineTo(pad, H - pad); cx.lineTo(pad + len, H - pad); cx.stroke();
-        // bottom-right
         cx.beginPath(); cx.moveTo(W - pad, H - pad - len); cx.lineTo(W - pad, H - pad); cx.lineTo(W - pad - len, H - pad); cx.stroke();
 
       } else if (g.type === 'news') {
-        // شريط الأخبار العاجل السفلي
         const barH = 46;
         const barY = H - barH - 20;
         cx.fillStyle = 'rgba(180, 15, 25, 0.95)';
@@ -879,10 +1134,9 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         cx.font = '700 13px Cairo, sans-serif';
         cx.textAlign = 'right';
         cx.direction = 'rtl';
-        cx.fillText(g.text || 'تغطية خاصة ومباشرة عبر مونتير برو', W - 20, barY + 28);
+        cx.fillText(g.text || 'تغطية خاصة ومونتاج سينمائي احترافي', W - 20, barY + 28);
 
       } else if (g.type === 'sub') {
-        // شارة الاشتراك والإعجاب المتحركة
         const bw = 210, bh = 42;
         const bx = W / 2 - bw / 2, by = H * 0.82;
         cx.fillStyle = 'rgba(20, 16, 14, 0.9)';
@@ -902,7 +1156,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         cx.fillText('👍 LIKE', bx + 155, by + 26);
 
       } else if (g.type === 'fire') {
-        // شارة التريند الناري
         const bx = 20, by = 30;
         cx.fillStyle = 'rgba(229, 37, 53, 0.95)';
         fillRoundRect(cx, bx, by, 120, 32, 8);
@@ -912,7 +1165,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         cx.fillText('🔥 VIRAL TREND', bx + 60, by + 21);
 
       } else if (g.type === 'wave') {
-        // موجات صوتية ديناميكية متحركة
         const bars = 18;
         const startX = W / 2 - (bars * 6) / 2;
         const baseY = H * 0.88;
@@ -923,7 +1175,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         }
 
       } else if (g.type === 'air') {
-        // علامة ON AIR متوهجة
         const bx = W - 110, by = 26;
         cx.fillStyle = 'rgba(10, 8, 8, 0.85)';
         cx.strokeStyle = '#e52535';
@@ -946,8 +1197,8 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     });
   }
 
-  // --- رسم نصوص الترجمة والجمل الحركية (Captions Engine) ---
-  function drawCaption(c, p, L, preset, t) {
+  // --- رسم نصوص الترجمة والجمل الحركية (Kinetic Typography) ---
+  function drawCaption(c, p, L, preset, narrative, t) {
     const fs = Math.round(cv.width * Number($('tsize').value) / 1000);
     const words = String(c.text || '').split(/\s+/).filter(Boolean);
     if (!words.length) return;
@@ -977,12 +1228,11 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     const lineWidth = line => line.reduce((sum, item) => sum + item.m, 0) + sp * (line.length - 1);
     let fxMode = $('fx').value;
     if (fxMode === 'auto') {
-      if (preset === 'reels') fxMode = 'pop';
-      else if (preset === 'cinematic') fxMode = 'slide';
+      if (narrative === 'rhythmic' || preset === 'vlog') fxMode = 'karaoke';
+      else if (preset === 'cinematic' || narrative === 'linear') fxMode = 'slide';
       else if (preset === 'podcast') fxMode = 'box';
-      else if (preset === 'vlog') fxMode = 'karaoke';
       else if (preset === 'cyber') fxMode = 'glow';
-      else fxMode = c.fx || 'pop';
+      else fxMode = 'pop';
     }
 
     const e = easeOutBack(p);
@@ -1003,7 +1253,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       cx.globalAlpha = Math.max(0, Math.min(1, p * 2));
     }
 
-    // الصندوق السينمائي المفرغ
     if (fxMode === 'box') {
       const maxLineW = Math.max.apply(null, lines.map(lineWidth));
       const bw = maxLineW + fs * 1.2;
@@ -1015,7 +1264,6 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       cx.stroke();
     }
 
-    // حساب الكلمة النشطة لتأثير الكاريوكي
     const capDur = Math.max(0.1, c.e - c.s);
     const activeWordIndex = Math.min(words.length - 1, Math.floor(((t - c.s) / capDur) * words.length));
     let wordCounter = 0;
@@ -1059,8 +1307,8 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     cx.restore();
   }
 
-  // --- ربط عناصر التحكم التفاعلية ---
-  document.querySelectorAll('input[name="look"], #editPreset, #fx, #tsize, #ty, #punch, #cameraShake, #speedLines, #letterbox, #filmGrain, #lensFlares, #rgbGlitch, #filmBurns').forEach(el => {
+  // --- ربط عناصر التحكم ---
+  document.querySelectorAll('input[name="look"], #narrativeMode, #cutTechnique, #retentionEditing, #soundDriven, #speedRamp, #brollSim, #cutIntensity, #editPreset, #fx, #tsize, #ty, #punch, #cameraShake, #speedLines, #letterbox, #filmGrain, #lensFlares, #rgbGlitch, #filmBurns').forEach(el => {
     el.addEventListener('input', () => {
       $('tsizeVal').textContent = $('tsize').value;
       $('tyVal').textContent = $('ty').value;
@@ -1069,11 +1317,21 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     el.addEventListener('change', drawFrame);
   });
 
-  // --- التايم لاين وقوائم العناصر ---
+  // --- التايم لاين وقوائم العناصر والقطعات ---
   function renderTimeline() {
     const tl = $('tl');
     tl.querySelectorAll('.blk').forEach(b => b.remove());
     if (!vid.duration) return;
+
+    // علامات القطع في التايم لاين
+    cutPoints.forEach(cp => {
+      const b = document.createElement('div');
+      b.className = 'blk cut';
+      b.title = 'نقطة قطع وانتقال: ' + cp.toFixed(1) + 's';
+      b.style.left = (cp / vid.duration * 100) + '%';
+      b.style.width = '3px';
+      tl.insertBefore(b, $('ph'));
+    });
 
     caps.forEach(c => {
       const b = document.createElement('div');
@@ -1184,7 +1442,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     if (!vid.src) return say('اختر فيديو أولاً لإضافة الجرافيكس عليه.');
     const now = vid.currentTime || 0;
     const end = vid.duration ? Math.min(vid.duration, now + 3.0) : now + 3.0;
-    graphics.push({ type: type, s: now, e: end, text: 'شريط إخباري احترافي مع مونتير برو' });
+    graphics.push({ type: type, s: now, e: end, text: 'مونتاج احترافي عبر مونتير برو' });
     renderGfxList();
     drawFrame();
     window.playSfx('pop');
@@ -1202,7 +1460,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     if (!vid.src) return say('اختر فيديو أولاً لإضافة الجملة.');
     const now = vid.currentTime || 0;
     const end = vid.duration ? Math.min(vid.duration, now + 1.8) : now + 1.8;
-    caps.push({ s: now, e: end, text: 'نص مونتاج احترافي', emph: ['احترافي'], fx: 'pop', sfx: 'whoosh' });
+    caps.push({ s: now, e: end, text: 'نص مونتاج وسرد فني', emph: ['سرد', 'فني'], fx: 'pop', sfx: 'whoosh' });
     renderCaps();
     drawFrame();
     window.playSfx('whoosh');
@@ -1213,37 +1471,43 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     if (!vid.src) return say('اختر مقطع فيديو من هاتفك لتطبيق الباقة التجريبية عليه.');
     const dur = vid.duration || 10;
     caps = [
-      { s: 0.1, e: Math.min(dur, 2.5), text: 'أهلاً بك في مونتير برو الخارق', emph: ['مونتير', 'الخارق'], fx: 'pop', sfx: 'whoosh' },
-      { s: Math.min(dur - 0.5, 2.7), e: Math.min(dur, 5.2), text: 'مؤثرات سينمائية ومكتبة جرافيكس متكاملة', emph: ['سينمائية'], fx: 'karaoke', sfx: 'boom' },
-      { s: Math.min(dur - 0.2, 5.4), e: Math.min(dur, 8.2), text: 'صوتيات SFX وفلاتر سينمائية بضغطة زر', emph: ['سينمائية'], fx: 'glow', sfx: 'riser' }
+      { s: 0.1, e: Math.min(dur, 2.5), text: 'استوديو مونتير برو الخارق', emph: ['مونتير', 'الخارق'], fx: 'pop', sfx: 'whip' },
+      { s: Math.min(dur - 0.5, 2.7), e: Math.min(dur, 5.2), text: 'أقوى أساليب السرد والقطع الفني السينمائي', emph: ['السرد', 'السينمائي'], fx: 'karaoke', sfx: 'subdrop' },
+      { s: Math.min(dur - 0.2, 5.4), e: Math.min(dur, 8.2), text: 'مؤثرات بصرية وصوتية متطورة بضغطة زر', emph: ['متطورة'], fx: 'glow', sfx: 'boom' }
     ];
     graphics = [
       { type: 'fire', s: 0.2, e: Math.min(dur, 3.2) },
       { type: 'wave', s: 2.7, e: Math.min(dur, 5.5) },
       { type: 'sub', s: 5.4, e: Math.min(dur, 8.5) }
     ];
+    cutPoints = [1.8, 3.5, 5.4, 7.2].filter(t => t < dur);
+    $('narrativeMode').value = 'rhythmic';
+    $('cutTechnique').value = 'jump';
     renderCaps();
     renderGfxList();
     vid.currentTime = 0.2;
     drawFrame();
-    say('تم تفعيل الباقة الإبداعية التجريبية مع الصوتيات والجرافيكس!');
+    say('تم تفعيل الباقة الإبداعية: السرد الإيقاعي + قطع القفز + الجرافيكس!');
   });
 
-  // --- إعدادات مفتاح Gemini API ---
+  // --- إعدادات مفاتيح Gemini API المتعددة ---
   function updateChip() {
-    const k = store('gemini_key');
+    const keys = getAllApiKeys();
     const c = $('btnSettings');
-    if (k) {
-      c.textContent = '✓ ' + getModel();
+    if (keys.length > 0) {
+      c.textContent = '✓ (' + keys.length + ' مفاتيح) ' + getModel();
       c.classList.add('ok');
     } else {
-      c.textContent = '⚙ API (' + getModel() + ')';
+      c.textContent = '⚙ API Keys (0)';
       c.classList.remove('ok');
     }
   }
 
   function openSettings() {
-    $('apiKeyInput').value = store('gemini_key');
+    $('apiKey1').value = store('gemini_key_1') || store('gemini_key') || '';
+    $('apiKey2').value = store('gemini_key_2') || '';
+    $('apiKey3').value = store('gemini_key_3') || '';
+    $('apiKeysExtra').value = store('gemini_keys_extra') || '';
     $('modelInput').value = getModel();
     $('settingsModal').hidden = false;
   }
@@ -1259,31 +1523,74 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
   });
 
   $('btnSaveSet').addEventListener('click', () => {
-    const k = $('apiKeyInput').value.trim();
+    const k1 = $('apiKey1').value.trim();
+    const k2 = $('apiKey2').value.trim();
+    const k3 = $('apiKey3').value.trim();
+    const extra = $('apiKeysExtra').value.trim();
     const m = $('modelInput').value.trim() || DEFAULT_MODEL;
-    store('gemini_key', k);
+
+    store('gemini_key_1', k1);
+    store('gemini_key_2', k2);
+    store('gemini_key_3', k3);
+    store('gemini_keys_extra', extra);
+    store('gemini_key', k1); // للمطابقة مع الإصدارات السابقة
     store('gemini_model', m);
+
     updateChip();
     closeSettings();
-    say(k ? 'تم حفظ المفتاح وتفعيل ' + m : 'تم ضبط الموديل');
+    const total = getAllApiKeys().length;
+    say('تم حفظ ' + total + ' مفتاح API بنجاح وضبط الموديل إلى ' + m);
   });
 
-  // --- تفريغ ومونتاج بالذكاء الاصطناعي (Gemini) ---
+  // --- دالة طلب Gemini مع التبديل التلقائي الذكي بين المفاتيح ---
+  async function callGeminiWithFailover(payload, model) {
+    const keys = getAllApiKeys();
+    if (!keys.length) {
+      throw new Error('يرجى إضافة مفتاح Gemini API واحد على الأقل في الإعدادات.');
+    }
+
+    let lastError = null;
+    for (let i = 0; i < keys.length; i++) {
+      const activeKey = keys[i];
+      try {
+        say('⏳ جارٍ الاتصال بـ Gemini بالمفتاح [' + (i + 1) + '/' + keys.length + ']...');
+        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': activeKey },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          const errMsg = (data.error && data.error.message) || ('HTTP ' + res.status);
+          throw new Error(errMsg);
+        }
+        return data; // نجح الطلب
+      } catch (err) {
+        lastError = err;
+        console.warn('فشل المفتاح ' + (i + 1) + ': ' + err.message);
+        // المحاولة مع المفتاح التالي إن وجد
+      }
+    }
+    throw new Error('فشلت جميع المفاتيح (' + keys.length + '). الخطأ الأخير: ' + (lastError ? lastError.message : 'غير معروف'));
+  }
+
+  // --- تفريغ ومونتاج بالذكاء الاصطناعي مع أساليب السرد والقطع ---
   $('btnAnalyze').addEventListener('click', async () => {
-    const key = store('gemini_key');
-    if (!key) {
+    const keys = getAllApiKeys();
+    if (!keys.length) {
       openSettings();
-      say('يرجى وضع مفتاح Gemini API في الإعدادات للبدء.');
+      say('يرجى حفظ مفتاح Gemini API في الإعدادات أولاً.');
       return;
     }
     if (!curFile) return say('اختر فيديو أولاً لتفريغه بالذكاء الاصطناعي.');
-    if (curFile.size > 20 * 1024 * 1024) {
-      return say('حجم الفيديو أكبر من 20MB، اختر مقطعاً أقصر للتفريغ السريع.');
+    if (curFile.size > 22 * 1024 * 1024) {
+      return say('حجم الفيديو أكبر من 22MB، اختر مقطعاً أصغر للتفريغ السريع.');
     }
 
     const activeModel = getModel();
     $('btnAnalyze').disabled = true;
-    say('⏳ جارٍ تحليل الصوت والحركة وتوليد المونتاج عبر ' + activeModel + '...');
+    say('⏳ جارٍ قراءة الفيديو وتحليله بالمونتاج السردي الحديث...');
 
     try {
       const b64 = await new Promise((resolve, reject) => {
@@ -1294,29 +1601,25 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       });
 
       const prompt =
-        'Act as a world-class viral video editor. Analyze this video audio and visuals. ' +
-        '1. Transcribe spoken words into punchy short captions (2 to 5 words max). ' +
-        '2. Provide start and end time (s, e) in seconds for each caption, 1-2 highlight words (emph), animation fx (pop, glow, box, slide, karaoke), and sfx type (whoosh, boom, pop, glitch, snap, riser). ' +
-        '3. Select the best preset (reels, cinematic, cyber, vlog, podcast, vintage, news, anime) and color look (cinema, noir, cyber, warm, retro, clean). ' +
+        'Act as a master viral & cinematic video editor. Analyze this video audio and pacing. ' +
+        '1. Transcribe speech into punchy short captions (2-5 words). Provide start/end (s, e) in seconds, emph words, fx (pop, glow, box, slide, karaoke), and sfx (whoosh, boom, pop, glitch, snap, riser, whip, subdrop). ' +
+        '2. Choose the best narrative style: "linear", "parallel", "montage", "intellectual", or "rhythmic". ' +
+        '3. Choose the best cut technique: "hard", "jump", "jcut", "lcut", "match", "action", or "smash". ' +
+        '4. Recommend edit preset (reels, cinematic, cyber, vlog, podcast, vintage, news, anime), look (cinema, noir, cyber, warm, retro, clean), and list recommended cut timestamp points [number array] for transitions. ' +
         'Return ONLY valid JSON matching this schema: ' +
-        '{"preset":"reels","look":"cinema","captions":[{"s":0.0,"e":1.5,"text":"...","emph":["..."],"fx":"pop","sfx":"whoosh"}]}';
+        '{"narrative":"rhythmic","cutTechnique":"jump","preset":"reels","look":"cinema","cutPoints":[1.5, 3.2, 5.0],"captions":[{"s":0.0,"e":1.5,"text":"...","emph":["..."],"fx":"pop","sfx":"whoosh"}]}';
 
-      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(activeModel) + ':generateContent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { inline_data: { mime_type: curFile.type || 'video/mp4', data: b64 } },
-              { text: prompt }
-            ]
-          }],
-          generationConfig: { responseMimeType: 'application/json' }
-        })
-      });
+      const payload = {
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: curFile.type || 'video/mp4', data: b64 } },
+            { text: prompt }
+          ]
+        }],
+        generationConfig: { responseMimeType: 'application/json' }
+      };
 
-      const data = await res.json();
-      if (!res.ok) throw new Error((data.error && data.error.message) || ('HTTP ' + res.status));
+      const data = await callGeminiWithFailover(payload, activeModel);
 
       const rawText = ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [])
         .map(p => p.text || '').join('');
@@ -1333,8 +1636,13 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         throw new Error('لم يتم استلام هيكل JSON سليم من الذكاء الاصطناعي');
       }
 
+      if (parsed.narrative && $('narrativeMode')) $('narrativeMode').value = parsed.narrative;
+      if (parsed.cutTechnique && $('cutTechnique')) $('cutTechnique').value = parsed.cutTechnique;
       if (parsed.preset && $('editPreset')) $('editPreset').value = parsed.preset;
       if (parsed.look) setLookName(parsed.look);
+      if (Array.isArray(parsed.cutPoints) && parsed.cutPoints.length) {
+        cutPoints = parsed.cutPoints.map(Number).filter(n => !isNaN(n));
+      }
 
       caps = parsed.captions.map(c => ({
         s: Number(c.s) || 0,
@@ -1345,17 +1653,17 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         sfx: c.sfx || 'whoosh'
       }));
 
-      // إضافة جرافيكس تلقائية متوافقة
       graphics = [
-        { type: parsed.preset === 'news' ? 'news' : 'rec', s: 0.1, e: Math.min(vid.duration || 10, 4) }
+        { type: parsed.preset === 'news' ? 'news' : 'rec', s: 0.1, e: Math.min(vid.duration || 10, 3.5) }
       ];
 
+      renderTimeline();
       renderCaps();
       renderGfxList();
       vid.currentTime = 0.1;
       drawFrame();
-      say('✨ تم المونتاج والتفريغ بنجاح! تم استخراج ' + caps.length + ' جملة ممنتجة.');
-      document.querySelector('.tabs button[data-t="caps"]').click();
+      say('✨ اكتمل المونتاج الذكي! تم تفعيل أسلوب [' + ($('narrativeMode').value) + '] وتقنية قطع [' + ($('cutTechnique').value) + '].');
+      document.querySelector('.tabs button[data-t="narrative"]').click();
 
     } catch (err) {
       say('خطأ أثناء التفريغ الذكي: ' + err.message);
@@ -1364,7 +1672,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     }
   });
 
-  // --- تصدير الفيديو النهائي مع الصوت وجميع الـ SFX والـ VFX ---
+  // --- تصدير الفيديو النهائي الممنتج ---
   $('btnExport').addEventListener('click', async () => {
     if (!vid.src) return say('اختر فيديو أولاً لتصديره.');
     getAudioCtx();
@@ -1372,7 +1680,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     $('btnExport').disabled = true;
     $('prog').hidden = false;
     $('bar').style.width = '0%';
-    say('🎬 جارٍ تجهيز وبدء تصدير الفيديو بأعلى جودة...');
+    say('🎬 جارٍ تجهيز وبدء تصدير المونتاج النهائي مع كافة المؤثرات...');
 
     try {
       const canvasStream = cv.captureStream(30);
@@ -1420,7 +1728,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       const progressTimer = setInterval(() => {
         const percent = Math.min(99, Math.round((vid.currentTime / totalDur) * 100));
         $('bar').style.width = percent + '%';
-        say('جارٍ الرندرة وتطبيق المؤثرات الصوتية والسينمائية... ' + percent + '%');
+        say('جارٍ الرندرة وتطبيق القطعات والمؤثرات الصوتية... ' + percent + '%');
       }, 200);
 
       vid.onended = () => {
@@ -1441,7 +1749,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     }
   });
 
-  // التهيئة عند فتح التطبيق
+  // التهيئة عند التشغيل
   updateChip();
   drawEmptyScreen();
 })();
