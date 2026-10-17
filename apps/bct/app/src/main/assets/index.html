@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مونتير - استوديو المونتاج الذكي</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@500;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#100d0b;--pn:#1a1512;--pn2:#231d19;--ln:#2d2620;--paper:#e8dcc4;--red:#c4262e;--mute:#8d8273}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--paper);font:500 15px Cairo,system-ui,sans-serif;user-select:none}
+.top{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--ln);background:var(--pn)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:21px}
+.brand i{width:12px;height:12px;border-radius:50%;background:var(--red);box-shadow:0 0 12px var(--red)}
+.brand small{font-weight:500;font-size:13px;color:var(--mute)}
+.tr{display:flex;gap:8px;align-items:center}
+.chip{font:inherit;font-size:13px;padding:7px 14px;border-radius:99px;border:1px solid var(--ln);background:var(--pn2);color:var(--paper);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip:active{transform:scale(.97)}
+.chip.ok{color:#7dffb0;border-color:#2c5a40;background:#12241a}
+.app{display:grid;grid-template-columns:340px 1fr;gap:20px;padding:20px;max-width:1100px;margin:auto}
+.side{background:var(--pn);border:1px solid var(--ln);border-radius:14px;overflow:hidden;align-self:start}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--ln)}
+.tabs button{background:none;color:var(--mute);border:0;padding:13px 4px;border-bottom:2px solid transparent;font:inherit;cursor:pointer}
+.tabs button.on{color:var(--paper);border-color:var(--red);font-weight:800}
+.pane{display:none;padding:16px;flex-direction:column;gap:14px}
+.pane.on{display:flex}
+.btn{font:inherit;font-weight:800;border:1px solid var(--ln);border-radius:9px;padding:10px 16px;cursor:pointer;background:var(--pn2);color:var(--paper);text-decoration:none;text-align:center;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn:active:not(:disabled){transform:scale(.98)}
+.btn.primary{background:var(--red);border-color:var(--red);color:#fff}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--mute)}
+label.chk{flex-direction:row;align-items:center;gap:8px;color:var(--paper);font-size:14px;cursor:pointer}
+select,input[type=text],input[type=password],input[type=number]{background:var(--bg);color:var(--paper);border:1px solid var(--ln);border-radius:8px;padding:9px;font:inherit;width:100%}
+input[type=range]{accent-color:var(--red);cursor:pointer}
+.finfo{background:var(--bg);border:1px dashed var(--ln);border-radius:10px;padding:12px;font-size:13px;color:var(--mute);line-height:1.8;word-break:break-all}
+.finfo b{color:var(--paper)}
+.looks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.look{position:relative;align-items:center;cursor:pointer;gap:5px}
+.look input{position:absolute;opacity:0;pointer-events:none}
+.look i{display:block;width:100%;height:58px;border-radius:9px;border:2px solid transparent}
+.look input:checked~i{border-color:var(--red);box-shadow:0 0 10px rgba(196,38,46,.4)}
+.look b{font-weight:500;font-size:12px;color:var(--paper)}
+#list{display:flex;flex-direction:column;gap:8px;max-height:330px;overflow-y:auto}
+.cap{display:grid;grid-template-columns:60px 60px 1fr 34px;gap:6px;background:var(--bg);border:1px solid var(--ln);padding:8px;border-radius:9px}
+.cap input{min-width:0;padding:6px;font-size:13px}
+.cap .em{grid-column:1/5}
+.cap button{padding:0;background:#3a1517;color:#fff;border:0;border-radius:7px;cursor:pointer;font-weight:800;font-size:16px}
+.center{display:flex;flex-direction:column;gap:12px;min-width:0}
+.seg{display:inline-flex;align-self:center;background:var(--pn);border:1px solid var(--ln);border-radius:99px;padding:3px}
+.seg button{font:inherit;background:none;border:0;color:var(--mute);padding:7px 18px;border-radius:99px;cursor:pointer}
+.seg button.on{background:var(--paper);color:var(--bg);font-weight:800}
+.seg button:disabled{opacity:.4;cursor:not-allowed}
+
+/* حاوية الشاشة المصممة لمنع الشاشة السوداء */
+.screen{position:relative;background:#080605;border:1px solid var(--ln);border-radius:14px;padding:12px;display:flex;justify-content:center;align-items:center;min-height:380px;overflow:hidden}
+#srcVid{position:absolute;width:2px;height:2px;opacity:.01;pointer-events:none;z-index:0}
+.screen canvas,.screen #out{position:relative;z-index:1;display:block;max-width:100%;max-height:62vh;width:auto;height:auto;border-radius:8px;background:#000}
+
+.tp{display:flex;align-items:center;gap:10px}
+.tp .btn{width:46px;padding:9px 0;flex-shrink:0}
+#time{font-variant-numeric:tabular-nums;color:var(--mute);font-size:13px;direction:ltr;min-width:78px;text-align:center}
+.tl{position:relative;flex:1;height:40px;background:var(--pn);border:1px solid var(--ln);border-radius:9px;direction:ltr;cursor:pointer;overflow:hidden}
+.blk{position:absolute;top:7px;bottom:7px;min-width:3px;background:#6d1a1f;border:1px solid var(--red);border-radius:4px;pointer-events:none}
+.ph{position:absolute;top:0;bottom:0;width:2px;background:var(--paper);pointer-events:none}
+.acts{display:flex;gap:10px}
+.acts .btn{flex:1}
+.prog{height:6px;background:var(--pn2);border-radius:9px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--red);transition:width .2s}
+#status{min-height:22px;color:var(--paper);margin:0;font-size:14px;text-align:center;background:var(--pn);padding:8px 12px;border-radius:8px;border:1px solid var(--ln)}
+
+/* نافذة الإعدادات */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:9999;padding:16px}
+.modal-box{background:var(--pn);color:var(--paper);border:1px solid var(--ln);border-radius:14px;width:min(420px,100%);padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 16px 40px #000}
+.modal-box h2{margin:0;font-size:18px}
+.hint{font-size:12px;color:var(--mute);margin:0;line-height:1.6}
+.row{display:flex;gap:10px}
+.row .btn{flex:1}
+@media(max-width:820px){.app{grid-template-columns:1fr;padding:12px}.center{order:-1}.brand small{display:none}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><i></i>مونتير <small>استوديو المونتاج الذكي</small></div>
+  <div class="tr">
+    <button id="btnSettings" class="chip" type="button">⚙ إعداد مفتاح API</button>
+  </div>
+</header>
+
+<main class="app">
+  <aside class="side">
+    <nav class="tabs">
+      <button type="button" data-t="src" class="on">1. المصدر</button>
+      <button type="button" data-t="style">2. الستايل</button>
+      <button type="button" data-t="caps">3. الجمل (<span id="cnt">0</span>)</button>
+    </nav>
+
+    <!-- تبويب المصدر -->
+    <div class="pane on" id="p-src">
+      <input type="file" id="fileInput" accept="video/*" hidden>
+      <button id="btnPick" class="btn primary" type="button">📁 اختيار فيديو من المعرض</button>
+      <div class="finfo" id="finfo">لم يتم اختيار فيديو بعد</div>
+      <button id="btnAnalyze" class="btn" type="button">✨ حلّل الفيديو بالذكاء الاصطناعي</button>
+      <button id="btnDemoCaps" class="btn ghost" type="button">📝 إضافة جمل تجريبية سريعة</button>
+      <p class="hint">يفرّغ الكلام باللهجة المنطوقة، يقسّمه إلى جمل قصيرة، ويختار الكلمات المميزة والتأثير. الحد الأقصى 18MB.</p>
+    </div>
+
+    <!-- تبويب الستايل -->
+    <div class="pane" id="p-style">
+      <div class="looks">
+        <label class="look"><input type="radio" name="look" value="dark" checked><i style="background:radial-gradient(#3a3028,#050403)"></i><b>داكن</b></label>
+        <label class="look"><input type="radio" name="look" value="light"><i style="background:linear-gradient(100deg,#dcdcdc,#8f8f8f 40%,#dcdcdc 60%,#9a9a9a)"></i><b>فاتح</b></label>
+        <label class="look"><input type="radio" name="look" value="blue"><i style="background:linear-gradient(#5a74c8,#1d2f78)"></i><b>أزرق</b></label>
+      </div>
+      <label>تأثير الكلمات
+        <select id="fx">
+          <option value="auto">تلقائي (من الذكاء الاصطناعي)</option>
+          <option value="pop">ظهور بنبضة (Pop)</option>
+          <option value="glow">توهج (Glow)</option>
+          <option value="box">داخل صندوق (Box)</option>
+          <option value="slide">انزلاق (Slide)</option>
+        </select>
+      </label>
+      <label>حجم الخط (<span id="tsizeVal">95</span>)
+        <input type="range" id="tsize" min="55" max="135" value="95">
+      </label>
+      <label>موضع النص العمودي (<span id="tyVal">50</span>%)
+        <input type="range" id="ty" min="20" max="85" value="50">
+      </label>
+      <label class="chk"><input type="checkbox" id="punch" checked> زووم نبضي عند بداية كل جملة</label>
+    </div>
+
+    <!-- تبويب الجمل -->
+    <div class="pane" id="p-caps">
+      <button id="btnAddCap" class="btn primary" type="button">+ أضف جملة عند الثانية الحالية</button>
+      <div id="list"></div>
+    </div>
+  </aside>
+
+  <section class="center">
+    <div class="seg">
+      <button type="button" data-v="live" id="tabLive" class="on">المعاينة المباشرة</button>
+      <button type="button" data-v="out" id="tabOut" disabled>النتيجة النهائية</button>
+    </div>
+
+    <div class="screen">
+      <!-- الفيديو موجود داخل الشاشة لضمان عدم توقف المتصفح عن رسم إطاراته -->
+      <video id="srcVid" playsinline webkit-playsinline preload="auto"></video>
+      <canvas id="cv" width="576" height="1024"></canvas>
+      <video id="out" controls playsinline webkit-playsinline hidden></video>
+    </div>
+
+    <div class="tp">
+      <button id="btnPlay" class="btn" type="button" aria-label="تشغيل">▶</button>
+      <div class="tl" id="tl"><div class="ph" id="ph"></div></div>
+      <span id="time">0:00 / 0:00</span>
+    </div>
+
+    <div class="acts">
+      <button id="btnExport" class="btn primary" type="button">🎬 إنشاء الفيديو النهائي</button>
+      <a id="btnDl" class="btn" download="montage.mp4" hidden>⬇ تنزيل الفيديو</a>
+    </div>
+
+    <div class="prog" id="prog" hidden><i id="bar"></i></div>
+    <p id="status">مرحباً بك! اختر فيديو من المعرض للبدء.</p>
+  </section>
+</main>
+
+<!-- نافذة الإعدادات -->
+<div id="settingsModal" class="modal-bg" hidden>
+  <div class="modal-box">
+    <h2>⚙ إعدادات الذكاء الاصطناعي</h2>
+    <label>مفتاح Gemini API
+      <input type="password" id="apiKeyInput" placeholder="AIzaSy..." autocomplete="off">
+    </label>
+    <label>الموديل
+      <select id="modelInput">
+        <option value="gemini-2.5-flash">gemini-2.5-flash (موصى به وسريع)</option>
+        <option value="gemini-2.5-pro">gemini-2.5-pro (دقة عالية)</option>
+        <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+      </select>
+    </label>
+    <p class="hint">يُحفظ المفتاح محلياً في جهازك فقط. يمكنك الحصول على مفتاح مجاني من موقع aistudio.google.com</p>
+    <div class="row">
+      <button id="btnSaveSet" class="btn primary" type="button">حفظ وتفعيل</button>
+      <button id="btnCloseSet" class="btn ghost" type="button">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const cv = $('cv'), cx = cv.getContext('2d');
+  const vid = $('srcVid');
+
+  let caps = [];
+  let curFile = null;
+  let vidUrl = null;
+  let hasFrame = false;
+  let ac = null, dest = null, srcNode = null;
+  const memStore = {};
+
+  // ألوان وتأثيرات الستايلات بدون الاعتماد على cx.filter الذي قد يسبب شاشة سوداء في بعض الهواتف
+  const LOOKS = {
+    dark:  { overlay: 'rgba(10, 6, 4, 0.28)', vig: 0.72, bars: false, txt: '#ffffff', em: '#ff3b3b' },
+    light: { overlay: 'rgba(255, 255, 255, 0.12)', vig: 0.22, bars: true,  txt: '#ffffff', em: '#ff2a36' },
+    blue:  { overlay: 'rgba(25, 55, 160, 0.32)', vig: 0.50, bars: false, txt: '#ffffff', em: '#7dffb0' }
+  };
+
+  // تخزين آمن يعمل في كل البيئات
+  function store(k, v) {
+    try {
+      if (v === undefined) return localStorage.getItem(k) || memStore[k] || '';
+      memStore[k] = v;
+      localStorage.setItem(k, v);
+    } catch (e) {
+      if (v === undefined) return memStore[k] || '';
+      memStore[k] = v;
+    }
+  }
+
+  function getModel() {
+    const m = store('gemini_model');
+    return (m && m !== 'gemini-3.8-flash') ? m : 'gemini-2.5-flash';
+  }
+
+  function say(msg) {
+    $('status').textContent = msg;
+  }
+
+  function fmt(s) {
+    if (!isFinite(s) || s < 0) return '0:00';
+    return Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+  }
+
+  function easeOutBack(x) {
+    const c = 1.70158;
+    return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2);
+  }
+
+  function getLookName() {
+    const r = document.querySelector('input[name="look"]:checked');
+    return r ? r.value : 'dark';
+  }
+
+  function setLookName(v) {
+    const r = document.querySelector('input[name="look"][value="' + v + '"]');
+    if (r) r.checked = true;
+    drawFrame();
+  }
+
+  // رسم مستطيل بحواف دائرية متوافق مع كل المتصفحات القديمة والحديثة
+  function fillRoundRect(ctx, x, y, w, h, r) {
+    const rad = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rad, y);
+    ctx.arcTo(x + w, y, x + w, y + h, rad);
+    ctx.arcTo(x + w, y + h, x, y + h, rad);
+    ctx.arcTo(x, y + h, x, y, rad);
+    ctx.arcTo(x, y, x + w, y, rad);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // رسم الشاشة الافتراضية قبل رفع الفيديو
+  function drawEmptyScreen(msg) {
+    const W = cv.width, H = cv.height;
+    cx.fillStyle = '#120e0c';
+    cx.fillRect(0, 0, W, H);
+    cx.strokeStyle = '#2d2620';
+    cx.lineWidth = 4;
+    cx.strokeRect(20, 20, W - 40, H - 40);
+    cx.fillStyle = '#e8dcc4';
+    cx.font = '800 26px Cairo, sans-serif';
+    cx.textAlign = 'center';
+    cx.fillText('استوديو مونتير الذكي', W / 2, H / 2 - 20);
+    cx.fillStyle = '#8d8273';
+    cx.font = '500 18px Cairo, sans-serif';
+    cx.fillText(msg || 'اضغط على "اختيار فيديو من المعرض" للبدء', W / 2, H / 2 + 25);
+  }
+
+  // ---------------- 1. التبويبات والتنقل ----------------
+  document.querySelectorAll('.tabs button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b === btn));
+      document.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.id === 'p-' + btn.dataset.t));
+    });
+  });
+
+  function setView(mode) {
+    $('tabLive').classList.toggle('on', mode === 'live');
+    $('tabOut').classList.toggle('on', mode === 'out');
+    $('cv').hidden = (mode !== 'live');
+    $('out').hidden = (mode !== 'out');
+    if (mode === 'out') vid.pause();
+    else $('out').pause();
+  }
+
+  $('tabLive').addEventListener('click', () => setView('live'));
+  $('tabOut').addEventListener('click', () => {
+    if (!$('tabOut').disabled) setView('out');
+  });
+
+  // ---------------- 2. نافذة الإعدادات ----------------
+  function updateChip() {
+    const k = store('gemini_key');
+    const c = $('btnSettings');
+    if (k) {
+      c.textContent = '✓ Gemini جاهز (' + getModel() + ')';
+      c.classList.add('ok');
+    } else {
+      c.textContent = '⚙ إعداد مفتاح API';
+      c.classList.remove('ok');
+    }
+  }
+
+  function openSettings() {
+    $('apiKeyInput').value = store('gemini_key');
+    $('modelInput').value = getModel();
+    $('settingsModal').hidden = false;
+  }
+
+  function closeSettings() {
+    $('settingsModal').hidden = true;
+  }
+
+  $('btnSettings').addEventListener('click', openSettings);
+  $('btnCloseSet').addEventListener('click', closeSettings);
+  $('settingsModal').addEventListener('click', e => {
+    if (e.target === $('settingsModal')) closeSettings();
+  });
+
+  $('btnSaveSet').addEventListener('click', () => {
+    const k = $('apiKeyInput').value.trim();
+    const m = $('modelInput').value;
+    store('gemini_key', k);
+    store('gemini_model', m);
+    updateChip();
+    closeSettings();
+    say(k ? 'تم حفظ مفتاح API بنجاح!' : 'تم إزالة مفتاح API.');
+  });
+
+  // ---------------- 3. اختيار وتحميل الفيديو (حل مشكلة الشاشة السوداء) ----------------
+  $('btnPick').addEventListener('click', () => {
+    $('fileInput').value = '';
+    $('fileInput').click();
+  });
+
+  $('fileInput').addEventListener('change', e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    curFile = f;
+    hasFrame = false;
+    say('جارٍ قراءة الفيديو وتجهيز شاشة العرض...');
+    drawEmptyScreen('جارٍ تحميل الفيديو...');
+
+    if (vidUrl) URL.revokeObjectURL(vidUrl);
+    vidUrl = URL.createObjectURL(f);
+    vid.src = vidUrl;
+    vid.load();
+  });
+
+  // عند قراءة أبعاد الفيديو ومدته
+  vid.addEventListener('loadedmetadata', () => {
+    const vw = vid.videoWidth || 576;
+    const vh = vid.videoHeight || 1024;
+    const targetW = Math.min(vw, 720);
+    cv.width = targetW;
+    cv.height = Math.round(targetW * vh / vw);
+
+    if (curFile) {
+      $('finfo').innerHTML =
+        '<b>' + curFile.name + '</b><br>' +
+        'الحجم: ' + (curFile.size / 1e6).toFixed(1) + ' MB<br>' +
+        'المدة: ' + fmt(vid.duration) + '<br>' +
+        'الأبعاد: ' + vw + '×' + vh;
+    }
+
+    setView('live');
+    renderCaps();
+
+    // خدعة مضمونة لإجبار جميع المتصفحات على فك تشفير الإطار الأول ورسمه فوراً
+    vid.muted = true;
+    const p = vid.play();
+    if (p && p.then) {
+      p.then(() => {
+        setTimeout(() => {
+          vid.pause();
+          vid.muted = false;
+          vid.currentTime = 0.05;
+          hasFrame = true;
+          drawFrame();
+          say('تم تحميل الفيديو بنجاح! اضغط ▶ للتشغيل أو حلّله بالذكاء الاصطناعي.');
+        }, 60);
+      }).catch(() => {
+        vid.muted = false;
+        vid.currentTime = 0.05;
+      });
+    } else {
+      vid.muted = false;
+      vid.currentTime = 0.05;
+    }
+  });
+
+  vid.addEventListener('loadeddata', () => {
+    hasFrame = true;
+    drawFrame();
+  });
+
+  vid.addEventListener('seeked', () => {
+    hasFrame = true;
+    drawFrame();
+  });
+
+  vid.addEventListener('timeupdate', () => {
+    hasFrame = true;
+    drawFrame();
+    if (vid.duration) {
+      $('ph').style.left = (vid.currentTime / vid.duration * 100) + '%';
+      $('time').textContent = fmt(vid.currentTime) + ' / ' + fmt(vid.duration);
+    }
+  });
+
+  vid.addEventListener('play', () => { $('btnPlay').textContent = '❚❚'; });
+  vid.addEventListener('pause', () => { $('btnPlay').textContent = '▶'; drawFrame(); });
+  vid.addEventListener('error', () => {
+    say('تعذر تشغيل هذا الفيديو. تأكد أنه بصيغة MP4 (H.264).');
+  });
+
+  // تشغيل وإيقاف الفيديو
+  $('btnPlay').addEventListener('click', async () => {
+    if (!vid.src) return say('اختر فيديو من المعرض أولاً.');
+    setView('live');
+    initAudio();
+    try {
+      if (vid.paused) await vid.play();
+      else vid.pause();
+    } catch (err) {
+      say('تعذر التشغيل التلقائي: ' + err.message);
+    }
+  });
+
+  // القفز عبر التايم لاين
+  $('tl').addEventListener('click', e => {
+    if (!vid.duration) return;
+    const rect = $('tl').getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    vid.currentTime = ratio * vid.duration;
+    drawFrame();
+  });
+
+  function initAudio() {
+    try {
+      if (ac) {
+        if (ac.state === 'suspended') ac.resume();
+        return;
+      }
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      ac = new AudioCtx();
+      srcNode = ac.createMediaElementSource(vid);
+      dest = ac.createMediaStreamDestination();
+      srcNode.connect(dest);
+      srcNode.connect(ac.destination);
+    } catch (e) {
+      console.warn('Audio routing notice:', e);
+    }
+  }
+
+  // ---------------- 4. حلقة الرسم والتأثيرات ----------------
+  function renderLoop() {
+    if (hasFrame && !vid.paused) {
+      drawFrame();
+      if (vid.duration) {
+        $('ph').style.left = (vid.currentTime / vid.duration * 100) + '%';
+        $('time').textContent = fmt(vid.currentTime) + ' / ' + fmt(vid.duration);
+      }
+    }
+    requestAnimationFrame(renderLoop);
+  }
+
+  function drawFrame() {
+    if (!vid.src || (!hasFrame && vid.readyState < 2)) {
+      drawEmptyScreen();
+      return;
+    }
+
+    const W = cv.width, H = cv.height;
+    const t = vid.currentTime || 0;
+    const L = LOOKS[getLookName()] || LOOKS.dark;
+    const activeCap = caps.find(c => t >= c.s && t <= c.e);
+    const prog = activeCap ? Math.min(1, Math.max(0, (t - activeCap.s) / 0.3)) : 1;
+    const zoom = ($('punch').checked && activeCap) ? (1 + 0.065 * (1 - easeOutBack(prog))) : 1;
+
+    cx.save();
+    cx.clearRect(0, 0, W, H);
+    cx.translate(W / 2, H / 2);
+    cx.scale(zoom, zoom);
+    try {
+      cx.drawImage(vid, -W / 2, -H / 2, W, H);
+    } catch (e) {}
+    cx.restore();
+
+    // طبقة اللون حسب الستايل المختار
+    if (L.overlay) {
+      cx.fillStyle = L.overlay;
+      cx.fillRect(0, 0, W, H);
+    }
+
+    // خطوط إضاءة خفيفة للستايل الفاتح
+    if (L.bars) {
+      for (let i = 0; i < 4; i++) {
+        const g = cx.createLinearGradient(W * (i * 0.3 - 0.1), 0, W * (i * 0.3 + 0.05), 0);
+        g.addColorStop(0, 'rgba(0,0,0,0)');
+        g.addColorStop(0.5, 'rgba(0,0,0,0.16)');
+        g.addColorStop(1, 'rgba(0,0,0,0)');
+        cx.fillStyle = g;
+        cx.fillRect(0, 0, W, H);
+      }
+    }
+
+    // التظليل الدائري (Vignette)
+    const vig = cx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.82);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(0,0,0,' + L.vig + ')');
+    cx.fillStyle = vig;
+    cx.fillRect(0, 0, W, H);
+
+    // رسم الجملة الحالية إن وجدت
+    if (activeCap) {
+      drawCaption(activeCap, prog, L);
+    }
+  }
+
+  function drawCaption(c, p, L) {
+    const fs = Math.round(cv.width * Number($('tsize').value) / 1000);
+    const words = String(c.text || '').split(/\s+/).filter(Boolean);
+    if (!words.length) return;
+    const emph = Array.isArray(c.emph) ? c.emph : [];
+
+    cx.font = '800 ' + fs + 'px Cairo, sans-serif';
+    cx.direction = 'rtl';
+    cx.textAlign = 'right';
+    cx.textBaseline = 'middle';
+
+    const sp = cx.measureText(' ').width;
+    const maxW = cv.width * 0.82;
+    const lines = [[]];
+    let curW = 0;
+
+    words.forEach(w => {
+      const m = cx.measureText(w).width;
+      const lastLine = lines[lines.length - 1];
+      if (curW + m > maxW && lastLine.length > 0) {
+        lines.push([]);
+        curW = 0;
+      }
+      lines[lines.length - 1].push({ w: w, m: m, e: emph.indexOf(w) !== -1 });
+      curW += m + sp;
+    });
+
+    const lineWidth = line => line.reduce((sum, item) => sum + item.m, 0) + sp * (line.length - 1);
+    const fxMode = $('fx').value === 'auto' ? (c.fx || 'pop') : $('fx').value;
+    const e = easeOutBack(p);
+    const lh = fs * 1.42;
+    const topY = -(lines.length - 1) * lh / 2;
+
+    cx.save();
+    cx.translate(cv.width / 2, cv.height * Number($('ty').value) / 100);
+
+    if (fxMode === 'slide') {
+      cx.translate(0, (1 - e) * 45);
+      cx.globalAlpha = Math.max(0, Math.min(1, p));
+    } else {
+      const sc = 0.6 + 0.4 * e;
+      cx.scale(sc, sc);
+      cx.globalAlpha = Math.max(0, Math.min(1, p * 2));
+    }
+
+    if (fxMode === 'box') {
+      const maxLineW = Math.max.apply(null, lines.map(lineWidth));
+      const bw = maxLineW + fs * 1.2;
+      const bh = lines.length * lh + fs * 0.45;
+      cx.fillStyle = 'rgba(10, 10, 10, 0.88)';
+      fillRoundRect(cx, -bw / 2, -bh / 2, bw, bh, fs * 0.4);
+    }
+
+    lines.forEach((line, idx) => {
+      let x = lineWidth(line) / 2;
+      line.forEach(item => {
+        cx.fillStyle = item.e ? L.em : L.txt;
+        if (fxMode === 'glow') {
+          cx.shadowColor = item.e ? L.em : '#ffffff';
+          cx.shadowBlur = 22;
+          cx.shadowOffsetY = 0;
+        } else if (fxMode !== 'box') {
+          cx.shadowColor = 'rgba(0,0,0,0.8)';
+          cx.shadowBlur = 10;
+          cx.shadowOffsetY = 3;
+        }
+        cx.fillText(item.w, x, topY + idx * lh);
+        x -= (item.m + sp);
+      });
+    });
+
+    cx.restore();
+  }
+
+  // ربط أدوات الستايل بالرسم الفوري
+  document.querySelectorAll('input[name="look"], #fx, #tsize, #ty, #punch').forEach(el => {
+    el.addEventListener('input', () => {
+      $('tsizeVal').textContent = $('tsize').value;
+      $('tyVal').textContent = $('ty').value;
+      drawFrame();
+    });
+    el.addEventListener('change', drawFrame);
+  });
+
+  // ---------------- 5. إدارة الجمل والتايم لاين ----------------
+  function renderTimeline() {
+    const tl = $('tl');
+    tl.querySelectorAll('.blk').forEach(b => b.remove());
+    if (!vid.duration) return;
+    caps.forEach(c => {
+      const b = document.createElement('div');
+      b.className = 'blk';
+      b.title = c.text;
+      b.style.left = (c.s / vid.duration * 100) + '%';
+      b.style.width = Math.max(0.5, (c.e - c.s) / vid.duration * 100) + '%';
+      tl.insertBefore(b, $('ph'));
+    });
+  }
+
+  function renderCaps() {
+    caps.sort((a, b) => a.s - b.s);
+    const box = $('list');
+    box.innerHTML = '';
+    $('cnt').textContent = caps.length;
+
+    caps.forEach((c, idx) => {
+      const row = document.createElement('div');
+      row.className = 'cap';
+      row.innerHTML =
+        '<input type="number" step="0.1" title="وقت البداية بالثواني">' +
+        '<input type="number" step="0.1" title="وقت النهاية بالثواني">' +
+        '<input type="text" placeholder="النص...">' +
+        '<button type="button" title="حذف الجملة">×</button>' +
+        '<input class="em" type="text" placeholder="كلمات مميزة مفصولة بفاصلة (مثال: خطير، جداً)">';
+
+      const sIn = row.children[0];
+      const eIn = row.children[1];
+      const tIn = row.children[2];
+      const delBtn = row.children[3];
+      const emIn = row.children[4];
+
+      sIn.value = Number(c.s).toFixed(1);
+      eIn.value = Number(c.e).toFixed(1);
+      tIn.value = c.text;
+      emIn.value = (c.emph || []).join('، ');
+
+      sIn.addEventListener('change', () => { c.s = Number(sIn.value) || 0; renderTimeline(); drawFrame(); });
+      eIn.addEventListener('change', () => { c.e = Number(eIn.value) || (c.s + 1); renderTimeline(); drawFrame(); });
+      tIn.addEventListener('input', () => { c.text = tIn.value; drawFrame(); });
+      tIn.addEventListener('focus', () => {
+        if (vid.duration) { vid.currentTime = c.s + 0.05; drawFrame(); }
+      });
+      emIn.addEventListener('input', () => {
+        c.emph = emIn.value.split(/[,،]/).map(s => s.trim()).filter(Boolean);
+        drawFrame();
+      });
+      delBtn.addEventListener('click', () => {
+        caps.splice(idx, 1);
+        renderCaps();
+        drawFrame();
+      });
+
+      box.appendChild(row);
+    });
+
+    renderTimeline();
+  }
+
+  $('btnAddCap').addEventListener('click', () => {
+    if (!vid.src) return say('اختر فيديو من المعرض أولاً.');
+    const now = vid.currentTime || 0;
+    const end = vid.duration ? Math.min(vid.duration, now + 2) : now + 2;
+    caps.push({ s: now, e: end, text: 'جملة جديدة هنا', emph: ['جديدة'], fx: 'pop' });
+    renderCaps();
+    drawFrame();
+    say('تمت إضافة جملة جديدة عند الثانية ' + now.toFixed(1));
+  });
+
+  // زر إضافة جمل تجريبية لاختبار التأثيرات فوراً بدون مفتاح API
+  $('btnDemoCaps').addEventListener('click', () => {
+    if (!vid.src) return say('اختر فيديو من المعرض أولاً لتجربة الجمل عليه.');
+    const dur = vid.duration || 10;
+    caps = [
+      { s: 0.1, e: Math.min(dur, 2.2), text: 'مرحباً بكم في استوديو مونتير', emph: ['مونتير'], fx: 'pop' },
+      { s: Math.min(dur - 0.5, 2.4), e: Math.min(dur, 4.8), text: 'مونتاج احترافي بالذكاء الاصطناعي', emph: ['احترافي'], fx: 'box' },
+      { s: Math.min(dur - 0.2, 5.0), e: Math.min(dur, 7.5), text: 'جاهز للنشر بجودة عالية', emph: ['عالية'], fx: 'glow' }
+    ];
+    renderCaps();
+    vid.currentTime = 0.2;
+    drawFrame();
+    // الانتقال لتبويب الجمل لرؤيتها
+    document.querySelector('.tabs button[data-t="caps"]').click();
+    say('تمت إضافة 3 جمل تجريبية! اضغط ▶ لمشاهدتها على الفيديو.');
+  });
+
+  // ---------------- 6. التحليل بالذكاء الاصطناعي (Gemini API) ----------------
+  function parseSec(v) {
+    if (typeof v === 'number') return v;
+    const parts = String(v).split(':').map(Number);
+    return parts.reduce((acc, x) => acc * 60 + (isFinite(x) ? x : 0), 0);
+  }
+
+  $('btnAnalyze').addEventListener('click', async () => {
+    const key = store('gemini_key');
+    if (!key) {
+      openSettings();
+      say('يرجى إدخال مفتاح Gemini API أولاً ثم الضغط على حفظ.');
+      return;
+    }
+    if (!curFile) return say('اختر فيديو من المعرض أولاً.');
+    if (curFile.size > 18 * 1024 * 1024) {
+      return say('حجم الفيديو أكبر من 18MB. يرجى اختيار فيديو أقصر أو مضغوط.');
+    }
+
+    $('btnAnalyze').disabled = true;
+    say('⏳ جارٍ رفع وتحليل الفيديو بالذكاء الاصطناعي... قد يستغرق ذلك 30 إلى 60 ثانية.');
+
+    try {
+      const b64 = await new Promise((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result).split(',')[1]);
+        fr.onerror = () => reject(new Error('تعذر قراءة ملف الفيديو'));
+        fr.readAsDataURL(curFile);
+      });
+
+      const prompt =
+        'Transcribe the speech in this video exactly as spoken (keep the Arabic dialect). ' +
+        'Split it into short on-screen phrases of 2-6 words with accurate start/end times in seconds. ' +
+        'For each phrase pick the 0-2 most emphasized words (copied exactly as written in text) and an effect from: pop, glow, box, slide. ' +
+        'Also pick one overall look matching the mood: dark, light, or blue. ' +
+        'Return JSON only: {"look":"dark","captions":[{"s":0.0,"e":1.2,"text":"...","emph":["..."],"fx":"pop"}]}';
+
+      const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + getModel() + ':generateContent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { inline_data: { mime_type: curFile.type || 'video/mp4', data: b64 } },
+              { text: prompt }
+            ]
+          }],
+          generationConfig: { responseMimeType: 'application/json' }
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error((data.error && data.error.message) || ('HTTP ' + res.status));
+
+      const rawText = ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [])
+        .map(p => p.text || '').join('').replace(/```json|```/g, '').trim();
+
+      if (!rawText) throw new Error('لم يرجع الموديل أي نص.');
+      const parsed = JSON.parse(rawText);
+
+      if (parsed.look) setLookName(parsed.look);
+      caps = (parsed.captions || []).map(c => {
+        const s = parseSec(c.s);
+        let e = parseSec(c.e);
+        if (!(e > s)) e = s + 1.5;
+        return {
+          s: s,
+          e: e,
+          text: String(c.text || '').trim(),
+          emph: Array.isArray(c.emph) ? c.emph : [],
+          fx: c.fx || 'pop'
+        };
+      }).filter(c => isFinite(c.s) && c.text);
+
+      renderCaps();
+      drawFrame();
+      document.querySelector('.tabs button[data-t="caps"]').click();
+      say('✅ تم استخراج ' + caps.length + ' جملة بنجاح! راجعها أو اضغط إنشاء الفيديو النهائي.');
+    } catch (err) {
+      say('❌ خطأ في التحليل: ' + err.message);
+    } finally {
+      $('btnAnalyze').disabled = false;
+    }
+  });
+
+  // ---------------- 7. تصدير وإنشاء الفيديو النهائي ----------------
+  function showFinalVideo(blob, ext) {
+    const outVid = $('out');
+    if (outVid._blobUrl) URL.revokeObjectURL(outVid._blobUrl);
+    outVid._blobUrl = URL.createObjectURL(blob);
+    outVid.src = outVid._blobUrl;
+
+    $('btnDl').href = outVid._blobUrl;
+    $('btnDl').download = 'montage.' + ext;
+    $('btnDl').hidden = false;
+    $('tabOut').disabled = false;
+    setView('out');
+    say('🎉 تم إنشاء الفيديو النهائي (' + (blob.size / 1e6).toFixed(1) + ' MB)! يمكنك مشاهدته أو تنزيله الآن.');
+  }
+
+  $('btnExport').addEventListener('click', async () => {
+    if (!vid.src) return say('اختر فيديو من المعرض أولاً.');
+    const mimeList = [
+      'video/mp4;codecs=avc1,mp4a.40.2',
+      'video/mp4',
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm'
+    ];
+    const mime = mimeList.find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+    if (!mime) return say('متصفحك الحالي لا يدعم تسجيل الفيديو. يرجى فتح الصفحة في متصفح Chrome.');
+
+    const ext = mime.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+    const chunks = [];
+    let timer = null;
+
+    const setBusy = busy => {
+      $('btnExport').disabled = busy;
+      $('btnAnalyze').disabled = busy;
+      $('prog').hidden = !busy;
+      $('bar').style.width = '0%';
+    };
+
+    try {
+      initAudio();
+      setView('live');
+      const stream = cv.captureStream(30);
+      if (dest && dest.stream) {
+        dest.stream.getAudioTracks().forEach(track => stream.addTrack(track));
+      }
+
+      const rec = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 5000000 });
+      timer = setInterval(() => {
+        if (vid.duration) {
+          $('bar').style.width = Math.min(100, (vid.currentTime / vid.duration * 100)) + '%';
+        }
+      }, 200);
+
+      rec.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+      rec.onstop = () => {
+        clearInterval(timer);
+        setBusy(false);
+        showFinalVideo(new Blob(chunks, { type: mime.split(';')[0] }), ext);
+      };
+
+      setBusy(true);
+      vid.currentTime = 0;
+      await vid.play();
+      rec.start();
+      say('🎬 جارٍ تسجيل الفيديو النهائي... لا تغلق الصفحة حتى ينتهي التشغيل.');
+
+      vid.onended = () => {
+        if (rec.state !== 'inactive') rec.stop();
+        vid.onended = null;
+      };
+    } catch (err) {
+      clearInterval(timer);
+      setBusy(false);
+      say('❌ خطأ أثناء التصدير: ' + err.message);
+    }
+  });
+
+  // تهيئة التطبيق عند الفتح
+  updateChip();
+  drawEmptyScreen();
+  if (document.fonts && document.fonts.load) {
+    document.fonts.load('800 40px Cairo').then(drawFrame);
+  }
+  renderLoop();
+})();
+</script>
+</body>
+</html>
