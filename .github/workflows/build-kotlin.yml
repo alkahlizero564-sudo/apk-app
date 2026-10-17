@@ -34,6 +34,14 @@ jobs:
           fi
           echo "dir=$DIR" >> $GITHUB_OUTPUT
           echo "name=$(basename "$DIR")" >> $GITHUB_OUTPUT
+      - name: Check icon
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: |
+          ls -R app/src/main/res 2>/dev/null || echo "no res folder"
+          if [ ! -f app/src/main/res/mipmap-xxxhdpi/ic_launcher.png ]; then
+            echo "icon missing, removing it from manifest"
+            sed -i 's| android:icon="@mipmap/ic_launcher"||' app/src/main/AndroidManifest.xml
+          fi
       - name: Build
         working-directory: ${{ steps.find.outputs.dir }}
         run: |
@@ -55,4 +63,4 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: kotlin-${{ steps.find.outputs.name }}-build-${{ github.run_number }}
-          files: ${{ steps.apk.outputs.path }} 
+          files: ${{ steps.apk.outputs.path }}
