@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>إدارة الورديات</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;background:#0b1220;color:#e8eefc;min-height:100vh}
+.wrap{max-width:520px;margin:0 auto;padding:16px}
+h1{font-size:22px;text-align:center;margin:8px 0 14px}
+h2{font-size:20px;margin:0 0 8px}
+h3{font-size:17px;margin:0 0 6px}
+.card{background:#141c2e;border:1px solid #243049;border-radius:16px;padding:14px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+input{width:100%;padding:12px;border-radius:12px;border:1px solid #2a3957;background:#0b1220;color:#fff;font-size:16px;font-family:inherit}
+button{border:0;border-radius:12px;padding:11px 14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.main{background:#ffb300;color:#1a1a1a}
+.full{width:100%;margin-top:10px;padding:14px}
+.tabs{display:flex;gap:8px;margin-bottom:12px}
+.tab{flex:1;background:#1c2740;color:#8da2c9}
+.tab.on{background:#2a7bff;color:#fff}
+.muted{color:#8da2c9;font-size:14px}
+.names{line-height:1.8}
+.pin{background:#0b1220;border:1px solid #2a3957;border-radius:8px;padding:2px 8px;letter-spacing:2px;color:#ffb300}
+.del{background:#3a2330;color:#ff8a8a;padding:8px 12px}
+#toasts{position:fixed;top:10px;left:10px;right:10px;z-index:9;display:flex;flex-direction:column;gap:8px}
+.toast{background:#16a34a;color:#fff;padding:12px 16px;border-radius:12px;font-weight:700;box-shadow:0 4px 14px #0008}
+</style>
+</head>
+<body>
+<div id="toasts"></div>
+<div class="wrap">
+  <h1>📋 إدارة الورديات</h1>
+
+  <div id="lock" class="card">
+    <h2>دخول المدير</h2>
+    <input id="code" type="password" inputmode="numeric" placeholder="رمز المدير">
+    <button class="main full" onclick="unlock()">دخول</button>
+    <div id="lmsg" class="muted" style="margin-top:8px"></div>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="tabs">
+      <button id="t0" class="tab on" onclick="tab(0)">اليوم</button>
+      <button id="t1" class="tab" onclick="tab(1)">العمال</button>
+    </div>
+
+    <div id="p0">
+      <div class="muted" id="day" style="margin-bottom:8px"></div>
+      <div id="shifts"></div>
+      <div class="card">
+        <h3>⚠️ لم يسجلوا اليوم</h3>
+        <div class="names" id="missing"></div>
+      </div>
+    </div>
+
+    <div id="p1" style="display:none">
+      <div class="card">
+        <input id="wname" placeholder="اسم موظف جديد">
+        <button class="main full" onclick="addWorker()">إضافة موظف</button>
+      </div>
+      <div id="workers"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://qlvmxnoewxzykgbneadv.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsdm14bm9ld3h6eWtnYm5lYWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDAwMjIsImV4cCI6MjEwNzIxNjAyMn0.WtsiO0PrUrwxKjpcyB3949kXSZeijtlJYySSbh0ieRk";
+const MANAGER_CODE = "1234";          // غيّره
+const SHIFTS = ["صباح (12 ساعة)", "ظهر (6ص - 2م)", "ليل (6م - 6ص)", "ليل (2م - 10م)"];
+
+const $ = id => document.getElementById(id);
+const mem = {};
+function sget(k){ try { return localStorage.getItem(k); } catch(e){ return mem[k] || null; } }
+function sset(k,v){ try { localStorage.setItem(k,v); } catch(e){ mem[k] = v; } }
+function el(tag, cls, text){
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+function today(){
+  const d = new Date(), p = n => String(n).padStart(2,"0");
+  return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate());
+}
+
+async function api(method, path, body){
+  try {
+    const r = await fetch(SUPABASE_URL + "/rest/v1/" + path, {
+      method,
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: "Bearer " + SUPABASE_KEY,
+        "Content-Type": "application/json",
+        Prefer: "return=representation"
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const t = await r.text();
+    let data = null;
+    try { data = t ? JSON.parse(t) : null; } catch(e){}
+    return { ok: r.ok, status: r.status, data };
+  } catch(e){
+    return { ok: false, status: -1, data: null };
+  }
+}
+
+/* ---------- تنبيهات (تعمل والتطبيق مفتوح) ---------- */
+function beep(){
+  try {
+    const c = new (window.AudioContext || window.webkitAudioContext)();
+    const o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination);
+    o.frequency.value = 880; g.gain.value = 0.2;
+    o.start(); setTimeout(() => { o.stop(); c.close(); }, 350);
+  } catch(e){}
+}
+function toast(t){
+  const d = el("div", "toast", t);
+  $("toasts").appendChild(d);
+  setTimeout(() => d.remove(), 6000);
+}
+function alertNew(t){
+  toast("🔔 " + t); beep();
+  try { navigator.vibrate && navigator.vibrate([200,100,200]); } catch(e){}
+}
+
+/* ---------- الدخول ---------- */
+function unlock(){
+  if ($("code").value === MANAGER_CODE) { sset("mgr", "1"); start(); }
+  else $("lmsg").textContent = "الرمز غير صحيح";
+}
+function start(){
+  $("lock").style.display = "none";
+  $("app").style.display = "block";
+  $("day").textContent = "حضور اليوم (" + today() + ")";
+  refreshToday();
+  setInterval(refreshToday, 15000);
+}
+function tab(i){
+  $("p0").style.display = i === 0 ? "block" : "none";
+  $("p1").style.display = i === 1 ? "block" : "none";
+  $("t0").className = "tab" + (i === 0 ? " on" : "");
+  $("t1").className = "tab" + (i === 1 ? " on" : "");
+  if (i === 1) loadWorkers();
+}
+
+/* ---------- تبويب اليوم ---------- */
+let seen = null;
+async function refreshToday(){
+  const [a, w] = await Promise.all([
+    api("GET", "attendance?day=eq." + today() + "&select=id,shift,worker_id,created_at,workers(name)&order=created_at"),
+    api("GET", "workers?select=id,name&order=name")
+  ]);
+  if (!a.ok || !a.data) return;
+  const rows = a.data, workers = (w.ok && w.data) ? w.data : [];
+
+  if (seen !== null) {
+    rows.filter(x => !seen.has(x.id)).forEach(x =>
+      alertNew((x.workers ? x.workers.name : "موظف") + " سجّل في " + x.shift));
+  }
+  seen = new Set(rows.map(x => x.id));
+
+  const box = $("shifts"); box.innerHTML = "";
+  SHIFTS.forEach(s => {
+    const list = rows.filter(x => x.shift === s);
+    const c = el("div", "card");
+    c.appendChild(el("h3", "", s + " — " + list.length));
+    c.appendChild(el("div", "names", list.length
+      ? list.map(x => (x.workers ? x.workers.name : "؟")).join("، ")
+      : "لا أحد بعد"));
+    box.appendChild(c);
+  });
+
+  const done = new Set(rows.map(x => x.worker_id));
+  const miss = workers.filter(x => !done.has(x.id)).map(x => x.name);
+  $("missing").textContent = workers.length
+    ? (miss.length ? miss.join("، ") : "الكل سجّل ✅")
+    : "أضف عمال من تبويب العمال";
+}
+
+/* ---------- تبويب العمال ---------- */
+async function loadWorkers(){
+  const r = await api("GET", "workers?select=id,name,pin&order=name");
+  const box = $("workers"); box.innerHTML = "";
+  if (!r.ok || !r.data) { box.appendChild(el("div", "muted", "تأكد من الإنترنت")); return; }
+  r.data.forEach(w => {
+    const row = el("div", "card row");
+    const info = el("div");
+    info.appendChild(el("div", "", w.name));
+    const p = el("span", "pin", w.pin);
+    const l = el("span", "muted", "الرقم: ");
+    const line = el("div"); line.append(l, p);
+    info.appendChild(line);
+    const b = el("button", "del", "حذف");
+    let armed = false;
+    b.onclick = async () => {
+      if (!armed) { armed = true; b.textContent = "تأكيد؟"; setTimeout(() => { armed = false; b.textContent = "حذف"; }, 3000); return; }
+      await api("DELETE", "workers?id=eq." + w.id);
+      loadWorkers();
+    };
+    row.append(info, b); box.appendChild(row);
+  });
+}
+
+async function addWorker(){
+  const name = $("wname").value.trim();
+  if (!name) return;
+  for (let i = 0; i < 5; i++) {
+    const pin = String(Math.floor(1000 + Math.random() * 9000));
+    const r = await api("POST", "workers", { name, pin });
+    if (r.status === 201) { $("wname").value = ""; toast("تمت الإضافة، الرقم: " + pin); loadWorkers(); return; }
+    if (r.status !== 409) { toast("فشلت الإضافة، تأكد من الإنترنت"); return; }
+  }
+  toast("حاول مرة ثانية");
+}
+
+if (sget("mgr") === "1") start();
+</script>
+</body>
+</html>
