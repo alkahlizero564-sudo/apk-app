@@ -1,0 +1,182 @@
+package com.shift.manager
+
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationCompat
+import com.google.firebase.messaging.FirebaseMessaging
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.net.HttpURLConnection
+import java.net.URL
+import java.time.LocalDate
+
+const val SUPABASE_URL = "https://YOUR-PROJECT.supabase.co"
+const val SUPABASE_KEY = "YOUR-ANON-KEY"
+val SHIFTS = listOf("صباح (12 ساعة)", "ظهر (6ص - 2م)", "ليل (6م - 6ص)", "ليل (2م - 10م)")
+
+suspend fun api(
+    method: String, path: String, body: String? = null, prefer: String = "return=representation"
+): Pair<Int, String> = withContext(Dispatchers.IO) {
+    try {
+        val c = URL("$SUPABASE_URL/rest/v1/$path").openConnection() as HttpURLConnection
+        c.requestMethod = method
+        c.connectTimeout = 15000; c.readTimeout = 15000
+        c.setRequestProperty("apikey", SUPABASE_KEY)
+        c.setRequestProperty("Authorization", "Bearer $SUPABASE_KEY")
+        c.setRequestProperty("Content-Type", "application/json")
+        c.setRequestProperty("Prefer", prefer)
+        if (body != null) { c.doOutput = true; c.outputStream.use { it.write(body.toByteArray()) } }
+        val code = c.responseCode
+        code to ((if (code < 400) c.inputStream else c.errorStream)?.bufferedReader()?.readText() ?: "")
+    } catch (e: Exception) { -1 to "" }
+}
+
+fun saveToken(t: String) {
+    CoroutineScope(Dispatchers.IO).launch {
+        api("POST", "manager_tokens?on_conflict=token",
+            JSONObject().put("token", t).toString(), "resolution=merge-duplicates")
+    }
+}
+
+fun createChannel(c: Context) {
+    if (Build.VERSION.SDK_INT >= 26)
+        c.getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel("attendance", "الحضور", NotificationManager.IMPORTANCE_HIGH))
+}
+
+class PushService : FirebaseMessagingService() {
+    override fun onNewToken(token: String) = saveToken(token)
+    override fun onMessageReceived(m: RemoteMessage) {
+        createChannel(this)
+        val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
+        val n = NotificationCompat.Builder(this, "attendance")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle(m.data["title"]).setContentText(m.data["body"])
+            .setAutoCancel(true).setContentIntent(open).build()
+        getSystemService(NotificationManager::class.java).notify(System.currentTimeMillis().toInt(), n)
+    }
+}
+
+class MainActivity : ComponentActivity() {
+    private val askPerm = registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    override fun onCreate(s: Bundle?) {
+        super.onCreate(s)
+        createChannel(this)
+        if (Build.VERSION.SDK_INT >= 33) askPerm.launch(Manifest.permission.POST_NOTIFICATIONS)
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { saveToken(it) }
+        setContent {
+            MaterialTheme {
+                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) { App() }
+            }
+        }
+    }
+}
+
+@Composable
+fun App() {
+    var tab by remember { mutableStateOf(0) }
+    Column(Modifier.fillMaxSize().padding(top = 32.dp)) {
+        TabRow(tab) {
+            listOf("اليوم", "العمال").forEachIndexed { i, t -> Tab(tab == i, { tab = i }, text = { Text(t) }) }
+        }
+        if (tab == 0) Today() else Workers()
+    }
+}
+
+@Composable
+fun Today() {
+    val day = remember { LocalDate.now().toString() }
+    var rows by remember { mutableStateOf(listOf<Pair<String, String>>()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val (c, t) = api("GET", "attendance?day=eq.$day&select=shift,workers(name)&order=created_at")
+            if (c == 200) {
+                val a = JSONArray(t)
+                rows = (0 until a.length()).map {
+                    val o = a.getJSONObject(it)
+                    o.getString("shift") to o.getJSONObject("workers").getString("name")
+                }
+            }
+            delay(15000)
+        }
+    }
+    LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        item { Text("حضور اليوم $day", style = MaterialTheme.typography.titleLarge) }
+        items(SHIFTS) { s ->
+            val names = rows.filter { it.first == s }.map { it.second }
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp)) {
+                    Text("$s — ${names.size}", style = MaterialTheme.typography.titleMedium)
+                    Text(if (names.isEmpty()) "لا أحد بعد" else names.joinToString("، "))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun Workers() {
+    var list by remember { mutableStateOf(listOf<Triple<String, String, String>>()) } // id, name, pin
+    var name by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
+
+    suspend fun load() {
+        val (c, t) = api("GET", "workers?select=id,name,pin&order=name")
+        if (c == 200) {
+            val a = JSONArray(t)
+            list = (0 until a.length()).map {
+                val o = a.getJSONObject(it)
+                Triple(o.getString("id"), o.getString("name"), o.getString("pin"))
+            }
+        }
+    }
+    LaunchedEffect(Unit) { load() }
+
+    LazyColumn(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                OutlinedTextField(name, { name = it }, label = { Text("اسم موظف جديد") }, modifier = Modifier.weight(1f))
+                Spacer(Modifier.width(8.dp))
+                Button({
+                    if (name.isNotBlank()) scope.launch {
+                        val pin = (1000..9999).random().toString()
+                        api("POST", "workers", JSONObject().put("name", name.trim()).put("pin", pin).toString())
+                        name = ""; load()
+                    }
+                }) { Text("إضافة") }
+            }
+        }
+        items(list) { (id, n, pin) ->
+            Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+                Text("$n — الرقم: $pin")
+                TextButton({ scope.launch { api("DELETE", "workers?id=eq.$id"); load() } }) { Text("حذف") }
+            }
+        }
+    }
+}
