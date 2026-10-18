@@ -7,25 +7,33 @@
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;background:#0b1220;color:#e8eefc;min-height:100vh}
-.wrap{max-width:520px;margin:0 auto;padding:16px}
+.wrap{max-width:560px;margin:0 auto;padding:16px}
 h1{font-size:22px;text-align:center;margin:8px 0 14px}
 h2{font-size:20px;margin:0 0 8px}
-h3{font-size:17px;margin:0 0 6px}
+h3{font-size:16px;margin:0 0 6px}
 .card{background:#141c2e;border:1px solid #243049;border-radius:16px;padding:14px;margin-bottom:12px}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
-input{width:100%;padding:12px;border-radius:12px;border:1px solid #2a3957;background:#0b1220;color:#fff;font-size:16px;font-family:inherit}
+input,select{width:100%;padding:12px;border-radius:12px;border:1px solid #2a3957;background:#0b1220;color:#fff;font-size:15px;font-family:inherit}
 button{border:0;border-radius:12px;padding:11px 14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
 .main{background:#ffb300;color:#1a1a1a}
+.btn-save{background:#10b981;color:#fff}
 .full{width:100%;margin-top:10px;padding:14px}
-.tabs{display:flex;gap:8px;margin-bottom:12px}
-.tab{flex:1;background:#1c2740;color:#8da2c9}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tab{flex:1;background:#1c2740;color:#8da2c9;padding:10px 4px;font-size:13px;border-radius:10px}
 .tab.on{background:#2a7bff;color:#fff}
 .muted{color:#8da2c9;font-size:14px}
 .names{line-height:1.8}
 .pin{background:#0b1220;border:1px solid #2a3957;border-radius:8px;padding:2px 8px;letter-spacing:2px;color:#ffb300}
 .del{background:#3a2330;color:#ff8a8a;padding:8px 12px}
-#toasts{position:fixed;top:10px;left:10px;right:10px;z-index:9;display:flex;flex-direction:column;gap:8px}
+#toasts{position:fixed;top:10px;left:10px;right:10px;z-index:99;display:flex;flex-direction:column;gap:8px}
 .toast{background:#16a34a;color:#fff;padding:12px 16px;border-radius:12px;font-weight:700;box-shadow:0 4px 14px #0008}
+
+.sheet-day{background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:10px;margin-bottom:10px}
+.sheet-day.today{border-color:#2a7bff}
+.s-head{font-weight:700;font-size:14px;color:#38bdf8;margin-bottom:6px;display:flex;justify-content:space-between}
+.s-sec{font-size:13px;margin:3px 0;line-height:1.5}
+.s-lbl{color:#94a3b8;font-weight:600}
+.s-txt{color:#e2e8f0}
 </style>
 </head>
 <body>
@@ -43,7 +51,8 @@ button{border:0;border-radius:12px;padding:11px 14px;font-size:15px;font-weight:
   <div id="app" style="display:none">
     <div class="tabs">
       <button id="t0" class="tab on" onclick="tab(0)">اليوم</button>
-      <button id="t1" class="tab" onclick="tab(1)">العمال</button>
+      <button id="t1" class="tab" onclick="tab(1)">ورقة الشهر</button>
+      <button id="t2" class="tab" onclick="tab(2)">العمال</button>
     </div>
 
     <div id="p0">
@@ -57,6 +66,18 @@ button{border:0;border-radius:12px;padding:11px 14px;font-size:15px;font-weight:
 
     <div id="p1" style="display:none">
       <div class="card">
+        <div class="row" style="margin-bottom:8px">
+          <input type="month" id="sheetMonth" onchange="loadMonthSheet()">
+        </div>
+        <button class="btn-save full" onclick="exportMonthImage()">📸 حفظ ورقة الحضور بالمعرض</button>
+      </div>
+      <div id="sheetBox">
+        <div class="muted" style="text-align:center;padding:15px">جاري تحميل البيانات...</div>
+      </div>
+    </div>
+
+    <div id="p2" style="display:none">
+      <div class="card">
         <input id="wname" placeholder="اسم موظف جديد">
         <button class="main full" onclick="addWorker()">إضافة موظف</button>
       </div>
@@ -68,7 +89,7 @@ button{border:0;border-radius:12px;padding:11px 14px;font-size:15px;font-weight:
 <script>
 const SUPABASE_URL = "https://qlvmxnoewxzykgbneadv.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsdm14bm9ld3h6eWtnYm5lYWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDAwMjIsImV4cCI6MjEwNzIxNjAyMn0.WtsiO0PrUrwxKjpcyB3949kXSZeijtlJYySSbh0ieRk";
-const MANAGER_CODE = "1234";          // غيّره
+const MANAGER_CODE = "1234";
 const SHIFTS = ["صباح (12 ساعة)", "ظهر (6ص - 2م)", "ليل (6م - 6ص)", "ليل (2م - 10م)"];
 
 const $ = id => document.getElementById(id);
@@ -107,7 +128,6 @@ async function api(method, path, body){
   }
 }
 
-/* ---------- تنبيهات (تعمل والتطبيق مفتوح) ---------- */
 function beep(){
   try {
     const c = new (window.AudioContext || window.webkitAudioContext)();
@@ -127,7 +147,6 @@ function alertNew(t){
   try { navigator.vibrate && navigator.vibrate([200,100,200]); } catch(e){}
 }
 
-/* ---------- الدخول ---------- */
 function unlock(){
   if ($("code").value === MANAGER_CODE) { sset("mgr", "1"); start(); }
   else $("lmsg").textContent = "الرمز غير صحيح";
@@ -136,18 +155,22 @@ function start(){
   $("lock").style.display = "none";
   $("app").style.display = "block";
   $("day").textContent = "حضور اليوم (" + today() + ")";
+  const now = new Date(), p = n => String(n).padStart(2,"0");
+  $("sheetMonth").value = now.getFullYear() + "-" + p(now.getMonth()+1);
   refreshToday();
   setInterval(refreshToday, 15000);
 }
 function tab(i){
   $("p0").style.display = i === 0 ? "block" : "none";
   $("p1").style.display = i === 1 ? "block" : "none";
+  $("p2").style.display = i === 2 ? "block" : "none";
   $("t0").className = "tab" + (i === 0 ? " on" : "");
   $("t1").className = "tab" + (i === 1 ? " on" : "");
-  if (i === 1) loadWorkers();
+  $("t2").className = "tab" + (i === 2 ? " on" : "");
+  if (i === 1) loadMonthSheet();
+  if (i === 2) loadWorkers();
 }
 
-/* ---------- تبويب اليوم ---------- */
 let seen = null;
 async function refreshToday(){
   const [a, w] = await Promise.all([
@@ -181,7 +204,168 @@ async function refreshToday(){
     : "أضف عمال من تبويب العمال";
 }
 
-/* ---------- تبويب العمال ---------- */
+let monthRecordsCache = [];
+let monthDaysCache = [];
+const AR_DAYS = ["الأحد","الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت"];
+
+function classifyShift(s){
+  if (s.includes("صباح")) return "morning";
+  if (s.includes("ظهر")) return "noon";
+  if (s.includes("ليل")) return "night";
+  return "other";
+}
+
+async function loadMonthSheet(){
+  const ym = $("sheetMonth").value;
+  if (!ym) return;
+  const box = $("sheetBox");
+  box.innerHTML = '<div class="muted" style="text-align:center;padding:15px">جاري التحديث...</div>';
+
+  const [y, m] = ym.split("-").map(Number);
+  const totalDays = new Date(y, m, 0).getDate();
+  const startDay = `${ym}-01`;
+  const endDay = `${ym}-${String(totalDays).padStart(2,"0")}`;
+
+  const r = await api("GET", `attendance?day=gte.${startDay}&day=lte.${endDay}&select=id,day,shift,worker_id,workers(name)&order=day.asc,created_at.asc`);
+  if (!r.ok || !r.data) {
+    box.innerHTML = '<div class="muted" style="text-align:center;padding:15px">تعذر جلب البيانات</div>';
+    return;
+  }
+
+  monthRecordsCache = r.data;
+  monthDaysCache = [];
+  const map = {};
+  r.data.forEach(x => {
+    if (!map[x.day]) map[x.day] = [];
+    map[x.day].push({ name: x.workers ? x.workers.name : "؟", shift: x.shift });
+  });
+
+  const curToday = today();
+  box.innerHTML = "";
+
+  for (let d = 1; d <= totalDays; d++) {
+    const ds = `${ym}-${String(d).padStart(2,"0")}`;
+    const dt = new Date(y, m - 1, d);
+    const dayName = AR_DAYS[dt.getDay()];
+    const entries = map[ds] || [];
+
+    const morning = entries.filter(e => classifyShift(e.shift) === "morning").map(e => e.name);
+    const noon = entries.filter(e => classifyShift(e.shift) === "noon").map(e => e.name);
+    const night = entries.filter(e => classifyShift(e.shift) === "night").map(e => e.name);
+
+    monthDaysCache.push({ ds, dayName, d, morning, noon, night });
+
+    const dBox = el("div", "sheet-day" + (ds === curToday ? " today" : ""));
+    const h = el("div", "s-head");
+    h.appendChild(el("span", "", `${dayName} ${d}/${m}`));
+    if (ds === curToday) h.appendChild(el("span", "muted", "اليوم"));
+    dBox.appendChild(h);
+
+    const mSec = el("div", "s-sec");
+    mSec.innerHTML = `<span class="s-lbl">☀️ الصباح: </span><span class="s-txt">${morning.length ? morning.join("، ") : "—"}</span>`;
+    const zSec = el("div", "s-sec");
+    zSec.innerHTML = `<span class="s-lbl">🌤️ الظهر: </span><span class="s-txt">${noon.length ? noon.join("، ") : "—"}</span>`;
+    const nSec = el("div", "s-sec");
+    nSec.innerHTML = `<span class="s-lbl">🌙 الليل: </span><span class="s-txt">${night.length ? night.join("، ") : "—"}</span>`;
+
+    dBox.append(mSec, zSec, nSec);
+    box.appendChild(dBox);
+  }
+}
+
+function exportMonthImage(){
+  if (!monthDaysCache.length) { toast("لا توجد بيانات للتصدير"); return; }
+  toast("جاري إنشاء الصورة وحفظها...");
+
+  const W = 1080;
+  const rowH = 145;
+  const headerH = 170;
+  const H = headerH + (monthDaysCache.length * rowH) + 60;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#0b1220";
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = "#ffb300";
+  ctx.font = "bold 38px system-ui, sans-serif";
+  ctx.textAlign = "center";
+  ctx.direction = "rtl";
+  ctx.fillText("ورقة حضور الورديات الشهرية", W / 2, 65);
+
+  ctx.fillStyle = "#94a3b8";
+  ctx.font = "24px system-ui, sans-serif";
+  ctx.fillText(`الشهر: ${$("sheetMonth").value}`, W / 2, 110);
+
+  ctx.strokeStyle = "#243049";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(40, 140);
+  ctx.lineTo(W - 40, 140);
+  ctx.stroke();
+
+  let y = headerH;
+  ctx.textAlign = "right";
+
+  monthDaysCache.forEach((item, idx) => {
+    ctx.fillStyle = (idx % 2 === 0) ? "#141c2e" : "#0f172a";
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(40, y - 25, W - 80, rowH - 12, 14) : ctx.rect(40, y - 25, W - 80, rowH - 12);
+    ctx.fill();
+
+    ctx.fillStyle = "#38bdf8";
+    ctx.font = "bold 24px system-ui, sans-serif";
+    ctx.fillText(`${item.dayName} (${item.ds})`, W - 65, y + 8);
+
+    ctx.font = "20px system-ui, sans-serif";
+    ctx.fillStyle = "#ffb300";
+    ctx.fillText("☀️ الصباح: ", W - 65, y + 42);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText(item.morning.length ? item.morning.join("، ") : "—", W - 170, y + 42);
+
+    ctx.fillStyle = "#38bdf8";
+    ctx.fillText("🌤️ الظهر: ", W - 65, y + 74);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText(item.noon.length ? item.noon.join("، ") : "—", W - 170, y + 74);
+
+    ctx.fillStyle = "#c084fc";
+    ctx.fillText("🌙 الليل: ", W - 65, y + 104);
+    ctx.fillStyle = "#e2e8f0";
+    ctx.fillText(item.night.length ? item.night.join("، ") : "—", W - 170, y + 104);
+
+    y += rowH;
+  });
+
+  canvas.toBlob(blob => {
+    if (!blob) { toast("حدث خطأ أثناء تصدير الصورة"); return; }
+    const file = new File([blob], `ورقة_حضور_${$("sheetMonth").value}.png`, { type: "image/png" });
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({
+        files: [file],
+        title: "ورقة الحضور الشهرية",
+        text: `كشف الحضور والورديات لشهر ${$("sheetMonth").value}`
+      }).then(() => toast("تم الحفظ/المشاركة بنجاح"))
+        .catch(() => saveViaDownload(canvas));
+    } else {
+      saveViaDownload(canvas);
+    }
+  }, "image/png");
+}
+
+function saveViaDownload(canvas){
+  const a = document.createElement("a");
+  a.download = `ورقة_حضور_${$("sheetMonth").value}.png`;
+  a.href = canvas.toDataURL("image/png");
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  toast("تم تنزيل ورقة الحضور لجهازك ✅");
+}
+
 async function loadWorkers(){
   const r = await api("GET", "workers?select=id,name,pin&order=name");
   const box = $("workers"); box.innerHTML = "";
