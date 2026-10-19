@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>إدارة مطعم عوض الجيد</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font-family:inherit}
+body{margin:0;font-family:system-ui,"Segoe UI",Tahoma,sans-serif;background:#f4efe6;color:#2a2118;padding-bottom:30px}
+header{background:linear-gradient(135deg,#007229,#0a4d1f);color:#fff;padding:14px;display:flex;align-items:center;gap:12px}
+.logo{width:50px;height:50px;border-radius:50%;overflow:hidden;border:2px solid #fff;flex:none}
+header h1{margin:0;font-size:18px}header small{opacity:.9}
+.nav{display:flex;background:#fff;border-bottom:1px solid #e3d8c4}
+.nav button{flex:1;padding:12px;border:0;background:none;font-size:15px;font-weight:700;color:#8a7a62;border-bottom:3px solid transparent}
+.nav button.on{color:#007229;border-color:#d21034}
+.wrap{padding:10px;max-width:560px;margin:0 auto}
+.card{background:#fff;border-radius:14px;padding:12px;margin-bottom:10px;box-shadow:0 2px 6px #0001}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+input,select,textarea{width:100%;padding:12px;border:1px solid #d8c9ae;border-radius:10px;font-size:16px;background:#fff;margin-bottom:8px}
+.btn{width:100%;background:#007229;color:#fff;border:0;border-radius:12px;padding:14px;font-size:16px;font-weight:800}
+.sm{border:0;border-radius:8px;padding:7px 10px;font-size:13px;font-weight:700;background:#eee3cf;color:#4a3a22}
+.sm.on{background:#007229;color:#fff}
+.del{background:#fde4e4;color:#c01a1a}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.thumb{width:64px;height:64px;border-radius:10px;background:#efe4d0 center/cover;flex:none;display:flex;align-items:center;justify-content:center;font-size:26px}
+.pr{color:#d21034;font-weight:800}
+.muted{color:#7a6a52;font-size:14px}
+.new{border:2px solid #d21034}
+#toasts{position:fixed;top:8px;left:8px;right:8px;z-index:9;display:flex;flex-direction:column;gap:6px}
+.toast{background:#007229;color:#fff;padding:12px 14px;border-radius:12px;font-weight:700;box-shadow:0 4px 14px #0006}
+</style>
+</head>
+<body>
+<div id="toasts"></div>
+<header>
+  <div class="logo"><svg viewBox="0 0 90 60" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="90" height="20" fill="#D21034"/><rect y="20" width="90" height="20" fill="#fff"/><rect y="40" width="90" height="20" fill="#000"/><path d="M0 0L36 30L0 60Z" fill="#007229"/></svg></div>
+  <div><h1>إدارة مطعم عوض الجيد</h1><small>الطلبات والأصناف</small></div>
+</header>
+
+<div id="lock" class="wrap"><div class="card">
+  <h3>دخول الإدارة</h3>
+  <input id="code" type="password" inputmode="numeric" placeholder="رمز الإدارة">
+  <button class="btn" onclick="unlock()">دخول</button>
+  <div id="lmsg" class="muted"></div>
+</div></div>
+
+<div id="app" style="display:none">
+  <div class="nav">
+    <button id="n0" class="on" onclick="nav(0)">📦 الطلبات</button>
+    <button id="n1" onclick="nav(1)">🍲 الأصناف</button>
+    <button id="n2" onclick="nav(2)">➕ صنف جديد</button>
+  </div>
+
+  <div class="wrap" id="p0"><div id="olist"></div></div>
+  <div class="wrap" id="p1" style="display:none"><div id="ilist"></div></div>
+
+  <div class="wrap" id="p2" style="display:none"><div class="card">
+    <input id="iname" placeholder="اسم الصنف (مثال: ملاح ويكة، كسرة، سمك مشوي)">
+    <input id="icat" list="cl" placeholder="النوع (مثال: أكل بلدي، أسماك)">
+    <datalist id="cl"><option>أكل بلدي</option><option>أسماك</option><option>مشويات</option><option>فطور</option><option>شوربة ومقبلات</option><option>عصائر ومشروبات</option><option>حلويات</option></datalist>
+    <input id="iprice" type="number" inputmode="numeric" placeholder="السعر بالجنيه">
+    <textarea id="idesc" rows="2" placeholder="وصف قصير (اختياري)"></textarea>
+    <div class="muted">الصورة:</div>
+    <input id="ifile" type="file" accept="image/*">
+    <input id="iurl" placeholder="أو الصق رابط صورة">
+    <button class="btn" onclick="saveItem()">نشر الصنف ✅</button>
+  </div></div>
+</div>
+
+<script>
+const DB = "https://myapk-fd83a-default-rtdb.firebaseio.com/awad_aljeed";
+const ADMIN_CODE = "1234";
+const ST = ["جديد","قيد التحضير","جاهز","في الطريق","تم التسليم","ملغي"];
+
+const $ = id => document.getElementById(id);
+const mem = {};
+const sget = k => { try { return localStorage.getItem(k); } catch(e){ return mem[k] || null; } };
+const sset = (k,v) => { try { localStorage.setItem(k,v); } catch(e){ mem[k] = v; } };
+function el(t,c,x){ const e=document.createElement(t); if(c)e.className=c; if(x!==undefined)e.textContent=x; return e; }
+
+async function fbGet(path){
+  try {
+    const r = await fetch(DB + "/" + path + ".json");
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d) return [];
+    return Object.keys(d).map(k => ({ id: k, ...d[k] }));
+  } catch(e) { return null; }
+}
+
+async function fbPost(path, data){
+  try {
+    const r = await fetch(DB + "/" + path + ".json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+async function fbPatch(path, data){
+  try {
+    const r = await fetch(DB + "/" + path + ".json", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+    return r.ok;
+  } catch(e) { return false; }
+}
+
+async function fbDelete(path){
+  try {
+    const r = await fetch(DB + "/" + path + ".json", { method: "DELETE" });
+    return r.ok;
+  } catch(e) { return false; }
+}
+
+function beep(){
+  try {
+    const c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain();
+    o.connect(g); g.connect(c.destination); o.frequency.value = 880; g.gain.value = .25;
+    o.start(); setTimeout(() => { o.stop(); c.close(); }, 400);
+  } catch(e){}
+}
+function toast(t){ const d = el("div","toast",t); $("toasts").appendChild(d); setTimeout(() => d.remove(), 6000); }
+
+function unlock(){
+  if ($("code").value === ADMIN_CODE) { sset("adm","1"); start(); } else $("lmsg").textContent = "الرمز غير صحيح";
+}
+let currentTab = 0;
+function start(){
+  $("lock").style.display = "none"; $("app").style.display = "block";
+  loadOrders(); loadItems();
+  setInterval(() => {
+    loadOrders();
+    if (currentTab === 1) loadItems();
+  }, 5000);
+}
+function nav(i){
+  currentTab = i;
+  [0,1,2].forEach(k => { $("p"+k).style.display = k === i ? "block" : "none"; $("n"+k).className = k === i ? "on" : ""; });
+  if (i === 1) loadItems();
+}
+
+/* ---------- الطلبات ---------- */
+let seen = null;
+async function loadOrders(){
+  const data = await fbGet("orders");
+  if (data === null) return;
+  data.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+  if (seen !== null) {
+    const fresh = data.filter(o => !seen.has(o.id));
+    if (fresh.length) { toast("🔔 طلب جديد من " + (fresh[0].customer_name || "عميل")); beep(); try { navigator.vibrate && navigator.vibrate([250,100,250]); } catch(e){} }
+  }
+  seen = new Set(data.map(o => o.id));
+  const box = $("olist"); box.innerHTML = "";
+  if (!data.length) { box.appendChild(el("div","muted","ما في طلبات لسه")); return; }
+  data.forEach(o => {
+    const c = el("div","card" + (o.status === "جديد" ? " new" : ""));
+    const h = el("div","row");
+    const shortId = (o.id || "").slice(-5);
+    h.append(el("b","","طلب #" + shortId + " — " + (o.customer_name || "")), el("span","pr", (o.total || 0) + " جنيه"));
+    c.appendChild(h);
+    c.appendChild(el("div","muted", "📞 " + (o.phone || "") + " | " + (o.delivery || "") + (o.address ? " | " + o.address : "")));
+    (o.items || []).forEach(i => c.appendChild(el("div","", "• " + i.name + " × " + i.qty)));
+    if (o.notes) c.appendChild(el("div","muted","ملاحظة: " + o.notes));
+    c.appendChild(el("div","muted", o.created_at ? new Date(o.created_at).toLocaleString("ar") : ""));
+    const ch = el("div","chips");
+    ST.forEach(s => {
+      const b = el("button","sm" + (o.status === s ? " on" : ""), s);
+      b.onclick = async () => { await fbPatch("orders/" + o.id, { status: s }); loadOrders(); };
+      ch.appendChild(b);
+    });
+    c.appendChild(ch); box.appendChild(c);
+  });
+}
+
+/* ---------- الأصناف ---------- */
+async function loadItems(){
+  const data = await fbGet("menu_items");
+  const box = $("ilist"); box.innerHTML = "";
+  if (data === null) { box.appendChild(el("div","muted","تأكد من الإنترنت")); return; }
+  if (!data.length) { box.appendChild(el("div","muted","ما نشرت أصناف لسه، ادخل على ➕ صنف جديد")); return; }
+  data.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+  data.forEach(i => {
+    const c = el("div","card row");
+    const th = el("div","thumb");
+    if (i.image_url) th.style.backgroundImage = "url('" + i.image_url.replace(/'/g,"%27") + "')"; else th.textContent = "🍲";
+    const info = el("div"); info.style.flex = "1";
+    info.append(el("b","",i.name), el("div","muted", i.category || ""), el("div","pr", (i.price || 0) + " جنيه"));
+    const acts = el("div"); acts.style.cssText = "display:flex;flex-direction:column;gap:6px";
+    const t = el("button","sm" + (i.available !== false ? " on" : ""), i.available !== false ? "متاح" : "نفد");
+    t.onclick = async () => { await fbPatch("menu_items/" + i.id, { available: !(i.available !== false) }); loadItems(); };
+    const d = el("button","sm del","حذف"); let armed = false;
+    d.onclick = async () => {
+      if (!armed) { armed = true; d.textContent = "تأكيد؟"; setTimeout(() => { armed = false; d.textContent = "حذف"; }, 3000); return; }
+      await fbDelete("menu_items/" + i.id); loadItems();
+    };
+    acts.append(t, d); c.append(th, info, acts); box.appendChild(c);
+  });
+}
+
+function shrink(file){
+  return new Promise((res, rej) => {
+    const img = new Image(), u = URL.createObjectURL(file);
+    img.onload = () => {
+      const s = Math.min(1, 800 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = img.width * s; c.height = img.height * s;
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(u);
+      res(c.toDataURL("image/jpeg", 0.7));
+    };
+    img.onerror = rej; img.src = u;
+  });
+}
+
+async function saveItem(){
+  const name = $("iname").value.trim(), price = $("iprice").value;
+  if (!name || !price) { toast("اكتب اسم الصنف والسعر"); return; }
+  let img = $("iurl").value.trim();
+  const f = $("ifile").files[0];
+  if (f) {
+    try {
+      toast("جاري معالجة الصورة...");
+      img = await shrink(f);
+    } catch(e){
+      toast("فشل معالجة الصورة، جرّب رابط صورة");
+      return;
+    }
+  }
+  const r = await fbPost("menu_items", {
+    name,
+    category: $("icat").value.trim() || "أكل بلدي",
+    price: +price,
+    description: $("idesc").value.trim(),
+    image_url: img || null,
+    available: true,
+    created_at: Date.now()
+  });
+  if (r && r.name) {
+    ["iname","icat","iprice","idesc","iurl","ifile"].forEach(k => $(k).value = "");
+    toast("تم نشر الصنف ✅"); nav(1);
+  } else toast("فشل النشر، تأكد من الإنترنت");
+}
+
+if (sget("adm") === "1") start();
+</script>
+</body>
+</html>
