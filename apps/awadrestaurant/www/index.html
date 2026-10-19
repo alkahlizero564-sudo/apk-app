@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>مطعم عوض الجيد</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+button,input,select{font-family:inherit}
+body{margin:0;font-family:system-ui,"Segoe UI",Tahoma,sans-serif;background:#fbf6ee;color:#2a2118;padding-bottom:84px}
+header{background:linear-gradient(135deg,#007229,#0a4d1f);color:#fff;padding:14px;display:flex;align-items:center;gap:12px}
+.logo{width:54px;height:54px;border-radius:50%;overflow:hidden;border:2px solid #fff;flex:none}
+header h1{margin:0;font-size:20px}header small{opacity:.9}
+.nav{display:flex;background:#fff;border-bottom:1px solid #eadfcd}
+.nav button{flex:1;padding:12px;border:0;background:none;font-size:15px;font-weight:700;color:#8a7a62;border-bottom:3px solid transparent}
+.nav button.on{color:#007229;border-color:#d21034}
+.cats{display:flex;gap:8px;padding:10px;overflow-x:auto}
+.chip{border:1px solid #d8c9ae;background:#fff;border-radius:20px;padding:8px 16px;white-space:nowrap;font-size:14px;font-weight:600;color:#5a4a33}
+.chip.on{background:#007229;color:#fff;border-color:#007229}
+.grid{padding:0 10px;display:grid;gap:12px}
+.card{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px #0001;display:flex}
+.img{width:110px;min-height:110px;background:#efe4d0 center/cover;display:flex;align-items:center;justify-content:center;font-size:36px;flex:none}
+.info{padding:10px;flex:1;display:flex;flex-direction:column;gap:4px}
+.info b{font-size:17px}.info small{color:#7a6a52}
+.pr{color:#d21034;font-weight:800}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:auto}
+.add{background:#007229;color:#fff;border:0;border-radius:10px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer}
+.step{display:flex;align-items:center;gap:10px}
+.step button{width:32px;height:32px;border-radius:50%;border:0;background:#d21034;color:#fff;font-size:18px;font-weight:700;cursor:pointer}
+.bar{position:fixed;bottom:0;left:0;right:0;padding:10px;background:#fbf6eeee;z-index:8}
+.bar button{width:100%;background:#000;color:#fff;border:0;border-radius:14px;padding:15px;font-size:16px;font-weight:800;cursor:pointer}
+.ov{position:fixed;inset:0;background:#000a;z-index:99;display:flex;align-items:flex-end}
+.box{background:#fff;width:100%;max-height:92vh;overflow-y:auto;border-radius:20px 20px 0 0;padding:16px;display:flex;flex-direction:column;gap:10px}
+.box h2{margin:0}
+input,select{width:100%;padding:12px;border:1px solid #d8c9ae;border-radius:10px;font-size:16px;background:#fff}
+.btn{background:#007229;color:#fff;border:0;border-radius:12px;padding:14px;font-size:16px;font-weight:800;cursor:pointer}
+.btn:disabled{opacity:0.6;cursor:not-allowed}
+.ghost{background:none;border:0;color:#7a6a52;padding:8px;font-size:15px;font-weight:600;cursor:pointer}
+.crow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f0e6d4}
+.tot{font-weight:800;font-size:18px;text-align:left}
+.ord{background:#fff;border-radius:14px;padding:12px;margin:0 10px 10px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 4px #0001}
+.st{background:#007229;color:#fff;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700}
+.muted{color:#7a6a52;text-align:center;padding:20px}
+#msg{color:#d21034;text-align:center;font-size:14px;min-height:20px;font-weight:700}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><svg viewBox="0 0 90 60" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="90" height="20" fill="#D21034"/><rect y="20" width="90" height="20" fill="#fff"/><rect y="40" width="90" height="20" fill="#000"/><path d="M0 0L36 30L0 60Z" fill="#007229"/></svg></div>
+  <div><h1>مطعم عوض الجيد</h1><small>الأكل البلدي السوداني الأصيل</small></div>
+</header>
+<div class="nav">
+  <button id="n0" class="on" onclick="nav(0)">🍽️ القايمة</button>
+  <button id="n1" onclick="nav(1)">📦 طلباتي</button>
+</div>
+
+<div id="v0"><div class="cats" id="cats"></div><div class="grid" id="grid"></div></div>
+<div id="v1" style="display:none;padding-top:12px"></div>
+
+<div class="bar" id="bar" style="display:none"><button onclick="openSheet()" id="barbtn"></button></div>
+
+<div class="ov" id="sheet" style="display:none"><div class="box">
+  <h2>🛒 سلتي</h2>
+  <div id="clist"></div>
+  <div class="tot" id="ctot"></div>
+  <input id="cn" placeholder="اسمك">
+  <input id="cp" type="tel" placeholder="رقم تلفونك">
+  <select id="cd" onchange="dsel()"><option>توصيل</option><option>استلام من المطعم</option></select>
+  <input id="ca" placeholder="عنوانك بالتفصيل (الحي، أقرب معلم)">
+  <input id="cx" placeholder="ملاحظات (اختياري)">
+  <div id="msg"></div>
+  <button id="sendbtn" class="btn" onclick="send()">أكّد الطلب ✅</button>
+  <button class="ghost" onclick="closeSheet()">رجوع للقايمة</button>
+</div></div>
+
+<script>
+const DB = "https://myapk-fd83a-default-rtdb.firebaseio.com/awad_aljeed";
+
+const $ = id => document.getElementById(id);
+const mem = {};
+const sget = k => { try { return localStorage.getItem(k); } catch(e){ return mem[k] || null; } };
+const sset = (k,v) => { try { localStorage.setItem(k,v); } catch(e){ mem[k] = v; } };
+function el(t,c,x){ const e=document.createElement(t); if(c)e.className=c; if(x!==undefined)e.textContent=x; return e; }
+
+async function fbGet(path){
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(DB + "/" + path + ".json", { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d) return [];
+    return Object.keys(d).map(k => ({ id: k, ...d[k] }));
+  } catch(e) { return null; }
+}
+
+async function fbPost(path, data){
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 6000);
+    const r = await fetch(DB + "/" + path + ".json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+      signal: ctrl.signal
+    });
+    clearTimeout(tid);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch(e) { return null; }
+}
+
+let items = [], cat = "الكل", cart = {}, view = 0, okMsg = "";
+
+async function loadMenu(){
+  const data = await fbGet("menu_items");
+  if (data !== null) {
+    items = data.filter(i => i.available !== false);
+    items.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+    drawCats();
+    drawMenu();
+  } else if (!items.length) {
+    $("grid").replaceChildren(el("div","muted","تأكد من الإنترنت وحاول تاني"));
+  }
+}
+
+function drawCats(){
+  const cs = ["الكل", ...new Set(items.map(i => i.category).filter(Boolean))];
+  const box = $("cats"); box.innerHTML = "";
+  cs.forEach(c => {
+    const b = el("button", "chip" + (c === cat ? " on" : ""), c);
+    b.onclick = () => { cat = c; drawCats(); drawMenu(); };
+    box.appendChild(b);
+  });
+}
+
+function drawMenu(){
+  const g = $("grid"); g.innerHTML = "";
+  const list = items.filter(i => cat === "الكل" || i.category === cat);
+  if (!list.length) { g.appendChild(el("div","muted","ما في أصناف هسي")); }
+  list.forEach(i => {
+    const c = el("div","card");
+    const im = el("div","img");
+    if (i.image_url) im.style.backgroundImage = "url('" + i.image_url.replace(/'/g,"%27") + "')"; else im.textContent = "🍲";
+    const inf = el("div","info");
+    inf.append(el("b","",i.name));
+    if (i.description) inf.append(el("small","",i.description));
+    const row = el("div","row");
+    row.append(el("span","pr", (i.price || 0) + " جنيه"));
+    const q = cart[i.id] || 0;
+    if (!q) { const a = el("button","add","أضف +"); a.onclick = () => chg(i.id, 1); row.append(a); }
+    else {
+      const s = el("div","step");
+      const p = el("button","","+"); p.onclick = () => chg(i.id, 1);
+      const m = el("button","","−"); m.onclick = () => chg(i.id, -1);
+      s.append(p, el("b","",q), m); row.append(s);
+    }
+    inf.append(row); c.append(im, inf); g.appendChild(c);
+  });
+  drawBar();
+}
+
+function chg(id, d){
+  cart[id] = Math.max(0, (cart[id] || 0) + d);
+  if (!cart[id]) delete cart[id];
+  drawMenu(); if ($("sheet").style.display !== "none") drawSheet();
+}
+
+const count = () => Object.values(cart).reduce((a,b) => a+b, 0);
+const total = () => Object.keys(cart).reduce((s,id) => {
+  const i = items.find(x => String(x.id) === String(id));
+  return s + (i ? (i.price || 0) * cart[id] : 0);
+}, 0);
+
+function drawBar(){
+  $("bar").style.display = count() && view === 0 ? "block" : "none";
+  $("barbtn").textContent = "🛒 سلتي (" + count() + ") — " + total() + " جنيه";
+}
+
+function openSheet(){
+  try {
+    const c = JSON.parse(sget("cust"));
+    if (c) {
+      if (!$("cn").value) $("cn").value = c.n || "";
+      if (!$("cp").value) $("cp").value = c.p || "";
+      if (!$("ca").value) $("ca").value = c.a || "";
+    }
+  } catch(e){}
+  drawSheet();
+  $("msg").textContent = "";
+  $("sheet").style.display = "flex";
+}
+function closeSheet(){ $("sheet").style.display = "none"; }
+function dsel(){ $("ca").style.display = $("cd").value === "توصيل" ? "block" : "none"; }
+
+function drawSheet(){
+  const l = $("clist"); l.innerHTML = "";
+  Object.keys(cart).forEach(id => {
+    const i = items.find(x => String(x.id) === String(id));
+    if (!i) return;
+    const r = el("div","crow");
+    r.append(el("span","", i.name + " × " + cart[id]), el("b","", ((i.price || 0) * cart[id]) + " جنيه"));
+    l.appendChild(r);
+  });
+  $("ctot").textContent = "الإجمالي: " + total() + " جنيه";
+  if (!count()) closeSheet();
+}
+
+async function send(){
+  const btn = $("sendbtn");
+  const msg = $("msg");
+  msg.textContent = "";
+
+  const n = $("cn").value.trim();
+  const p = $("cp").value.trim();
+  const d = $("cd").value;
+  const a = $("ca").value.trim();
+  const x = $("cx").value.trim();
+
+  if (!n) { msg.textContent = "اكتب اسمك أولاً"; $("cn").focus(); return; }
+  if (!p) { msg.textContent = "اكتب رقم تلفونك"; $("cp").focus(); return; }
+  if (d === "توصيل" && !a) { msg.textContent = "اكتب عنوان التوصيل بالتفصيل"; $("ca").focus(); return; }
+
+  const list = [];
+  for (const id of Object.keys(cart)) {
+    const itm = items.find(item => String(item.id) === String(id));
+    if (itm && cart[id] > 0) {
+      list.push({ id: itm.id, name: itm.name || "وجبة", price: itm.price || 0, qty: cart[id] });
+    }
+  }
+
+  if (!list.length) { msg.textContent = "سلتك فاضية! اختر وجبات أولاً"; return; }
+
+  btn.disabled = true;
+  btn.textContent = "جاري تأكيد الطلب... ⏳";
+  msg.style.color = "#007229";
+  msg.textContent = "جاري تجهيز طلبك...";
+
+  const orderData = {
+    customer_name: n,
+    phone: p,
+    delivery: d,
+    address: d === "توصيل" ? a : "استلام من المطعم",
+    notes: x,
+    items: list,
+    total: total(),
+    status: "جديد",
+    created_at: Date.now()
+  };
+
+  try {
+    const r = await fbPost("orders", orderData);
+    const orderId = (r && r.name) ? r.name : ("ord_" + Date.now().toString(36));
+    orderData.id = orderId;
+
+    sset("cust", JSON.stringify({ n, p, a }));
+
+    let ids = [];
+    try { ids = JSON.parse(sget("ids")) || []; } catch(e){}
+    if (!ids.includes(orderId)) ids.unshift(orderId);
+    sset("ids", JSON.stringify(ids.slice(0, 30)));
+
+    let myOrders = [];
+    try { myOrders = JSON.parse(sget("my_orders")) || []; } catch(e){}
+    myOrders.unshift(orderData);
+    sset("my_orders", JSON.stringify(myOrders.slice(0, 30)));
+
+    const shortId = orderId.slice(-5);
+    okMsg = "شكراً ليك يا " + n + "! طلبك رقم #" + shortId + " وصل المطعم وجاري تجهيزه ✅";
+
+    cart = {};
+    $("cx").value = "";
+    msg.textContent = "";
+    closeSheet();
+    drawMenu();
+    nav(1);
+  } catch(err) {
+    msg.style.color = "#d21034";
+    msg.textContent = "حدث خطأ أثناء الإرسال، حاول مرة ثانية";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "أكّد الطلب ✅";
+  }
+}
+
+function nav(v){
+  view = v;
+  $("v0").style.display = v === 0 ? "block" : "none";
+  $("v1").style.display = v === 1 ? "block" : "none";
+  $("n0").className = v === 0 ? "on" : ""; $("n1").className = v === 1 ? "on" : "";
+  drawBar();
+  if (v === 1) loadOrders();
+}
+
+async function loadOrders(){
+  const box = $("v1");
+  let ids = []; try { ids = JSON.parse(sget("ids")) || []; } catch(e){}
+  let localOrders = []; try { localOrders = JSON.parse(sget("my_orders")) || []; } catch(e){}
+
+  if (!ids.length && !localOrders.length) {
+    box.replaceChildren(el("div","muted","ما عندك طلبات لسه"));
+    return;
+  }
+
+  const data = await fbGet("orders");
+  const map = new Map();
+  localOrders.forEach(o => map.set(o.id, o));
+  if (Array.isArray(data)) {
+    data.filter(o => ids.includes(o.id)).forEach(o => map.set(o.id, o));
+  }
+
+  const myOrders = Array.from(map.values());
+  myOrders.sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+  box.innerHTML = "";
+  if (okMsg) {
+    const m = el("div","ord",okMsg);
+    m.style.background = "#dff5e3";
+    m.style.color = "#007229";
+    m.style.fontWeight = "bold";
+    box.appendChild(m);
+    okMsg = "";
+  }
+
+  if (!myOrders.length) {
+    box.appendChild(el("div","muted","ما عندك طلبات حالية"));
+    return;
+  }
+
+  myOrders.forEach(o => {
+    const c = el("div","ord"), l = el("div");
+    const shortId = (o.id || "").slice(-5);
+    l.append(el("b","","طلب #" + shortId), el("div","pr", (o.total || 0) + " جنيه"));
+    c.append(l, el("span","st", o.status || "جديد"));
+    box.appendChild(c);
+  });
+}
+
+dsel(); loadMenu();
+setInterval(() => { if (view === 1) loadOrders(); else loadMenu(); }, 7000);
+</script>
+</body>
+</html>
