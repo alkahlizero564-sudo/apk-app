@@ -1,0 +1,149 @@
+name: Build Native Kotlin App
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: folder name inside native
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.9
+      - name: Find app folder
+        id: find
+        run: |
+          NAME=$(echo "${{ github.event.inputs.app }}" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+          DIR=$(find native -mindepth 1 -maxdepth 1 -type d | while read d; do
+            n=$(basename "$d" | tr -d ' ' | tr '[:upper:]' '[:lower:]')
+            [ "$n" = "$NAME" ] && echo "$d" && break
+          done)
+          if [ -z "$DIR" ]; then
+            echo "Folder not found. Existing folders:"
+            ls native
+            exit 1
+          fi
+          echo "dir=$DIR" >> $GITHUB_OUTPUT
+          echo "name=$(basename "$DIR")" >> $GITHUB_OUTPUT
+      - name: Generate Android project
+        run: |
+          NAME="${{ steps.find.outputs.name }}"
+          ID=$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9')
+          case "$ID" in [0-9]*) ID="a$ID";; esac
+          [ -z "$ID" ] && ID="app"
+          APPID="com.myapps.$ID"
+          echo "appId = $APPID"
+          P=kotlin-build
+          rm -rf $P
+          mkdir -p $P/app/src/main/java/com/myapps/$ID
+          cat > $P/settings.gradle <<EOF
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "app"
+          include ':app'
+          EOF
+          cat > $P/build.gradle <<EOF
+          plugins {
+              id 'com.android.application' version '8.5.2' apply false
+              id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+          }
+          EOF
+          cat > $P/gradle.properties <<EOF
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx2g
+          EOF
+          cat > $P/app/build.gradle <<EOF
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+          android {
+              namespace '$APPID'
+              compileSdk 34
+              defaultConfig {
+                  applicationId '$APPID'
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName '1.0'
+              }
+              signingConfigs {
+                  shared {
+                      storeFile file('shared.keystore')
+                      storePassword 'android123'
+                      keyAlias 'shared'
+                      keyPassword 'android123'
+                  }
+              }
+              buildTypes {
+                  debug {
+                      signingConfig signingConfigs.shared
+                  }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = '17'
+              }
+          }
+          dependencies {
+              implementation 'androidx.core:core-ktx:1.13.1'
+              implementation 'androidx.appcompat:appcompat:1.7.0'
+              implementation 'com.google.android.material:material:1.12.0'
+          }
+          EOF
+          cat > $P/app/src/main/AndroidManifest.xml <<EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+              <application
+                  android:allowBackup="true"
+                  android:label="$NAME"
+                  android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                  <activity android:name=".MainActivity" android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+          for f in ${{ steps.find.outputs.dir }}/*.kt; do
+            { echo "package $APPID"; grep -v '^package ' "$f"; } > $P/app/src/main/java/com/myapps/$ID/$(basename "$f")
+          done
+          cp keys/shared.keystore $P/app/shared.keystore
+          find $P -type f | sort
+      - name: Accept licenses
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Build APK
+        working-directory: kotlin-build
+        run: gradle assembleDebug --no-daemon
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.find.outputs.name }}-kotlin-${{ github.run_number }}
+          files: kotlin-build/app/build/outputs/apk/debug/app-debug.apk
