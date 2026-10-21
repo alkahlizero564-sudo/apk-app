@@ -612,6 +612,221 @@ render=function(){
   $('#main').innerHTML=vTpl();
   ['keys','code','build','tpl'].forEach(k=>$('#n-'+k).classList.toggle('on',k===tab));
   window.scrollTo(0,0)};
+render();/* ===== إضافة: بناء Flutter و Python بزر واحد + اختيار نموذج Gemini ===== */
+
+/* ملفات البناء (تُنشأ تلقائياً في GitHub لو ناقصة) */
+const WF_FLUTTER=`name: build-flutter
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: create project
+        run: |
+          flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
+          cp apps/$APP/main.dart flutter_out/lib/main.dart
+          if [ -f apps/$APP/icon.png ]; then
+            for d in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+              cp apps/$APP/icon.png flutter_out/android/app/src/main/res/$d/ic_launcher.png
+            done
+          fi
+      - name: build
+        working-directory: flutter_out
+        run: flutter build apk --release
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: flutter-\${{ inputs.app }}-build-\${{ github.run_number }}
+          files: flutter_out/build/app/outputs/flutter-apk/app-release.apk
+`;
+
+const WF_PYTHON=`name: build-python
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.36 virtualenv
+      - name: write spec
+        working-directory: apps/\${{ inputs.app }}
+        run: |
+          cat > buildozer.spec <<EOF
+          [app]
+          title = $APP
+          package.name = app$APP
+          package.domain = com.myapps
+          source.dir = .
+          source.include_exts = py,png,jpg,kv,atlas,json,ttf
+          version = 1.0
+          requirements = python3,kivy==2.3.0
+          orientation = portrait
+          fullscreen = 0
+          android.permissions = INTERNET
+          android.api = 33
+          android.minapi = 24
+          android.archs = arm64-v8a
+          android.accept_sdk_license = True
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          EOF
+          sed -i 's/^ *//' buildozer.spec
+          if [ -f icon.png ]; then sed -i '/^\\[app\\]/a icon.filename = %(source.dir)s/icon.png' buildozer.spec; fi
+      - name: cache
+        uses: actions/cache@v4
+        with:
+          path: apps/\${{ inputs.app }}/.buildozer
+          key: buildozer-\${{ inputs.app }}-\${{ github.run_number }}
+          restore-keys: buildozer-\${{ inputs.app }}-
+      - name: build
+        working-directory: apps/\${{ inputs.app }}
+        run: buildozer -v android debug
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: python-\${{ inputs.app }}-build-\${{ github.run_number }}
+          files: apps/\${{ inputs.app }}/bin/*.apk
+`;
+
+const WF={
+  flutter:{file:'build-flutter.yml',yaml:WF_FLUTTER,main:'main.dart',tag:'flutter',name:'Flutter',min:'5-10',maxMin:50},
+  python:{file:'build-python.yml',yaml:WF_PYTHON,main:'main.py',tag:'python',name:'Python',min:'20-40',maxMin:95}
+};
+
+/* زر بناء واحد حسب لغة التطبيق */
+function buildAny(i){
+  const l=langOf(i);
+  if(l==='html')return _build0(i);
+  return buildNative(i,l)}
+
+async function buildNative(i,l){const a=S.apps[i],key=slugOf(a.name),W=WF[l];
+  if(!key)return toast('اكتب اسم التطبيق بالإنجليزية (حروف وأرقام فقط)');
+  if(S.apps.some((x,j)=>j!==i&&slugOf(x.name)===key))return toast('هذا الاسم مستخدم للتطبيق الآخر، غيّره');
+  if(!a.code.trim())return toast('اكتب الكود أولاً');
+  if(!S.keys.ghToken)return toast('أدخل مفتاح GitHub في قائمة المفاتيح');
+  const P=progress(W.name+': '+a.name,['التحقق من المستودع وملف البناء','رفع الكود إلى apps/'+key,'تشغيل البناء','جاري بناء ملف APK','تجهيز ملف التحميل']);
+  let step=0;
+  try{
+    P.set(0,'run');const repo=await repoFull();const info=await gh('/repos/'+repo);const branch=info.default_branch||'main';
+    let has=true;
+    try{await gh('/repos/'+repo+'/contents/.github/workflows/'+W.file+'?ref='+branch)}catch(e){if(e.status===404)has=false;else throw e}
+    if(!has){P.set(0,'run','إنشاء ملف البناء '+W.file+' تلقائياً...');await put(repo,branch,'.github/workflows/'+W.file,W.yaml);await sleep(5000)}
+    P.set(0,'ok','المستودع: '+repo);
+    step=1;P.set(1,'run');const d='apps/'+key;
+    await put(repo,branch,d+'/'+W.main,a.code);
+    if(a.icon)await putB64(repo,branch,d+'/icon.png',a.icon.split(',')[1]);
+    P.set(1,'ok');
+    step=2;P.set(2,'run');const t0=Date.now();
+    for(let n=0;n<8;n++){try{await gh('/repos/'+repo+'/actions/workflows/'+W.file+'/dispatches',{method:'POST',body:JSON.stringify({ref:branch,inputs:{app:key}})});break}
+      catch(e){if((e.status===404||e.status===422)&&n<7){P.set(2,'run','بانتظار تجهيز خطوات البناء...');await sleep(4000)}else throw e}}
+    P.set(2,'ok');step=3;P.set(3,'run','بانتظار الخادم...');
+    let run=null;const lim=Date.now()+W.maxMin*60000;
+    while(Date.now()<lim){await sleep(8000);
+      const rs=await gh('/repos/'+repo+'/actions/workflows/'+W.file+'/runs?event=workflow_dispatch&per_page=5');
+      run=rs.workflow_runs.find(x=>new Date(x.created_at).getTime()>=t0-30000)||null;
+      if(run){P.set(3,'run',run.status==='completed'?'انتهى':run.status==='queued'?'في الانتظار...':'جاري البناء... (قد يستغرق '+W.min+' دقيقة)');if(run.status==='completed')break}}
+    if(!run||run.status!=='completed')throw new Error('انتهى وقت الانتظار. تابع البناء من تبويب Actions في GitHub.');
+    if(run.conclusion!=='success'){
+      const jobs=await gh('/repos/'+repo+'/actions/runs/'+run.id+'/jobs');
+      const job=jobs.jobs.find(j=>j.conclusion==='failure')||jobs.jobs[0];
+      const fst=(job.steps||[]).find(s=>s.conclusion==='failure');
+      let log='';try{log=(await ghText('/repos/'+repo+'/actions/jobs/'+job.id+'/logs')).slice(-5000)}catch(e){}
+      LOGS[i]=log;P.set(3,'bad','فشل البناء'+(fst?' في خطوة: '+fst.name:''));
+      let ex='';
+      try{ex=await ai('اشرح بالعربي البسيط وبأقصى وضوح، في 3 أسطر كحد أقصى، سبب فشل بناء تطبيق الأندرويد هذا وما الحل. السجل:\n'+log)}catch(e){ex='السجل:\n'+log.slice(-800)}
+      P.extra('<div class="explain">'+esc(ex)+'</div><button class="acc" style="margin-top:10px" onclick="fixNative('+i+')">🛠 صلّح تلقائياً وأعد البناء</button>');return}
+    P.set(3,'ok');step=4;P.set(4,'run');
+    const tag=W.tag+'-'+key+'-build-'+run.run_number;let asset=null;
+    for(let n=0;n<8&&!asset;n++){try{const rel=await gh('/repos/'+repo+'/releases/tags/'+tag);asset=(rel.assets||[]).find(x=>/\.apk$/.test(x.name))}catch(e){}if(!asset)await sleep(3000)}
+    if(!asset)throw new Error('تم البناء لكن لم أجد ملف APK.');
+    a.apk=asset.browser_download_url;save();P.set(4,'ok');
+    P.extra('<a class="btn acc" style="margin-top:10px" href="'+esc(a.apk)+'" target="_blank">⬇ تحميل APK</a>');
+  }catch(e){P.set(step,'bad',arErr(e))}}
+
+async function fixNative(i){closeSheet();toast('جاري إصلاح الكود...');
+  try{const l=langOf(i);
+    const out=await ai(sysFor(i)+'الكود الحالي:\n'+BT+FENCE[l]+'\n'+S.apps[i].code+'\n'+BT+'\n\nفشل بناء التطبيق بهذا الخطأ:\n'+(LOGS[i]||'')+'\n\nأصلح الكود ليُبنى بنجاح.');
+    setCode(i,clean(out));buildNative(i,l)}catch(e){toast(arErr(e))}}
+
+/* قائمة البناء الجديدة بدون Kotlin */
+vBuild=function(){return '<div class="card"><h2>🏗️ قائمة البناء</h2><p class="note">زر واحد يبني التطبيق حسب لغته. HTML حوالي 3-6 دقائق، وFlutter حوالي 5-10، وPython من 20 إلى 40 دقيقة.</p></div>'
+  +S.apps.map((a,i)=>'<div class="card"><h2>'+esc(a.name)+'</h2><p class="note">اللغة: '+LANGN[langOf(i)]+' | المجلد: apps/'+esc(slugOf(a.name)||'← اكتب اسماً إنجليزياً في قائمة الكود')+'</p><button onclick="buildAny('+i+')">🏗️ بناء APK</button>'+(a.apk?'<a class="btn acc" style="margin-top:8px" href="'+esc(a.apk)+'" target="_blank">⬇ تحميل آخر APK</a>':'')+'</div>').join('')};
+
+/* اختيار نموذج Gemini */
+const GEM_DEF=MODELS.gemini;
+const _ai1=ai;
+ai=function(p){MODELS.gemini=S.keys.geminiModel||GEM_DEF;return _ai1(p)};
+
+function loadGemModels(btn){busy(btn,async()=>{
+  const k=S.keys.gemini||S.keys.gemini2||S.keys.gemini3;
+  if(!k)throw new Error('أدخل مفتاح Gemini أولاً');
+  let out=[],tok='';
+  for(let n=0;n<5;n++){
+    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=100&key='+encodeURIComponent(k)+(tok?'&pageToken='+encodeURIComponent(tok):''));
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error((j.error&&j.error.message)||'تعذّر جلب النماذج');
+    (j.models||[]).forEach(m=>{if((m.supportedGenerationMethods||[]).indexOf('generateContent')>-1)out.push(m.name.replace(/^models\//,''))});
+    tok=j.nextPageToken||'';if(!tok)break}
+  if(!out.length)throw new Error('لم أجد نماذج متاحة لهذا المفتاح');
+  window._gm=out;fillGem();toast('وجدت '+out.length+' نموذج ✔ اختر من القائمة')})}
+function fillGem(){const s=$('#gsel');if(!s)return;
+  s.innerHTML='<option value="">— اختر نموذجاً من القائمة —</option>'+(window._gm||[]).map(x=>'<option value="'+esc(x)+'"'+(x===S.keys.geminiModel?' selected':'')+'>'+esc(x)+'</option>').join('')}
+function pickGem(v){if(!v)return;S.keys.geminiModel=v;$('#gmodel').value=v;save();toast('تم اختيار '+v)}
+function injectModel(){
+  const c=document.createElement('div');c.className='card';
+  c.innerHTML='<h2>🤖 نموذج Gemini</h2><label>اسم النموذج (اتركه فارغاً للافتراضي: '+esc(GEM_DEF)+')</label><input id="gmodel" value="'+esc(S.keys.geminiModel||'')+'" placeholder="'+esc(GEM_DEF)+'" autocomplete="off" autocapitalize="off" oninput="S.keys.geminiModel=this.value.trim();save()"><div class="row"><button class="acc" onclick="loadGemModels(this)">🔄 جلب النماذج المتاحة لمفتاحي</button></div><label>أو اختر من القائمة</label><select id="gsel" onchange="pickGem(this.value)"></select><p class="note">يُستخدم هذا النموذج عندما يكون الذكاء الاصطناعي المختار هو Gemini.</p>';
+  $('#main').appendChild(c);fillGem()}
+
+/* ترتيب الواجهة: إزالة أزرار Kotlin وإضافة زر البناء الواحد */
+const _render3=render;
+render=function(){
+  _render3();
+  if(tab==='keys')injectModel();
+  if(tab==='code'){
+    document.querySelectorAll('#main button[onclick^="buildKotlin("]').forEach(b=>{const r=b.parentElement;if(r)r.remove()});
+    document.querySelectorAll('#main section.card').forEach((sec,i)=>{
+      const d=document.createElement('div');d.className='row';
+      d.innerHTML='<button onclick="buildAny('+i+')">🏗️ بناء APK</button>';
+      sec.insertBefore(d,sec.querySelector('.edit'))})}
+};
 render();
 </script>
 </body>
