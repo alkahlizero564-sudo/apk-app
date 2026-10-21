@@ -544,6 +544,74 @@ render=function(){
     }
   });
 };
+render();/* ===== إضافة: قائمة القوالب ===== */
+const TC='<style>:root{--bg:#0f172a;--card:#1e293b;--tx:#f1f5f9;--mut:#94a3b8;--bad:#ef4444}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,Tahoma,sans-serif;padding-bottom:80px}header{padding:18px;font-size:20px;font-weight:700;text-align:center;background:var(--pri);color:#fff}.w{padding:14px;max-width:520px;margin:auto}.c{background:var(--card);border-radius:16px;padding:14px;margin-bottom:12px}input{width:100%;padding:12px;border-radius:12px;border:1px solid #334155;background:#0f172a;color:var(--tx);font-size:16px;margin-bottom:8px;font-family:inherit}button{width:100%;padding:13px;border:0;border-radius:12px;background:var(--pri);color:#fff;font-size:16px;font-weight:700;font-family:inherit}.r{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #334155}.x{background:none;color:var(--bad);width:auto;padding:4px 10px}.big{font-size:32px;font-weight:800;text-align:center}.m{color:var(--mut);font-size:13px}</style>';
+const TJ="var MEM={};var ST={g:function(k){try{return localStorage.getItem(k)}catch(e){return MEM[k]===undefined?null:MEM[k]}},s:function(k,v){MEM[k]=v;try{localStorage.setItem(k,v)}catch(e){}}};var $=function(i){return document.getElementById(i)};";
+const mk=(ac,body,js)=>'<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+TC+'<style>:root{--pri:'+ac+'}</style></head><body>'+body+'<script>'+TJ+js+'<\/script></body></html>';
+
+const mkShop=(ti,ac,it,bt,ok,fin)=>mk(ac,`<header>${ti}</header><div class="w"><div id="g" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"></div></div><div style="position:fixed;bottom:0;left:0;right:0;background:#1e293b;padding:12px;display:flex;gap:10px;align-items:center"><div style="flex:1">🛒 <span id="n">0</span> | <b id="t">0</b></div><button style="width:auto;padding:10px 18px" onclick="done()">${bt}</button></div>`,`var P=${JSON.stringify(it)},C=[];function draw(){$('g').innerHTML=P.map(function(p,i){return '<div class="c" style="text-align:center;margin:0"><div style="font-size:42px">'+p[0]+'</div><div>'+p[1]+'</div><div class="m">'+p[2]+'</div><button style="margin-top:8px;padding:8px" onclick="add('+i+')">+ أضف</button></div>'}).join('')}function add(i){C.push(i);up()}function up(){var s=0;C.forEach(function(i){s+=P[i][2]});$('n').textContent=C.length;$('t').textContent=s}function done(){if(!C.length)return;${fin}C=[];up();alert('${ok}')}draw()`);
+
+const FIN_REST=`var O=JSON.parse(ST.g('orders')||'[]'),s=0;C.forEach(function(i){s+=P[i][2]});O.push({id:Date.now(),items:C.map(function(i){return P[i][1]}),total:s,st:'new'});ST.s('orders',JSON.stringify(O));`;
+
+const tExp=mk('#16a34a',`<header>💰 مصاريفي</header><div class="w"><div class="c"><div class="m">المجموع</div><div class="big" id="t">0</div></div><div class="c"><input id="n" placeholder="وصف المصروف"><input id="a" type="number" inputmode="decimal" placeholder="المبلغ"><button onclick="add()">➕ إضافة</button></div><div class="c" id="l"></div></div>`,`var D=JSON.parse(ST.g('exp')||'[]');function save(){ST.s('exp',JSON.stringify(D));draw()}function add(){var n=$('n').value.trim(),a=parseFloat($('a').value);if(!n||!a)return;D.unshift({n:n,a:a,d:new Date().toLocaleDateString('ar')});$('n').value='';$('a').value='';save()}function del(i){D.splice(i,1);save()}function draw(){var s=0,h='';D.forEach(function(x,i){s+=x.a;h+='<div class="r"><div>'+x.n+'<div class="m">'+x.d+'</div></div><div>'+x.a+' <button class="x" onclick="del('+i+')">✕</button></div></div>'});$('t').textContent=s;$('l').innerHTML=h||'<div class="m">لا توجد مصاريف بعد</div>'}draw()`);
+
+const tTodo=mk('#0ea5e9',`<header>✅ مهامي</header><div class="w"><div class="c"><input id="n" placeholder="مهمة جديدة"><button onclick="add()">➕ إضافة</button></div><div class="c" id="l"></div><div class="m" id="s" style="text-align:center"></div></div>`,`var D=JSON.parse(ST.g('todo')||'[]');function save(){ST.s('todo',JSON.stringify(D));draw()}function add(){var n=$('n').value.trim();if(!n)return;D.unshift({n:n,d:0});$('n').value='';save()}function tg(i){D[i].d=D[i].d?0:1;save()}function del(i){D.splice(i,1);save()}function draw(){var h='',k=0;D.forEach(function(x,i){if(x.d)k++;h+='<div class="r"><div onclick="tg('+i+')" style="flex:1;'+(x.d?'text-decoration:line-through;opacity:.5':'')+'">'+(x.d?'✅ ':'⬜ ')+x.n+'</div><button class="x" onclick="del('+i+')">✕</button></div>'});$('l').innerHTML=h||'<div class="m">لا توجد مهام</div>';$('s').textContent='المنجز '+k+' من '+D.length}draw()`);
+
+const tKit=mk('#ea580c',`<header>👨‍🍳 المطبخ</header><div class="w"><button onclick="draw()" style="margin-bottom:12px">🔄 تحديث</button><div id="l"></div></div>`,`function draw(){var O=JSON.parse(ST.g('orders')||'[]'),h='';O.slice().reverse().forEach(function(o){h+='<div class="c"><div class="r" style="border:0"><b>طلب #'+String(o.id).slice(-4)+'</b><span>'+(o.st=='done'?'✅ جاهز':'🕒 جديد')+'</span></div><div>'+o.items.join('، ')+'</div><div class="m">الإجمالي '+o.total+'</div>'+(o.st=='done'?'':'<button style="margin-top:8px" onclick="ok('+o.id+')">تم التجهيز</button>')+'</div>'});$('l').innerHTML=h||'<div class="m" style="text-align:center">لا توجد طلبات</div>'}function ok(id){var O=JSON.parse(ST.g('orders')||'[]');O.forEach(function(o){if(o.id==id)o.st='done'});ST.s('orders',JSON.stringify(O));draw()}draw();setInterval(draw,3000)`);
+
+const tTea=mk('#2563eb',`<header>👨‍🏫 المعلم</header><div class="w"><div class="c"><input id="n" placeholder="عنوان الواجب"><input id="d" placeholder="التفاصيل / موعد التسليم"><button onclick="add()">📤 إرسال للطلاب</button></div><div id="l"></div></div>`,`var D=JSON.parse(ST.g('hw')||'[]');function save(){ST.s('hw',JSON.stringify(D));draw()}function add(){var n=$('n').value.trim();if(!n)return;D.unshift({id:Date.now(),n:n,d:$('d').value});$('n').value='';$('d').value='';save()}function del(i){D.splice(i,1);save()}function draw(){$('l').innerHTML=D.map(function(x,i){return '<div class="c"><div class="r" style="border:0"><b>'+x.n+'</b><button class="x" onclick="del('+i+')">✕</button></div><div class="m">'+x.d+'</div></div>'}).join('')||'<div class="m" style="text-align:center">لم ترسل واجبات بعد</div>'}draw()`);
+
+const tStu=mk('#2563eb',`<header>🎒 الطالب</header><div class="w"><button onclick="draw()" style="margin-bottom:12px">🔄 تحديث</button><div id="l"></div></div>`,`var K=JSON.parse(ST.g('hwdone')||'{}');function draw(){var D=JSON.parse(ST.g('hw')||'[]');$('l').innerHTML=D.map(function(x){var d=K[x.id];return '<div class="c" onclick="tg('+x.id+')"><b style="'+(d?'text-decoration:line-through;opacity:.5':'')+'">'+(d?'✅ ':'⬜ ')+x.n+'</b><div class="m">'+x.d+'</div></div>'}).join('')||'<div class="m" style="text-align:center">لا توجد واجبات</div>'}function tg(id){K[id]=!K[id];ST.s('hwdone',JSON.stringify(K));draw()}draw();setInterval(draw,3000)`);
+
+const TPL=[
+ {name:'💰 مصاريفي',desc:'تسجيل المصاريف اليومية مع المجموع.',apps:1,html:[tExp]},
+ {name:'✅ المهام',desc:'قائمة مهام بالتشطيب والحذف.',apps:1,html:[tTodo]},
+ {name:'🛍 المتجر',desc:'كتالوج منتجات مع سلة وإتمام الطلب.',apps:1,html:[mkShop('🛍 المتجر','#7c3aed',[['👕','قميص',50],['👟','حذاء',120],['🎧','سماعة',80],['⌚','ساعة',200],['🎒','حقيبة',90],['🧢','قبعة',30]],'إتمام الطلب','تم استلام طلبك ✔','')]},
+ {name:'🍽 المطعم (تطبيقان)',desc:'تطبيق الزبون لإرسال الطلب + تطبيق المطبخ لاستلامه.',apps:2,html:[mkShop('🍽 مطعمنا','#ea580c',[['🍔','برجر',35],['🍕','بيتزا',50],['🍟','بطاطس',15],['🥤','عصير',10],['🍗','دجاج',45],['🥗','سلطة',20]],'إرسال الطلب','تم إرسال طلبك للمطبخ ✔',FIN_REST),tKit]},
+ {name:'🎓 المدرسة (تطبيقان)',desc:'تطبيق المعلم لإرسال الواجبات + تطبيق الطالب لمتابعتها.',apps:2,html:[tTea,tStu]}
+];
+
+function vTpl(){return '<div class="card"><h2>🎨 قائمة القوالب</h2><p class="note">اختر قالباً وعاينه، ثم اختر اللغة واضغط استخدم. قوالب HTML جاهزة فوراً. وعند اختيار Flutter أو Python يحوّل الذكاء الاصطناعي القالب للغة المختارة بنفس التصميم.</p></div>'
+ +TPL.map((t,i)=>'<div class="card"><h2>'+t.name+'</h2><p class="note">'+esc(t.desc)+'</p><p class="note">'+(t.apps>1?'🔗 قالب لتطبيقين':'📱 قالب لتطبيق واحد')+'</p><button onclick="showTpl('+i+')">👁 معاينة واستخدام</button></div>').join('')}
+
+function showTpl(i){const t=TPL[i],sh=$('#sheet');
+  sh.innerHTML='<div class="sheetbox"><h3>'+t.name+'</h3><p class="note">'+esc(t.desc)+'</p>'
+  +t.html.map((h,n)=>'<div class="note" style="margin-top:8px">'+(t.apps>1?(n?'التطبيق الثاني':'التطبيق الأول'):'المعاينة')+'</div><iframe id="tp'+n+'" sandbox="allow-scripts allow-modals" style="height:380px"></iframe>').join('')
+  +'<label>اللغة</label><select id="tl">'+Object.keys(LANGN).map(k=>'<option value="'+k+'">'+LANGN[k]+'</option>').join('')+'</select>'
+  +(t.apps===1?'<label>ضعه في</label><select id="ts"><option value="0">التطبيق الأول</option><option value="1">التطبيق الثاني</option></select>':'<p class="note">القالب يدخل في التطبيقين معاً. في المعاينة كل تطبيق منفصل، وبعد الاستخدام اضغط «ربط عبر Firebase» ليتشاركا البيانات.</p>')
+  +'<button class="acc" style="margin-top:12px;width:100%" onclick="applyTpl('+i+')">✅ استخدم القالب</button><button class="ghost" onclick="closeSheet()">إغلاق</button></div>';
+  sh.classList.add('on');
+  t.html.forEach((h,n)=>{$('#tp'+n).srcdoc=h})}
+
+async function applyTpl(ti){
+  const t=TPL[ti],lang=$('#tl').value,targets=t.apps===1?[+$('#ts').value]:[0,1];
+  const used=targets.filter(k=>S.apps[k].code.trim());
+  if(used.length&&!confirm('الكود الحالي في '+used.map(k=>'التطبيق '+(k+1)).join(' و ')+' سيُستبدل (ويتحفظ في النسخ السابقة). تكمل؟'))return;
+  const P=progress('تطبيق القالب: '+t.name,targets.map(k=>'تجهيز التطبيق '+(k+1)+' ('+LANGN[lang]+')'));
+  let cur=0;
+  try{
+    for(let n=0;n<targets.length;n++){
+      cur=n;const k=targets[n],h=t.html[n];
+      P.set(n,'run',lang==='html'?'':'الذكاء الاصطناعي يحوّل القالب...');
+      pushVersion(k);
+      const a=S.apps[k];a.lang=lang;a.pv='';
+      if(lang==='html'){a.code=h}
+      else{
+        const out=await ai(sysFor(k)+'حوّل هذا التطبيق (المكتوب بـ HTML) إلى '+LANGN[lang]+' مع المحافظة على نفس الشاشات والألوان والخطوات والمنطق، وعلى أسماء مفاتيح البيانات كما هي.\n\n'+BT+'html\n'+h+'\n'+BT);
+        a.code=clean(out);a.pv=h}
+      save();P.set(n,'ok','')}
+    P.extra('<p style="color:var(--ok)">تم ✔ افتح تبويب الكود وعاين.</p>'+(lang==='html'?'':'<p class="note">معاينة Flutter وPython هنا هي تصميم القالب الأصلي. بعد أي تعديل اضغط «معاينة بالذكاء الاصطناعي».</p>')+'<button class="acc" style="margin-top:10px;width:100%" onclick="closeSheet();go(\'code\')">💻 اذهب للكود</button>');
+  }catch(e){P.set(cur,'bad',arErr(e))}}
+
+/* زر القوالب في الشريط السفلي */
+(function(){const b=document.createElement('button');b.id='n-tpl';b.innerHTML='🎨<br>القوالب';b.onclick=function(){go('tpl')};document.querySelector('nav').appendChild(b)})();
+
+const _render2=render;
+render=function(){
+  if(tab!=='tpl'){_render2();$('#n-tpl').classList.remove('on');return}
+  $('#main').innerHTML=vTpl();
+  ['keys','code','build','tpl'].forEach(k=>$('#n-'+k).classList.toggle('on',k===tab));
+  window.scrollTo(0,0)};
 render();
 </script>
 </body>
