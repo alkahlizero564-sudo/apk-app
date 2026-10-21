@@ -454,6 +454,97 @@ render=function(){
   }
 };
 render();
+
+/* ===== إضافة: لغات Flutter و Python + معاينة بالذكاء الاصطناعي ===== */
+const BT='`'.repeat(3);
+const LANGN={html:'HTML',flutter:'Flutter (Dart)',python:'Python (Kivy)'};
+const FENCE={html:'html',flutter:'dart',python:'python'};
+const langOf=i=>S.apps[i].lang||'html';
+
+function sysFor(i){
+  if(langOf(i)==='flutter')return 'أنت مبرمج Flutter محترف. اكتب ملف main.dart واحداً كاملاً يعمل مباشرة، بدون أي حزم خارجية غير flutter/material.dart، وبواجهة عربية من اليمين لليسار. أعد الكود الكامل فقط داخل كتلة '+BT+'dart بدون أي شرح.\n\n';
+  return 'أنت مبرمج Python محترف. اكتب ملف main.py واحداً كاملاً لتطبيق Kivy يعمل على أندرويد وبواجهة عربية. أعد الكود الكامل فقط داخل كتلة '+BT+'python بدون أي شرح.\n\n'}
+
+/* تغيير اللغة */
+function setLang(i,v){const a=S.apps[i];
+  if(a.code.trim()&&!confirm('الكود الحالي يبقى كما هو وتتغير اللغة فقط. تكمل؟')){render();return}
+  pushVersion(i);a.lang=v;a.pv='';save();render()}
+
+/* المعاينة: HTML كما هو، وغيره يعرض معاينة الذكاء الاصطناعي */
+const _preview0=preview;
+preview=function(i){
+  if(langOf(i)==='html')return _preview0(i);
+  const a=S.apps[i],f=$('#pv'+i);if(!f)return;
+  pushVersion(i);
+  f.srcdoc=a.pv||'<body style="font-family:sans-serif;direction:rtl;padding:20px;background:#0b1220;color:#8fa0c4;text-align:center">اضغط «معاينة بالذكاء الاصطناعي» لعرض شكل التطبيق هنا.</body>'};
+
+const _setCode0=setCode;
+setCode=function(i,c){S.apps[i].pv='';_setCode0(i,c)};
+
+function aiPreview(i,btn){busy(btn,async()=>{
+  const a=S.apps[i],l=langOf(i);
+  if(!a.code.trim())throw new Error('اكتب أو أنشئ الكود أولاً');
+  const out=await ai('أنت خبير واجهات. الكود التالي لتطبيق مكتوب بلغة '+LANGN[l]+'. حوّله إلى صفحة HTML واحدة (HTML وCSS وJavaScript فقط، بدون مكتبات خارجية) تحاكي شكل التطبيق على شاشة الهاتف وتتصرف مثله في الأزرار والإدخال والتنقل بين الشاشات، حتى أعاينه قبل بنائه. الواجهة عربية من اليمين لليسار. أعد كود HTML الكامل فقط داخل كتلة '+BT+'html بدون شرح.\n\nالكود:\n'+BT+FENCE[l]+'\n'+a.code+'\n'+BT);
+  a.pv=clean(out);save();preview(i);toast('تمت المعاينة ✔')})}
+
+/* إنشاء وتعديل وإصلاح بحسب اللغة */
+const _aiCreate0=aiCreate;
+aiCreate=function(i,btn){
+  if(langOf(i)==='html')return _aiCreate0(i,btn);
+  busy(btn,async()=>{
+    const d=$('#dsc'+i).value.trim();if(!d)throw new Error('اكتب وصف التطبيق أولاً');
+    const o=S.apps[1-i];
+    let p=sysFor(i)+'أنشئ تطبيقاً كاملاً يعمل من الصفر حسب هذا الوصف، بواجهة جميلة مناسبة للهاتف وأزرار كبيرة. أضف كل ما يلزم ليكون التطبيق مفيداً وكاملاً.\n\nوصف التطبيق:\n'+d;
+    if(o.code.trim())p+='\n\nهذا التطبيق مكمّل للتطبيق الآخر أدناه ويتشاركان نفس البيانات. استخدم نفس أسماء الحقول وشكل البيانات وطريقة الحفظ ونفس الألوان. لا تعدّل التطبيق الآخر.\n\nكود التطبيق الآخر:\n'+BT+FENCE[o.lang||'html']+'\n'+o.code+'\n'+BT;
+    const out=await ai(p);
+    setCode(i,clean(out));$('#dsc'+i).value='';$('#desc'+i).hidden=true;toast('تم إنشاء التطبيق ✔ اضغط معاينة بالذكاء الاصطناعي')})};
+
+const _aiEdit0=aiEdit;
+aiEdit=function(i,btn){
+  if(langOf(i)==='html')return _aiEdit0(i,btn);
+  busy(btn,async()=>{
+    const req=$('#req'+i).value.trim();if(!req)throw new Error('اكتب التعديل المطلوب');
+    const l=langOf(i);
+    const out=await ai(sysFor(i)+'الكود الحالي:\n'+BT+FENCE[l]+'\n'+S.apps[i].code+'\n'+BT+'\n\nالتعديل المطلوب: '+req);
+    setCode(i,clean(out));$('#req'+i).value='';toast('تم التعديل ✔ اضغط معاينة بالذكاء الاصطناعي')})};
+
+const _aiFix0=aiFix;
+aiFix=function(i,btn){
+  if(langOf(i)==='html')return _aiFix0(i,btn);
+  busy(btn,async()=>{
+    const l=langOf(i);
+    const out=await ai(sysFor(i)+'الكود الحالي:\n'+BT+FENCE[l]+'\n'+S.apps[i].code+'\n'+BT+'\n\nافحص الكود وأصلح أي خطأ برمجي أو منطقي.');
+    setCode(i,clean(out));toast('تم إصلاح الكود ✔')})};
+
+/* منع البناء والربط لغير HTML حالياً */
+const needHtml=i=>{if(langOf(i)==='html')return false;toast('بناء APK للغة '+LANGN[langOf(i)]+' غير جاهز بعد. حالياً البناء لـ HTML فقط.');return true};
+const _build0=build,_bk0=buildKotlin,_lA=linkApps,_lF=linkFirebase;
+build=function(i){if(needHtml(i))return;return _build0(i)};
+buildKotlin=function(i){if(needHtml(i))return;return _bk0(i)};
+linkApps=function(b){if(langOf(0)!=='html'||langOf(1)!=='html')return toast('الربط حالياً لتطبيقات HTML فقط.');return _lA(b)};
+linkFirebase=function(b){if(langOf(0)!=='html'||langOf(1)!=='html')return toast('الربط حالياً لتطبيقات HTML فقط.');return _lF(b)};
+
+/* إظهار قائمة اللغة وزر المعاينة بالذكاء الاصطناعي */
+const _render1=render;
+render=function(){
+  _render1();
+  if(tab!=='code')return;
+  document.querySelectorAll('#main section.card').forEach((sec,i)=>{
+    const l=langOf(i);
+    const ta=sec.querySelector('textarea.code');
+    const box=document.createElement('div');
+    box.innerHTML='<label>لغة التطبيق</label><select onchange="setLang('+i+',this.value)">'+Object.keys(LANGN).map(k=>'<option value="'+k+'"'+(k===l?' selected':'')+'>'+LANGN[k]+'</option>').join('')+'</select>';
+    sec.insertBefore(box,sec.querySelector(':scope > button.acc')||ta);
+    if(ta)ta.placeholder=l==='html'?'الصق كود التطبيق هنا':'الصق كود '+LANGN[l]+' هنا';
+    if(l!=='html'){
+      const r=document.createElement('div');
+      r.innerHTML='<div class="row"><button class="acc" onclick="aiPreview('+i+',this)">🤖 معاينة بالذكاء الاصطناعي</button></div><p class="note">المعاينة محاكاة بالذكاء الاصطناعي لشكل التطبيق، وليست تشغيلاً فعلياً.</p>';
+      const fr=sec.querySelector('iframe');
+      if(fr)fr.insertAdjacentElement('afterend',r);
+    }
+  });
+};
+render();
 </script>
 </body>
-</html> 
+</html>
