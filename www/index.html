@@ -1386,7 +1386,213 @@ TPL.unshift(
  {name:'💊 زبون صيدلية + إدارة الصيدلية',desc:'طلب أدوية بتوصيل أو استلام + إدارة الطلبات والمخزون وتنبيه نقص الأدوية.',tag:'🌿 أخضر منعش + 🌊 محيطي داكن',c:'#059669',apps:2,html:[p2a,p2b]},
  {name:'🏥 حجز موعد دكتور + إدارة المستشفى',desc:'المريض يختار الطبيب واليوم والوقت + الإدارة تؤكد المواعيد وتدير الأطباء.',tag:'☀️ فاتح + 🌙 داكن',c:'#2563eb',apps:2,html:[p3a,p3b]},
  {name:'📅 الحجوزات + إدارة الحجوزات',desc:'حجز ملاعب وقاعات بالساعة مع منع التعارض + إدارة الحجوزات والأماكن والإيراد.',tag:'🧡 دافئ + 💜 بنفسجي',c:'#ea580c',apps:2,html:[p4a,p4b]}
-);
+);/* ===== إضافة: ربط Supabase و Firebase لتطبيقات Flutter و Python ===== */
+
+/* ملفات البناء النسخة 3: صلاحية الإنترنت لـ Flutter، ومكتبة certifi لـ Python */
+const WF_FLUTTER3=`# v3
+# v2 compatible
+name: build-flutter
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: create project
+        run: |
+          PKG=$(cat apps/$APP/pkg.txt 2>/dev/null | tr -d '[:space:]')
+          if [ -z "$PKG" ]; then PKG=com.myapps.app_$APP; fi
+          flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
+          cp apps/$APP/main.dart flutter_out/lib/main.dart
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/><application|' flutter_out/android/app/src/main/AndroidManifest.xml
+          sed -i "/applicationId/s|com.myapps.app_$APP|$PKG|" flutter_out/android/app/build.gradle*
+          if [ -f apps/$APP/icon.png ]; then
+            for d in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+              cp apps/$APP/icon.png flutter_out/android/app/src/main/res/$d/ic_launcher.png
+            done
+          fi
+      - name: build
+        working-directory: flutter_out
+        run: flutter build apk --release
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: flutter-\${{ inputs.app }}-build-\${{ github.run_number }}
+          files: flutter_out/build/app/outputs/flutter-apk/app-release.apk
+`;
+
+const WF_PYTHON3=`# v3
+# v2 compatible
+name: build-python
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.36 virtualenv
+      - name: write spec
+        working-directory: apps/\${{ inputs.app }}
+        run: |
+          PKG=$(cat pkg.txt 2>/dev/null | tr -d '[:space:]')
+          if [ -z "$PKG" ]; then PKG=com.myapps.app$APP; fi
+          NAM=$(echo "$PKG" | awk -F. '{print $NF}')
+          DOM=$(echo "$PKG" | sed 's/\\.[^.]*$//')
+          cat > buildozer.spec <<EOF
+          [app]
+          title = $APP
+          package.name = $NAM
+          package.domain = $DOM
+          source.dir = .
+          source.include_exts = py,png,jpg,kv,atlas,json,ttf
+          version = 1.0
+          requirements = python3,kivy==2.3.0,certifi
+          orientation = portrait
+          fullscreen = 0
+          android.permissions = INTERNET
+          android.api = 33
+          android.minapi = 24
+          android.archs = arm64-v8a
+          android.accept_sdk_license = True
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          EOF
+          sed -i 's/^ *//' buildozer.spec
+          if [ -f icon.png ]; then sed -i '/^\\[app\\]/a icon.filename = %(source.dir)s/icon.png' buildozer.spec; fi
+      - name: cache
+        uses: actions/cache@v4
+        with:
+          path: apps/\${{ inputs.app }}/.buildozer
+          key: buildozer-\${{ inputs.app }}-\${{ github.run_number }}
+          restore-keys: buildozer-\${{ inputs.app }}-
+      - name: build
+        working-directory: apps/\${{ inputs.app }}
+        run: buildozer -v android debug
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: python-\${{ inputs.app }}-build-\${{ github.run_number }}
+          files: apps/\${{ inputs.app }}/bin/*.apk
+`;
+if(typeof WF!=='undefined'){WF.flutter.yaml=WF_FLUTTER3;WF.python.yaml=WF_PYTHON3}
+
+async function ensureWf3(l){
+  const W=WF[l],repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
+  let cur='';
+  try{const f=await gh('/repos/'+repo+'/contents/.github/workflows/'+W.file+'?ref='+br);cur=atob(String(f.content||'').replace(/\s/g,''))}catch(e){if(e.status!==404)throw e}
+  if(cur.indexOf('# v3')<0){await put(repo,br,'.github/workflows/'+W.file,W.yaml);await sleep(5000)}}
+if(typeof buildNative!=='undefined'){
+  const _bn3=buildNative;
+  buildNative=async function(i,l){
+    if(S.keys.ghToken){try{await ensureWf3(l)}catch(e){return toast(arErr(e))}}
+    return _bn3(i,l)}}
+
+/* ---------- ربط التطبيقين لأي لغة ---------- */
+function netHint(l){
+  if(l==='flutter')return 'Flutter: اكتب دوال مساعدة للاتصال باستخدام dart:io (HttpClient) وdart:convert فقط، وممنوع أي حزم خارجية (لا http ولا dio ولا supabase_flutter ولا firebase_core). استخدم async/await وtry/catch، واستخدم openUrl للطرق GET وPOST وPATCH وDELETE، وحدّث الواجهة بـ setState بعد التأكد من mounted. للتحديث المباشر استخدم Timer.periodic كل 5 ثوانٍ وأوقفه في dispose.';
+  if(l==='python')return 'Python/Kivy: استخدم kivy.network.urlrequest.UrlRequest فقط (غير متزامن) وأضف import certifi ومرّر ca_file=certifi.where() في كل طلب، وممنوع requests ومكتبات Supabase وFirebase. حدّث الواجهة داخل دوال on_success. للتحديث المباشر استخدم Clock.schedule_interval كل 5 ثوانٍ.';
+  return 'HTML/JS: استخدم fetch فقط بدون أي مكتبة، وللتحديث المباشر استخدم setInterval كل 5 ثوانٍ.'}
+function fcode(i){const l=langOf(i);return BT+FENCE[l]+'\n'+S.apps[i].code+'\n'+BT}
+function putCode(i,c){pushVersion(i);const a=S.apps[i];a.code=c;a.pv=''}
+
+/* Supabase */
+function linkSbAny(btn){return busy(btn,async()=>{const k=S.keys;
+  if(!k.sbToken||!k.sbRef)throw new Error('أدخل مفتاح Supabase والـ project ref في قائمة المفاتيح');
+  if(!S.apps[0].code.trim()||!S.apps[1].code.trim())throw new Error('اكتب كود التطبيقين أولاً');
+  const P=progress('ربط التطبيقين عبر Supabase',['قراءة بيانات المشروع','الذكاء الاصطناعي يصمم الجداول','تنفيذ الجداول في قاعدة البيانات','تعديل التطبيق الأول ('+LANGN[langOf(0)]+')','تعديل التطبيق الثاني ('+LANGN[langOf(1)]+')']);
+  let cur=0;
+  try{
+    P.set(0,'run');
+    const keys=await sb('/v1/projects/'+k.sbRef+'/api-keys');
+    const anon=(keys.find(x=>x.name==='anon')||{}).api_key;if(!anon)throw new Error('ما قدرت أجيب مفتاح المشروع. تأكد من الـ project ref.');
+    const url='https://'+k.sbRef+'.supabase.co';P.set(0,'ok');
+    cur=1;P.set(1,'run');
+    const base='لديك تطبيقان يجب أن يتشاركا البيانات عبر Supabase (التطبيق الأول بلغة '+LANGN[langOf(0)]+' والتطبيق الثاني بلغة '+LANGN[langOf(1)]+').\nاكتب SQL كامل يُنشئ الجداول اللازمة لعمل التطبيقين معاً (create table if not exists)، ويفعّل RLS، ويضيف سياسات تسمح لـ anon بالقراءة والكتابة (drop policy if exists ثم create policy). أعد SQL فقط داخل كتلة '+BT+'sql بدون شرح.\n\nالتطبيق الأول:\n'+fcode(0)+'\n\nالتطبيق الثاني:\n'+fcode(1);
+    let sql=clean(await ai(base));P.set(1,'ok');
+    cur=2;P.set(2,'run');
+    for(let n=0;n<2;n++){try{
+      if(/drop\s+table|truncate|delete\s+from|drop\s+schema/i.test(sql)&&!confirm('الـ SQL يحتوي أمر حذف. هل تريد المتابعة؟'))throw new Error('تم إلغاء التنفيذ');
+      await sb('/v1/projects/'+k.sbRef+'/database/query',{method:'POST',body:JSON.stringify({query:sql})});break}
+      catch(e){if(n===1||/تم إلغاء/.test(e.message))throw e;P.set(2,'run','حدث خطأ، جاري إصلاحه تلقائياً...');
+        sql=clean(await ai(base+'\n\nتنفيذ SQL السابق فشل بهذا الخطأ: '+e.message+'\nأعد SQL المصحح فقط.'))}}
+    P.set(2,'ok');
+    for(let i=0;i<2;i++){
+      cur=3+i;P.set(cur,'run');
+      const l=langOf(i);
+      const p='عدّل هذا التطبيق ليقرأ ويكتب البيانات في قاعدة Supabase بدل التخزين المحلي، بحيث يتشارك نفس الجداول مع التطبيق الآخر.\nURL: '+url+'\nanon key: '+anon+'\n\nالجداول المنفذة:\n'+BT+'sql\n'+sql+'\n'+BT+'\n\nالاتصال عبر REST: '+url+'/rest/v1/اسم_الجدول مع الهيدرز apikey وAuthorization: Bearer (anon key) وContent-Type: application/json. استخدم Prefer: return=representation عند الإضافة، والتعديل والحذف عبر ?id=eq.القيمة. استخدم نفس أسماء الجداول والأعمدة بالضبط.\nتعليمات الاتصال: '+netHint(l)+'\nأبق بقية وظائف التطبيق وتصميمه كما هي، وتعامل مع انقطاع الإنترنت بدون أن ينهار التطبيق. أعد الكود الكامل فقط داخل كتلة '+BT+FENCE[l]+' بدون شرح.\n\nكود التطبيق:\n'+fcode(i);
+      putCode(i,clean(await ai(p)));save();P.set(cur,'ok')}
+    render();
+    P.extra('<p style="color:var(--ok)">تم الربط بنجاح ✔ عاين التطبيقين ثم ابنِهما.</p>');
+  }catch(e){P.set(cur,'bad');P.extra('<div class="errbox">'+esc(arErr(e))+'</div>');throw e}})}
+
+/* Firebase */
+function linkFbAny(btn){return busy(btn,async()=>{const k=S.keys;
+  if(!k.fbUrl)throw new Error('أدخل رابط Firebase في قائمة المفاتيح');
+  const url=k.fbUrl.trim().replace(/\/+$/,'');
+  if(!/^https:\/\/[a-z0-9.-]+\.(firebaseio\.com|firebasedatabase\.app)$/i.test(url))throw new Error('رابط Firebase غير صحيح. شكله: https://اسم-مشروعك-default-rtdb.firebaseio.com');
+  if(!S.apps[0].code.trim()||!S.apps[1].code.trim())throw new Error('اكتب كود التطبيقين أولاً');
+  const P=progress('ربط التطبيقين عبر Firebase',['فحص الاتصال بقاعدة Firebase','الذكاء الاصطناعي يصمم هيكل البيانات','تعديل التطبيق الأول ('+LANGN[langOf(0)]+')','تعديل التطبيق الثاني ('+LANGN[langOf(1)]+')']);
+  let cur=0;
+  try{
+    P.set(0,'run');
+    let r;try{r=await fetch(url+'/apk_test.json',{method:'PUT',body:JSON.stringify({ok:Date.now()})})}catch(e){throw new Error('تعذّر الاتصال بـ Firebase. تأكد من الرابط ومن الإنترنت.')}
+    if(r.status===401||r.status===403)throw new Error('Firebase يرفض الكتابة. افتح Firebase > Realtime Database > Rules، والصق:\n{"rules":{".read":true,".write":true}}\nثم اضغط Publish وأعد المحاولة.');
+    if(!r.ok)throw new Error('الرابط غير صحيح أو قاعدة البيانات غير موجودة (خطأ '+r.status+').');
+    try{await fetch(url+'/apk_test.json',{method:'DELETE'})}catch(e){}
+    P.set(0,'ok');
+    cur=1;P.set(1,'run');
+    const base='لديك تطبيقان يجب أن يتشاركا البيانات عبر Firebase Realtime Database (التطبيق الأول بلغة '+LANGN[langOf(0)]+' والتطبيق الثاني بلغة '+LANGN[langOf(1)]+').\nصمم هيكل البيانات المشترك: اذكر المسارات (جذر واحد مناسب لفكرة التطبيقين)، وشكل كل عنصر (حقوله وأنواعها)، ومن يكتب ومن يقرأ في كل مسار. لا تستخدم orderBy ولا فلترة من السيرفر. اكتب الهيكل نصاً مختصراً فقط بدون كود.\n\nالتطبيق الأول:\n'+fcode(0)+'\n\nالتطبيق الثاني:\n'+fcode(1);
+    const contract=(await ai(base)).trim();P.set(1,'ok');
+    for(let i=0;i<2;i++){
+      cur=2+i;P.set(cur,'run');
+      const l=langOf(i);
+      const p='عدّل هذا التطبيق ليقرأ ويكتب البيانات في Firebase Realtime Database بدل التخزين المحلي، بحيث يتشارك نفس البيانات مع التطبيق الآخر.\nرابط قاعدة البيانات: '+url+'\n'+(k.fbKey?'Web API Key: '+k.fbKey+'\n':'')+'\nهيكل البيانات المتفق عليه (التزم به حرفياً):\n'+contract+'\n\nالاتصال عبر REST فقط:\n- القراءة: GET '+url+'/المسار.json وتأتي النتيجة كائناً مفاتيحه معرّفات أو null، حوّلها لمصفوفة.\n- إضافة عنصر: POST إلى المسار ويرجع {name:"المعرّف"}. تعديل: PATCH أو PUT على المسار/المعرّف.json. حذف: DELETE.\nتعليمات الاتصال: '+netHint(l)+'\nأبق بقية وظائف التطبيق وتصميمه كما هي، وتعامل مع انقطاع الإنترنت بدون أن ينهار التطبيق. أعد الكود الكامل فقط داخل كتلة '+BT+FENCE[l]+' بدون شرح.\n\nكود التطبيق:\n'+fcode(i);
+      putCode(i,clean(await ai(p)));save();P.set(cur,'ok')}
+    render();
+    P.extra('<p style="color:var(--ok)">تم الربط بنجاح ✔ عاين التطبيقين ثم ابنِهما.</p><p class="note">تنبيه: قواعد Firebase الحالية مفتوحة للجميع، وهذا مناسب للتجربة فقط.</p>');
+  }catch(e){P.set(cur,'bad');P.extra('<div class="errbox">'+esc(arErr(e))+'</div>');throw e}})}
+
+/* توجيه زر الربط: HTML للتطبيقين يبقى كما هو، وغيره يستخدم النسخة الجديدة */
+if(typeof _lA!=='undefined'&&typeof _lF!=='undefined'){
+  linkApps=function(b){return (langOf(0)==='html'&&langOf(1)==='html')?_lA(b):linkSbAny(b)};
+  linkFirebase=function(b){return (langOf(0)==='html'&&langOf(1)==='html')?_lF(b):linkFbAny(b)}}
 </script>
 </body>
 </html>
