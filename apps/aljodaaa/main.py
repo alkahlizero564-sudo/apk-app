@@ -14,8 +14,7 @@ from kivy.core.window import Window
 from kivy.animation import Animation
 from kivy.network.urlrequest import UrlRequest
 
-# ضبط ألوان التطبيق لتتوافق تماماً مع نظام ألوان التطبيق الآخر (اللون الرئيسي: #0F766E)
-PRIMARY_COLOR = (0.058, 0.462, 0.431, 1)  # #0F766E
+PRIMARY_COLOR = (0.058, 0.462, 0.431, 1)
 SECONDARY_COLOR = (0.035, 0.325, 0.298, 1)
 BG_COLOR = (0.95, 0.96, 0.97, 1)
 WHITE = (1, 1, 1, 1)
@@ -59,16 +58,13 @@ class OrderScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
-        # خلفية الشاشة
         with self.canvas.before:
             Color(*BG_COLOR)
             self.bg_rect = Rectangle(size=Window.size, pos=self.pos)
         self.bind(size=self._update_bg, pos=self._update_bg)
 
-        # التخطيط الرئيسي مع إمكانية التمرير
         root_layout = BoxLayout(orientation='vertical', padding=20, spacing=15)
         
-        # العنوان العلوي الأنيق
         header_layout = BoxLayout(orientation='vertical', size_hint_y=None, height=80, spacing=5)
         title_label = Label(
             text='تطبيق حجز العيش السوداني',
@@ -93,12 +89,10 @@ class OrderScreen(Screen):
         header_layout.add_widget(subtitle_label)
         root_layout.add_widget(header_layout)
 
-        # صندوق محتوى النموذج داخل بطاقة بيضاء جميلة
         scroll = ScrollView(size_hint=(1, 1))
         card = CardLayout(size_hint_y=None)
         card.bind(minimum_height=card.setter('height'))
 
-        # حقل الاسم
         card.add_widget(Label(text='اسم المتبوع / الموظف:', font_size='14sp', color=GRAY_TEXT, size_hint_y=None, height=25, halign='right'))
         self.name_input = TextInput(
             hint_text='أدخل اسمك الثلاثي',
@@ -110,7 +104,6 @@ class OrderScreen(Screen):
         )
         card.add_widget(self.name_input)
 
-        # حقل رقم الهاتف السوداني
         card.add_widget(Label(text='رقم الهاتف السوداني:', font_size='14sp', color=GRAY_TEXT, size_hint_y=None, height=25, halign='right'))
         self.phone_input = TextInput(
             hint_text='09xxxxxxxx',
@@ -123,7 +116,6 @@ class OrderScreen(Screen):
         )
         card.add_widget(self.phone_input)
 
-        # حقل المبلغ بالجنيه السوداني
         card.add_widget(Label(text='الكمية المطلوبة (بالجنيه السوداني):', font_size='14sp', color=GRAY_TEXT, size_hint_y=None, height=25, halign='right'))
         self.amount_input = TextInput(
             hint_text='مثال: 5000',
@@ -136,7 +128,6 @@ class OrderScreen(Screen):
         )
         card.add_widget(self.amount_input)
 
-        # حقل طريقة الدفع (نقدي أو أجل)
         card.add_widget(Label(text='طريقة الدفع:', font_size='14sp', color=GRAY_TEXT, size_hint_y=None, height=25, halign='right'))
         self.payment_spinner = Spinner(
             text='نقدي',
@@ -147,7 +138,6 @@ class OrderScreen(Screen):
         )
         card.add_widget(self.payment_spinner)
 
-        # حقل مكان العمل
         card.add_widget(Label(text='مكان العمل / الفرع:', font_size='14sp', color=GRAY_TEXT, size_hint_y=None, height=25, halign='right'))
         self.workplace_input = TextInput(
             hint_text='مثال: الخرطوم - الإدارة العامة',
@@ -159,10 +149,8 @@ class OrderScreen(Screen):
         )
         card.add_widget(self.workplace_input)
 
-        # مسافة فاصلة
         card.add_widget(Label(size_hint_y=None, height=10))
 
-        # زر الإرسال المتحرك والجذاب
         self.submit_btn = RoundedButton(
             text='إرسال الطلب الآن',
             size_hint_y=None,
@@ -171,7 +159,6 @@ class OrderScreen(Screen):
         self.submit_btn.bind(on_press=self.submit_order)
         card.add_widget(self.submit_btn)
 
-        # تسمية حالة الإرسال (للرسائل التفاعلية)
         self.status_label = Label(
             text='',
             font_size='14sp',
@@ -185,7 +172,6 @@ class OrderScreen(Screen):
         root_layout.add_widget(scroll)
         self.add_widget(root_layout)
 
-        # جدولة التحديث المباشر كل 5 ثوانٍ
         Clock.schedule_interval(self.fetch_orders, 5)
 
     def _update_bg(self, instance, value):
@@ -223,7 +209,6 @@ class OrderScreen(Screen):
         payment_type = self.payment_spinner.text
         workplace = self.workplace_input.text.strip()
 
-        # التحقق من صحة المدخلات بذكاء
         if not name or not phone or not amount_str or not workplace:
             self.status_label.text = '⚠️ الرجاء تعبئة جميع الحقول المطلوبة'
             self.status_label.color = ERROR_COLOR
@@ -244,7 +229,6 @@ class OrderScreen(Screen):
             self._animate_error()
             return
 
-        # إرسال الطلب إلى Supabase عبر REST API
         order_data = {
             'name': name,
             'phone': phone,
@@ -279,13 +263,11 @@ class OrderScreen(Screen):
         self.status_label.text = '✅ تم إرسال طلبك بنجاح إلى النظام المشترك!'
         self.status_label.color = SUCCESS_COLOR
         
-        # تفريغ الحقول لإتاحة طلب جديد
         self.name_input.text = ''
         self.phone_input.text = ''
         self.amount_input.text = ''
         self.workplace_input.text = ''
 
-        # تأثير حركي بسيط لزر الإرسال
         anim = Animation(background_color=(0.1, 0.8, 0.4, 1), duration=0.2) + Animation(background_color=PRIMARY_COLOR, duration=0.2)
         anim.start(self.submit_btn)
 
