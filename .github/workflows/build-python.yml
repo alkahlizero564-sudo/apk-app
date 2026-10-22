@@ -1,0 +1,71 @@
+# v3
+# v2 compatible
+name: build-python
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      APP: ${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.36 virtualenv
+      - name: write spec
+        working-directory: apps/${{ inputs.app }}
+        run: |
+          PKG=$(cat pkg.txt 2>/dev/null | tr -d '[:space:]')
+          if [ -z "$PKG" ]; then PKG=com.myapps.app$APP; fi
+          NAM=$(echo "$PKG" | awk -F. '{print $NF}')
+          DOM=$(echo "$PKG" | sed 's/\.[^.]*$//')
+          cat > buildozer.spec <<EOF
+          [app]
+          title = $APP
+          package.name = $NAM
+          package.domain = $DOM
+          source.dir = .
+          source.include_exts = py,png,jpg,kv,atlas,json,ttf
+          version = 1.0
+          requirements = python3,kivy==2.3.0,certifi
+          orientation = portrait
+          fullscreen = 0
+          android.permissions = INTERNET
+          android.api = 33
+          android.minapi = 24
+          android.archs = arm64-v8a
+          android.accept_sdk_license = True
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          EOF
+          sed -i 's/^ *//' buildozer.spec
+          if [ -f icon.png ]; then sed -i '/^\[app\]/a icon.filename = %(source.dir)s/icon.png' buildozer.spec; fi
+      - name: cache
+        uses: actions/cache@v4
+        with:
+          path: apps/${{ inputs.app }}/.buildozer
+          key: buildozer-${{ inputs.app }}-${{ github.run_number }}
+          restore-keys: buildozer-${{ inputs.app }}-
+      - name: build
+        working-directory: apps/${{ inputs.app }}
+        run: buildozer -v android debug
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: python-${{ inputs.app }}-build-${{ github.run_number }}
+          files: apps/${{ inputs.app }}/bin/*.apk
