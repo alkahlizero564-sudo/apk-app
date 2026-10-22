@@ -827,6 +827,160 @@ render=function(){
       d.innerHTML='<button onclick="buildAny('+i+')">🏗️ بناء APK</button>';
       sec.insertBefore(d,sec.querySelector('.edit'))})}
 };
+render();/* ===== إضافة: قوالب عصرية + تصميم عصري عند إنشاء التطبيق بالوصف ===== */
+
+/* ألوان الأنماط */
+const NTH={
+dark:'--bg:#0b1020;--card:rgba(255,255,255,.06);--line:rgba(255,255,255,.09);--tx:#eef2ff;--mut:#8b96b8;--pri:#6366f1;--hd:linear-gradient(135deg,#4f46e5,#7c3aed);--inp:rgba(255,255,255,.06);--nav:rgba(11,16,32,.88);--sh:none;--soft:rgba(99,102,241,.2)',
+light:'--bg:#f5f7fb;--card:#fff;--line:#e8ecf4;--tx:#111827;--mut:#6b7280;--pri:#2563eb;--hd:linear-gradient(135deg,#2563eb,#38bdf8);--inp:#f1f4fa;--nav:rgba(255,255,255,.92);--sh:0 4px 18px rgba(30,41,90,.07);--soft:#e6efff',
+warm:'--bg:#fff8f0;--card:#fff;--line:#f3e4d3;--tx:#3b2a1a;--mut:#9a8068;--pri:#ea580c;--hd:linear-gradient(135deg,#f97316,#fb923c);--inp:#fff1e2;--nav:rgba(255,248,240,.92);--sh:0 4px 18px rgba(234,88,12,.1);--soft:#ffe6d0',
+mint:'--bg:#f0fbf6;--card:#fff;--line:#d8f0e4;--tx:#0f2a1f;--mut:#5b7f6d;--pri:#059669;--hd:linear-gradient(135deg,#10b981,#34d399);--inp:#e6f7ee;--nav:rgba(240,251,246,.92);--sh:0 4px 18px rgba(5,150,105,.1);--soft:#d3f3e3',
+violet:'--bg:#150a2b;--card:rgba(255,255,255,.07);--line:rgba(255,255,255,.1);--tx:#f6f0ff;--mut:#aa9dc9;--pri:#d946ef;--hd:linear-gradient(135deg,#7c3aed,#db2777);--inp:rgba(255,255,255,.07);--nav:rgba(21,10,43,.9);--sh:none;--soft:rgba(217,70,239,.2)'
+};
+
+/* تنسيقات مشتركة */
+const NB='*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,Tahoma,sans-serif;padding-bottom:92px;min-height:100vh}button,input,textarea{font-family:inherit;font-size:16px}.top{padding:26px 20px 22px;background:var(--hd);color:#fff;border-radius:0 0 30px 30px}.top h1{margin:0;font-size:24px}.top p{margin:4px 0 0;opacity:.85;font-size:13px}.w{padding:16px;max-width:520px;margin:auto}.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:14px;margin-bottom:12px;box-shadow:var(--sh)}.btn{display:block;width:100%;border:0;border-radius:16px;padding:15px;background:var(--pri);color:#fff;font-weight:700;transition:transform .12s}.btn:active{transform:scale(.97)}.btn.s{display:inline-block;width:auto;padding:8px 14px;font-size:14px}.btn.g{background:var(--soft);color:var(--tx)}.inp{width:100%;padding:14px;border-radius:14px;border:1px solid var(--line);background:var(--inp);color:var(--tx);margin-bottom:10px;outline:none}.inp:focus{border-color:var(--pri)}.row{display:flex;align-items:center;gap:10px}.sp{flex:1}.chips{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px}.chip{flex:none;padding:9px 15px;border-radius:99px;background:var(--card);border:1px solid var(--line);color:var(--mut);font-size:14px}.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}.m{color:var(--mut);font-size:13px}.nav{position:fixed;bottom:0;left:0;right:0;display:flex;gap:6px;background:var(--nav);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom))}.nav .btn{flex:1}.fab{position:fixed;bottom:96px;left:20px;width:60px;height:60px;border-radius:50%;border:0;background:var(--hd);color:#fff;font-size:30px;box-shadow:0 10px 26px rgba(0,0,0,.35)}.mod{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;z-index:9}.mod.on{display:flex}.mod>div{background:var(--bg);width:100%;border-radius:28px 28px 0 0;padding:20px;max-height:88vh;overflow:auto}.pill{padding:4px 11px;border-radius:99px;font-size:12px;background:var(--soft);color:var(--pri);font-weight:700}.empty{text-align:center;color:var(--mut);padding:34px 10px;line-height:2}';
+
+/* دوال مشتركة داخل كل قالب */
+const NJ="var MEM={};var ST={g:function(k){try{return localStorage.getItem(k)}catch(e){return MEM[k]===undefined?null:MEM[k]}},s:function(k,v){MEM[k]=v;try{localStorage.setItem(k,v)}catch(e){}}};var $=function(i){return document.getElementById(i)};function E(s){return String(s==null?'':s).replace(/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]})}function T(m){var d=document.createElement('div');d.textContent=m;d.style.cssText='position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 18px;border-radius:99px;z-index:99;font-size:14px';document.body.appendChild(d);setTimeout(function(){d.remove()},2200)}function showM(){$('mod').classList.add('on')}function hideM(){$('mod').classList.remove('on')}";
+
+const nmk=(th,body,js)=>'<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{'+NTH[th]+'}'+NB+'</style></head><body>'+body+'<script>'+NJ+js+'<\/script></body></html>';
+
+/* ---------- 1) المصاريف (داكن زجاجي) ---------- */
+const n1=nmk('dark',`<div class="top"><p>إجمالي المصاريف</p><h1 id="t" style="font-size:40px;margin-top:2px">0</h1></div><div class="w"><div class="card" id="bars"></div><h3 style="margin:18px 4px 10px">آخر العمليات</h3><div id="l"></div></div><button class="fab" onclick="showM()">＋</button><div class="mod" id="mod"><div><h3 style="margin-top:0">مصروف جديد</h3><input class="inp" id="a" type="number" inputmode="decimal" placeholder="المبلغ"><input class="inp" id="n" placeholder="الوصف (اختياري)"><div class="chips" id="cc"></div><button class="btn" onclick="add()">حفظ</button><button class="btn g" style="margin-top:8px" onclick="hideM()">إلغاء</button></div></div>`,`var CT=[['🍔','أكل'],['🚗','مواصلات'],['🏠','بيت'],['🎮','ترفيه'],['🛒','أخرى']],D=JSON.parse(ST.g('exp2')||'[]'),sel=0;
+function save(){ST.s('exp2',JSON.stringify(D));draw()}
+function pick(i){sel=i;chips()}
+function chips(){$('cc').innerHTML=CT.map(function(c,i){return '<div class="chip'+(i==sel?' on':'')+'" onclick="pick('+i+')">'+c[0]+' '+c[1]+'</div>'}).join('')}
+function add(){var a=parseFloat($('a').value),n=$('n').value.trim();if(!a)return;D.unshift({a:a,n:n||CT[sel][1],c:sel,d:new Date().toLocaleDateString('ar')});$('a').value='';$('n').value='';hideM();save()}
+function del(i){D.splice(i,1);save()}
+function draw(){var t=0,by=[0,0,0,0,0];D.forEach(function(x){t+=x.a;by[x.c]+=x.a});$('t').textContent=t;
+$('bars').innerHTML=CT.map(function(c,i){var p=t?Math.round(by[i]/t*100):0;return '<div class="row" style="margin:8px 0"><span style="width:78px">'+c[0]+' '+c[1]+'</span><div class="sp" style="height:8px;background:var(--soft);border-radius:9px"><div style="height:8px;width:'+p+'%;background:var(--pri);border-radius:9px"></div></div><span class="m" style="width:40px;text-align:left">'+p+'%</span></div>'}).join('');
+$('l').innerHTML=D.map(function(x,i){return '<div class="card row"><div style="font-size:24px;width:46px;height:46px;border-radius:14px;background:var(--soft);display:grid;place-items:center">'+CT[x.c][0]+'</div><div class="sp"><b>'+E(x.n)+'</b><div class="m">'+x.d+'</div></div><b>'+x.a+'</b><button class="btn g s" onclick="del('+i+')">✕</button></div>'}).join('')||'<div class="empty">🧾<br>ما في مصاريف بعد<br>اضغط ＋ لإضافة أول مصروف</div>'}
+chips();draw()`);
+
+/* ---------- 2) المهام (فاتح نظيف) ---------- */
+const n2=nmk('light',`<div class="top"><h1>مهامي ✅</h1><p id="ps"></p><div style="height:8px;background:rgba(255,255,255,.3);border-radius:9px;margin-top:14px"><div id="pb" style="height:8px;background:#fff;border-radius:9px;width:0;transition:width .4s"></div></div></div><div class="w"><div class="chips" id="f"></div><div id="l"></div></div><button class="fab" onclick="showM()">＋</button><div class="mod" id="mod"><div><h3 style="margin-top:0">مهمة جديدة</h3><input class="inp" id="n" placeholder="شنو المطلوب؟"><div class="m" style="margin-bottom:6px">الأولوية</div><div class="chips" id="pc"></div><button class="btn" onclick="add()">إضافة</button><button class="btn g" style="margin-top:8px" onclick="hideM()">إلغاء</button></div></div>`,`var D=JSON.parse(ST.g('todo2')||'[]'),F=0,PR=0,PN=['عادي','مهم','عاجل'],PC=['#94a3b8','#f59e0b','#ef4444'],FN=['الكل','المتبقي','المنجز'];
+function save(){ST.s('todo2',JSON.stringify(D));draw()}
+function setF(i){F=i;draw()}
+function setP(i){PR=i;pc()}
+function pc(){$('pc').innerHTML=PN.map(function(p,i){return '<div class="chip'+(i==PR?' on':'')+'" onclick="setP('+i+')">'+p+'</div>'}).join('')}
+function add(){var n=$('n').value.trim();if(!n)return;D.unshift({n:n,p:PR,d:0});$('n').value='';hideM();save()}
+function tg(i){D[i].d=D[i].d?0:1;save()}
+function del(i){D.splice(i,1);save()}
+function draw(){var k=0;D.forEach(function(x){if(x.d)k++});var p=D.length?Math.round(k/D.length*100):0;$('pb').style.width=p+'%';$('ps').textContent=k+' من '+D.length+' مهام منجزة';
+$('f').innerHTML=FN.map(function(f,i){return '<div class="chip'+(i==F?' on':'')+'" onclick="setF('+i+')">'+f+'</div>'}).join('');
+var h='';D.forEach(function(x,i){if((F==1&&x.d)||(F==2&&!x.d))return;h+='<div class="card row" style="opacity:'+(x.d?0.55:1)+'"><div onclick="tg('+i+')" style="width:28px;height:28px;border-radius:50%;border:2px solid '+PC[x.p]+';display:grid;place-items:center;background:'+(x.d?PC[x.p]:'transparent')+';color:#fff;font-size:15px">'+(x.d?'✓':'')+'</div><div class="sp" style="'+(x.d?'text-decoration:line-through':'')+'">'+E(x.n)+'<div class="m">'+PN[x.p]+'</div></div><button class="btn g s" onclick="del('+i+')">✕</button></div>'});
+$('l').innerHTML=h||'<div class="empty">🎉<br>ما في مهام هنا</div>'}
+pc();draw()`);
+
+/* ---------- 3) المتجر (دافئ) ---------- */
+const n3=nmk('warm',`<div class="top"><h1>🛍 المتجر</h1><input class="inp" id="s" placeholder="🔍 ابحث عن منتج" oninput="q=this.value;draw()" style="margin:14px 0 0;border:0"></div><div class="w"><div class="chips" id="cc"></div><div id="g" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div></div><div class="nav"><button class="btn" id="cb" onclick="openCart()"></button></div><div class="mod" id="mod"><div><h3 style="margin-top:0">🛒 سلتك</h3><div id="cl"></div><div class="row" style="margin:14px 0"><b class="sp">الإجمالي</b><b id="tl" style="font-size:20px"></b></div><button class="btn" onclick="done()">إتمام الطلب</button><button class="btn g" style="margin-top:8px" onclick="hideM()">رجوع</button></div></div>`,`var P=[[0,'👕','قميص قطني',50,'#dbeafe'],[0,'👖','بنطلون جينز',90,'#e0e7ff'],[0,'🧥','جاكيت شتوي',150,'#e2e8f0'],[1,'🎧','سماعة لاسلكية',120,'#fce7f3'],[1,'⌚','ساعة ذكية',200,'#dcfce7'],[1,'📱','حافظة جوال',20,'#f3e8ff'],[2,'🎒','حقيبة ظهر',75,'#ffedd5'],[2,'🕶','نظارة شمسية',40,'#fef9c3']],CA=['الكل','👕 ملابس','🎧 إلكترونيات','🎒 إكسسوار'],ct=0,q='',Q={};
+function chips(){$('cc').innerHTML=CA.map(function(c,i){return '<div class="chip'+(i==ct?' on':'')+'" onclick="setC('+i+')">'+c+'</div>'}).join('')}
+function setC(i){ct=i;chips();draw()}
+function draw(){var h='';P.forEach(function(p,i){if(ct&&p[0]!=ct-1)return;if(q&&p[2].indexOf(q)<0)return;h+='<div class="card" style="margin:0;padding:10px"><div style="height:110px;border-radius:16px;background:'+p[4]+';display:grid;place-items:center;font-size:54px">'+p[1]+'</div><div style="margin:10px 4px 6px;font-weight:700;font-size:15px">'+p[2]+'</div><div class="row" style="padding:0 4px"><b style="color:var(--pri)">'+p[3]+'</b><span class="sp"></span><button onclick="add('+i+')" style="width:36px;height:36px;border-radius:12px;border:0;background:var(--pri);color:#fff;font-size:20px">+</button></div></div>'});$('g').innerHTML=h||'<div class="empty" style="grid-column:1/3">🔍<br>ما لقينا منتجات</div>'}
+function add(i){Q[i]=(Q[i]||0)+1;up();T('أضيف للسلة ✔')}
+function ch(i,d){Q[i]=(Q[i]||0)+d;if(Q[i]<=0)delete Q[i];up();cart()}
+function tot(){var s=0,n=0;for(var k in Q){s+=P[k][3]*Q[k];n+=Q[k]}return [s,n]}
+function up(){var t=tot();$('cb').textContent='🛒 السلة ('+t[1]+') — '+t[0]}
+function cart(){var h='';for(var k in Q){h+='<div class="row" style="margin-bottom:12px"><div style="font-size:30px">'+P[k][1]+'</div><div class="sp"><b>'+P[k][2]+'</b><div class="m">'+P[k][3]+'</div></div><button class="btn g s" onclick="ch('+k+',-1)">−</button><b>'+Q[k]+'</b><button class="btn g s" onclick="ch('+k+',1)">+</button></div>'}$('cl').innerHTML=h||'<div class="empty">🛒<br>السلة فاضية</div>';$('tl').textContent=tot()[0]}
+function openCart(){cart();showM()}
+function done(){if(!tot()[1])return;Q={};up();hideM();T('تم استلام طلبك ✔')}
+chips();draw();up()`);
+
+/* ---------- 4) العادات (أخضر منعش) ---------- */
+const n4=nmk('mint',`<div class="top row"><div class="sp"><p>أهلاً 👋</p><h1>عاداتي اليومية</h1><p id="sum"></p></div><div id="ring"></div></div><div class="w"><div id="l"></div></div><button class="fab" onclick="showM()">＋</button><div class="mod" id="mod"><div><h3 style="margin-top:0">عادة جديدة</h3><input class="inp" id="n" placeholder="مثلاً: أشرب ٨ أكواب ماء"><div class="chips" id="ec"></div><button class="btn" onclick="add()">إضافة</button><button class="btn g" style="margin-top:8px" onclick="hideM()">إلغاء</button></div></div>`,`var H=JSON.parse(ST.g('hab')||'[]'),EM=['💧','📖','🏃','🧘','😴','🥗'],em=0;
+function key(o){var d=new Date();d.setDate(d.getDate()-o);return d.toISOString().slice(0,10)}
+function save(){ST.s('hab',JSON.stringify(H));draw()}
+function tg(i){var k=key(0);H[i].d[k]=H[i].d[k]?0:1;save()}
+function streak(h){var s=0,o=h.d[key(0)]?0:1;while(h.d[key(o)]){s++;o++}return s}
+function pe(i){em=i;ec()}
+function ec(){$('ec').innerHTML=EM.map(function(e,i){return '<div class="chip'+(i==em?' on':'')+'" onclick="pe('+i+')">'+e+'</div>'}).join('')}
+function add(){var n=$('n').value.trim();if(!n)return;H.push({n:n,e:EM[em],d:{}});$('n').value='';hideM();save()}
+function del(i){H.splice(i,1);save()}
+function draw(){var done=0;H.forEach(function(h){if(h.d[key(0)])done++});var p=H.length?done/H.length:0,C=2*Math.PI*42;
+$('ring').innerHTML='<svg width="104" height="104" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="9"></circle><circle cx="50" cy="50" r="42" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-dasharray="'+C+'" stroke-dashoffset="'+C*(1-p)+'" transform="rotate(-90 50 50)"></circle><text x="50" y="57" text-anchor="middle" fill="#fff" font-size="21" font-weight="700">'+Math.round(p*100)+'%</text></svg>';
+$('sum').textContent=done+' من '+H.length+' عادات اليوم';
+$('l').innerHTML=H.map(function(h,i){var dots='';for(var o=6;o>=0;o--)dots+='<span style="width:11px;height:11px;border-radius:50%;background:'+(h.d[key(o)]?'var(--pri)':'var(--soft)')+'"></span>';var t=h.d[key(0)];return '<div class="card"><div class="row"><div style="font-size:30px">'+h.e+'</div><div class="sp"><b>'+E(h.n)+'</b><div class="m">🔥 '+streak(h)+' يوم متتالي</div></div><button onclick="tg('+i+')" style="width:50px;height:50px;border-radius:16px;border:0;font-size:22px;color:#fff;background:'+(t?'var(--pri)':'var(--soft)')+'">'+(t?'✓':'')+'</button></div><div class="row" style="margin-top:12px;gap:6px">'+dots+'<span class="sp"></span><span class="m" onclick="del('+i+')">حذف</span></div></div>'}).join('')||'<div class="empty">🌱<br>ابدأ بأول عادة<br>اضغط ＋</div>'}
+ec();draw()`);
+
+/* ---------- 5) الملاحظات (بنفسجي) ---------- */
+const n5=nmk('violet',`<div class="top"><h1>📝 ملاحظاتي</h1><input class="inp" placeholder="🔍 ابحث في الملاحظات" oninput="q=this.value;draw()" style="margin:14px 0 0;border:0"></div><div class="w"><div id="l" style="columns:2;column-gap:12px"></div></div><button class="fab" onclick="edit(-1)">＋</button><div class="mod" id="mod"><div><input class="inp" id="t" placeholder="العنوان"><textarea class="inp" id="b" rows="6" placeholder="اكتب ملاحظتك..."></textarea><div id="cc" style="margin-bottom:14px"></div><button class="btn" onclick="ok()">حفظ</button><button class="btn g" id="dl" style="margin-top:8px" onclick="del()">🗑 حذف</button><button class="btn g" style="margin-top:8px" onclick="hideM()">إلغاء</button></div></div>`,`var N=JSON.parse(ST.g('notes2')||'[]'),CL=['#fde68a','#bbf7d0','#bfdbfe','#fbcfe8','#ddd6fe'],cl=0,ed=-1,q='';
+function save(){ST.s('notes2',JSON.stringify(N));draw()}
+function cc(){$('cc').innerHTML=CL.map(function(c,i){return '<span onclick="pc('+i+')" style="display:inline-block;width:34px;height:34px;border-radius:50%;background:'+c+';margin-left:10px;border:3px solid '+(i==cl?'#fff':'transparent')+'"></span>'}).join('')}
+function pc(i){cl=i;cc()}
+function edit(i){ed=i;var n=i<0?{t:'',b:'',c:0}:N[i];$('t').value=n.t;$('b').value=n.b;cl=n.c;cc();$('dl').style.display=i<0?'none':'block';showM()}
+function ok(){var t=$('t').value.trim(),b=$('b').value.trim();if(!t&&!b){hideM();return}var o={t:t,b:b,c:cl,d:new Date().toLocaleDateString('ar')};if(ed<0)N.unshift(o);else N[ed]=o;hideM();save()}
+function del(){N.splice(ed,1);hideM();save()}
+function draw(){var h='';N.forEach(function(n,i){if(q&&(n.t+n.b).indexOf(q)<0)return;h+='<div onclick="edit('+i+')" style="break-inside:avoid;background:'+CL[n.c]+';color:#1f2937;border-radius:22px;padding:15px;margin-bottom:12px"><b>'+E(n.t)+'</b><div style="margin-top:6px;font-size:14px;white-space:pre-wrap;opacity:.85">'+E(n.b)+'</div><div style="font-size:11px;opacity:.55;margin-top:10px">'+n.d+'</div></div>'});$('l').innerHTML=h||'<div class="empty" style="column-span:all">📝<br>ما في ملاحظات بعد</div>'}
+draw()`);
+
+/* ---------- 6) التركيز (داكن) ---------- */
+const n6=nmk('dark',`<div class="w" style="text-align:center;padding-top:36px"><h2 style="margin:0 0 4px">التركيز ⏱</h2><div class="m">اشتغل بتركيز، وارتاح بذكاء</div><div class="chips" id="md" style="justify-content:center;margin-top:18px"></div><div style="position:relative;width:250px;height:250px;margin:14px auto 24px"><svg width="250" height="250" viewBox="0 0 200 200"><circle cx="100" cy="100" r="90" fill="none" style="stroke:var(--soft)" stroke-width="12"></circle><circle id="r" cx="100" cy="100" r="90" fill="none" style="stroke:var(--pri);transition:stroke-dashoffset 1s linear" stroke-width="12" stroke-linecap="round" stroke-dasharray="565.5" stroke-dashoffset="0" transform="rotate(-90 100 100)"></circle></svg><div id="tm" style="position:absolute;inset:0;display:grid;place-items:center;font-size:56px;font-weight:800"></div></div><button class="btn" id="go" onclick="go()"></button><button class="btn g" style="margin-top:10px" onclick="reset()">↺ إعادة</button><div class="card" style="margin-top:20px"><div class="m">جلسات التركيز المكتملة</div><div style="font-size:32px;font-weight:800" id="cn">0</div></div></div>`,`var M=[25,5,15],mode=0,left=M[0]*60,tot=left,run=0,tm=null,cnt=parseInt(ST.g('pomo')||'0')||0;
+function fmt(s){var m=Math.floor(s/60),x=s%60;return (m<10?'0':'')+m+':'+(x<10?'0':'')+x}
+function draw(){var C=2*Math.PI*90;$('r').setAttribute('stroke-dashoffset',C*(1-left/tot));$('tm').textContent=fmt(left);$('go').textContent=run?'⏸ إيقاف مؤقت':'▶ ابدأ';$('cn').textContent=cnt;
+$('md').innerHTML=['🍅 تركيز','☕ استراحة','🌴 طويلة'].map(function(x,i){return '<div class="chip'+(i==mode?' on':'')+'" onclick="setM('+i+')">'+x+'</div>'}).join('')}
+function setM(i){stop();mode=i;left=tot=M[i]*60;draw()}
+function stop(){run=0;clearInterval(tm)}
+function tick(){left--;if(left<=0){stop();if(mode==0){cnt++;ST.s('pomo',String(cnt))}left=0;T('انتهى الوقت ✔')}draw()}
+function go(){if(run){stop()}else{run=1;tm=setInterval(tick,1000)}draw()}
+function reset(){stop();left=tot;draw()}
+draw()`);
+
+/* ---------- 7) بطاقات الحفظ (فاتح) ---------- */
+const n7=nmk('light',`<style>.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:28px;display:grid;place-items:center;text-align:center;padding:24px;font-size:26px;font-weight:700;background:var(--card);border:1px solid var(--line);box-shadow:var(--sh)}.face.b{transform:rotateY(180deg);background:var(--hd);color:#fff;border:0}</style><div class="top"><h1>🃏 بطاقات الحفظ</h1><p id="ct"></p></div><div class="w"><div onclick="fl()" style="perspective:1000px;margin-top:6px"><div id="in" style="position:relative;height:280px;transition:transform .55s;transform-style:preserve-3d"><div class="face" id="f1"></div><div class="face b" id="f2"></div></div></div><p class="m" style="text-align:center">اضغط على البطاقة لقلبها</p><div class="row"><button class="btn g" onclick="nx(0)">❌ ما عرفتها</button><button class="btn" onclick="nx(1)">✅ عرفتها</button></div><div class="row" style="margin-top:12px"><button class="btn g s" onclick="pv()">→ السابقة</button><span class="sp"></span><button class="btn g s" onclick="del()">🗑 حذف</button></div></div><button class="fab" onclick="showM()">＋</button><div class="mod" id="mod"><div><h3 style="margin-top:0">بطاقة جديدة</h3><input class="inp" id="q" placeholder="السؤال"><input class="inp" id="a" placeholder="الإجابة"><button class="btn" onclick="add()">إضافة</button><button class="btn g" style="margin-top:8px" onclick="hideM()">إلغاء</button></div></div>`,`var C=JSON.parse(ST.g('cards2')||'null')||[{q:'عاصمة السودان؟',a:'الخرطوم'},{q:'ناتج ٧ × ٨ ؟',a:'٥٦'},{q:'Hello بالعربي؟',a:'مرحباً'}],i=0,flip=0,k=0;
+function save(){ST.s('cards2',JSON.stringify(C))}
+function draw(){$('in').style.transform='rotateY('+(flip?180:0)+'deg)';if(!C.length){$('f1').textContent='🃏 أضف أول بطاقة';$('f2').textContent='';$('ct').textContent='';return}var c=C[i];$('f1').textContent=c.q;$('f2').textContent=c.a;$('ct').textContent='بطاقة '+(i+1)+' من '+C.length+'  •  عرفتها: '+k}
+function fl(){if(!C.length)return;flip=flip?0:1;draw()}
+function nx(ok){if(!C.length)return;if(ok)k++;flip=0;i=(i+1)%C.length;draw()}
+function pv(){if(!C.length)return;flip=0;i=(i-1+C.length)%C.length;draw()}
+function add(){var q=$('q').value.trim(),a=$('a').value.trim();if(!q||!a)return;C.push({q:q,a:a});$('q').value='';$('a').value='';hideM();save();i=C.length-1;flip=0;draw()}
+function del(){if(!C.length)return;C.splice(i,1);i=0;flip=0;save();draw()}
+draw()`);
+
+/* قائمة القوالب: 7 قوالب جديدة، وتبقى قوالب التطبيقين القديمة لحد ما نبدلها */
+TPL.splice(0,TPL.length,
+ {name:'💰 المصاريف',desc:'لوحة مصاريف عصرية بتصنيفات ونسب وإضافة سريعة.',tag:'🌙 داكن زجاجي',c:'#6366f1',apps:1,html:[n1]},
+ {name:'✅ المهام',desc:'مهام بأولويات ملونة وفلاتر وشريط تقدم.',tag:'☀️ فاتح نظيف',c:'#2563eb',apps:1,html:[n2]},
+ {name:'🛍 المتجر',desc:'متجر ببحث وتصنيفات وسلة بكميات.',tag:'🧡 دافئ',c:'#ea580c',apps:1,html:[n3]},
+ {name:'🔥 العادات',desc:'متابعة عادات يومية بحلقة تقدم وسلسلة أيام.',tag:'🌿 أخضر منعش',c:'#059669',apps:1,html:[n4]},
+ {name:'📝 الملاحظات',desc:'ملاحظات ملونة بتخطيط بطاقات وبحث.',tag:'💜 بنفسجي',c:'#d946ef',apps:1,html:[n5]},
+ {name:'⏱ التركيز',desc:'مؤقت بومودورو بحلقة كبيرة وثلاثة أوضاع.',tag:'🌙 داكن',c:'#4f46e5',apps:1,html:[n6]},
+ {name:'🃏 بطاقات الحفظ',desc:'بطاقات تنقلب للمذاكرة بحركة سلسة.',tag:'☀️ فاتح',c:'#38bdf8',apps:1,html:[n7]},
+ ...TPL.filter(t=>t.apps>1).map(t=>Object.assign({tag:'🎨 قالب أساسي',c:'#64748b'},t))
+);
+
+vTpl=function(){return '<div class="card"><h2>🎨 قائمة القوالب</h2><p class="note">'+TPL.length+' قوالب بتصاميم عصرية مختلفة. اختر قالباً وعاينه، ثم اختر اللغة واضغط استخدم.</p></div>'
+ +TPL.map((t,i)=>'<div class="card" style="border-right:6px solid '+t.c+'"><h2>'+t.name+'</h2><p class="note">'+esc(t.desc)+'</p><p class="note">'+(t.apps>1?'🔗 لتطبيقين':'📱 لتطبيق واحد')+' | '+t.tag+'</p><button onclick="showTpl('+i+')">👁 معاينة واستخدام</button></div>').join('')};
+
+const _showTpl0=showTpl;
+showTpl=function(i){_showTpl0(i);document.querySelectorAll('#sheet iframe').forEach(f=>{f.style.height='500px'})};
+
+/* ===== تصميم عصري عند إنشاء التطبيق بالوصف ===== */
+const DS_HTML='\n\nتعليمات التصميم (مهمة جداً):\n- صمم الواجهة بأسلوب عصري وبسيط (Modern Minimal) مثل تطبيقات الهاتف الحديثة، وليس كصفحة ويب تقليدية.\n- عرّف الألوان كمتغيرات CSS على :root (خلفية، بطاقة، نص، نص خافت، لون رئيسي، حدود)، بلون رئيسي واحد وتدرج لوني في الترويسة.\n- زوايا مستديرة من 16 إلى 24px، ظلال ناعمة، مسافات واسعة (مضاعفات 8px)، خط system-ui، وتدرج واضح بين العناوين والنص.\n- أهداف لمس لا تقل عن 48px، وزر رئيسي واضح واحد في الشاشة، وزر عائم (FAB) للإضافة، ونافذة سفلية (bottom sheet) للنماذج بدل الصفحات الطويلة.\n- لو في أكثر من قسم استخدم شريط تنقل سفلي بأيقونات إيموجي. ولو التطبيق بسيط فاجعله شاشة واحدة نظيفة بدون ازدحام.\n- حالات فارغة جميلة (إيموجي كبير مع جملة قصيرة)، وتأثير ضغط خفيف (transform:scale) وانتقالات ناعمة (transition).\n- استخدم الإيموجي كأيقونات، وبدون مكتبات أو صور خارجية.\n- واجهة عربية RTL مع هوامش آمنة للحواف (env(safe-area-inset-*)).';
+const DS_FL='\n\nتعليمات التصميم (مهمة جداً):\n- استخدم Material 3 (useMaterial3: true مع ColorScheme.fromSeed) وواجهة عصرية وبسيطة.\n- بطاقات Card بزوايا مستديرة 20، ومسافات 16، وخطوط بتدرج واضح، وNavigationBar للتنقل لو في أكثر من قسم، وFloatingActionButton للإضافة، وshowModalBottomSheet للنماذج.\n- حالات فارغة جميلة، وواجهة عربية RTL عبر Directionality.\n- لو التطبيق بسيط فاجعله شاشة واحدة نظيفة بدون ازدحام.';
+const DS_PY='\n\nتعليمات التصميم (مهمة جداً):\n- واجهة عصرية وبسيطة: ألوان متناسقة بخلفية موحدة ولون رئيسي واحد، وأزرار مستديرة كبيرة، ومسافات واسعة (padding وspacing)، وأحجام خطوط واضحة للعناوين والنص.\n- لو التطبيق بسيط فاجعله شاشة واحدة نظيفة بدون ازدحام، ولو في أكثر من قسم استخدم ScreenManager مع شريط سفلي.';
+const STY=[['','تلقائي (الأنسب للفكرة)'],['dark','🌙 داكن زجاجي'],['light','☀️ فاتح نظيف'],['warm','🧡 دافئ'],['mint','🌿 أخضر منعش'],['violet','💜 بنفسجي متدرج']];
+const STYH={dark:'خلفية داكنة #0b1020 وبطاقات شبه شفافة ولون رئيسي #6366f1 وترويسة متدرجة من #4f46e5 إلى #7c3aed',light:'خلفية #f5f7fb وبطاقات بيضاء بظل ناعم ولون رئيسي #2563eb وترويسة متدرجة من #2563eb إلى #38bdf8',warm:'خلفية #fff8f0 وبطاقات بيضاء ولون رئيسي #ea580c وترويسة متدرجة من #f97316 إلى #fb923c',mint:'خلفية #f0fbf6 وبطاقات بيضاء ولون رئيسي #059669 وترويسة متدرجة من #10b981 إلى #34d399',violet:'خلفية داكنة #150a2b وبطاقات شبه شفافة ولون رئيسي #d946ef وترويسة متدرجة من #7c3aed إلى #db2777'};
+
+const _ai2=ai;
+ai=function(p){
+  if(p.indexOf('أنشئ تطبيقاً كاملاً يعمل من الصفر')>-1){
+    p+=p.indexOf(BT+'dart بدون')>-1?DS_FL:p.indexOf(BT+'python بدون')>-1?DS_PY:DS_HTML;
+    const st=window._sty;if(st&&STYH[st])p+='\n- نمط الألوان المطلوب: '+STYH[st]+'.'}
+  return _ai2(p)};
+
+const _aiCreate1=aiCreate;
+aiCreate=function(i,btn){const s=$('#sty'+i);window._sty=s?s.value:'';return _aiCreate1(i,btn)};
+
+/* قائمة نمط التصميم داخل صندوق الوصف */
+const _render4=render;
+render=function(){
+  _render4();
+  if(tab==='code')document.querySelectorAll('#main .desc').forEach((d,i)=>{
+    const w=document.createElement('div');
+    w.innerHTML='<label>نمط التصميم</label><select id="sty'+i+'">'+STY.map(s=>'<option value="'+s[0]+'">'+s[1]+'</option>').join('')+'</select>';
+    d.insertBefore(w,d.querySelector('button'))})
+};
 render();
 </script>
 </body>
