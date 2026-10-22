@@ -981,6 +981,238 @@ render=function(){
     w.innerHTML='<label>نمط التصميم</label><select id="sty'+i+'">'+STY.map(s=>'<option value="'+s[0]+'">'+s[1]+'</option>').join('')+'</select>';
     d.insertBefore(w,d.querySelector('button'))})
 };
+render();/* ===== إضافة: اسم الحزمة + تبويبات القوالب + حفظ قوالبك ===== */
+
+/* ---------- اسم الحزمة ---------- */
+const JKW='abstract assert boolean break byte case catch char class const continue default do double else enum extends final finally float for goto if implements import instanceof int interface long native new package private protected public return short static strictfp super switch synchronized this throw throws transient try void volatile while true false null'.split(' ');
+function pkgOk(p){return /^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(p)&&!p.split('.').some(s=>JKW.indexOf(s)>-1)}
+function pkgOf(i){const p=(S.apps[i].pkg||'').trim().toLowerCase();return pkgOk(p)?p:''}
+function pkgForKey(k){const i=S.apps.findIndex(a=>slugOf(a.name)===k);return i>-1?pkgOf(i):''}
+
+/* تمرير اسم الحزمة عند رفع الملفات إلى GitHub */
+const _put1=put;
+put=async function(repo,branch,path,content){
+  let m=path.match(/^apps\/([^/]+)\/capacitor\.config\.json$/);
+  if(m){const pk=pkgForKey(m[1]);if(pk){try{const o=JSON.parse(content);o.appId=pk;content=JSON.stringify(o,null,2)}catch(e){}}}
+  await _put1(repo,branch,path,content);
+  m=path.match(/^apps\/([^/]+)\/main\.(dart|py)$/);
+  if(m)await _put1(repo,branch,'apps/'+m[1]+'/pkg.txt',(pkgForKey(m[1])||'')+'\n')};
+
+/* ملفات البناء النسخة 2 (تقرأ اسم الحزمة) */
+const WF_FLUTTER2=`# v2
+name: build-flutter
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: create project
+        run: |
+          PKG=$(cat apps/$APP/pkg.txt 2>/dev/null | tr -d '[:space:]')
+          if [ -z "$PKG" ]; then PKG=com.myapps.app_$APP; fi
+          flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
+          cp apps/$APP/main.dart flutter_out/lib/main.dart
+          sed -i "/applicationId/s|com.myapps.app_$APP|$PKG|" flutter_out/android/app/build.gradle*
+          if [ -f apps/$APP/icon.png ]; then
+            for d in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+              cp apps/$APP/icon.png flutter_out/android/app/src/main/res/$d/ic_launcher.png
+            done
+          fi
+      - name: build
+        working-directory: flutter_out
+        run: flutter build apk --release
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: flutter-\${{ inputs.app }}-build-\${{ github.run_number }}
+          files: flutter_out/build/app/outputs/flutter-apk/app-release.apk
+`;
+
+const WF_PYTHON2=`# v2
+name: build-python
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.36 virtualenv
+      - name: write spec
+        working-directory: apps/\${{ inputs.app }}
+        run: |
+          PKG=$(cat pkg.txt 2>/dev/null | tr -d '[:space:]')
+          if [ -z "$PKG" ]; then PKG=com.myapps.app$APP; fi
+          NAM=$(echo "$PKG" | awk -F. '{print $NF}')
+          DOM=$(echo "$PKG" | sed 's/\\.[^.]*$//')
+          cat > buildozer.spec <<EOF
+          [app]
+          title = $APP
+          package.name = $NAM
+          package.domain = $DOM
+          source.dir = .
+          source.include_exts = py,png,jpg,kv,atlas,json,ttf
+          version = 1.0
+          requirements = python3,kivy==2.3.0
+          orientation = portrait
+          fullscreen = 0
+          android.permissions = INTERNET
+          android.api = 33
+          android.minapi = 24
+          android.archs = arm64-v8a
+          android.accept_sdk_license = True
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          EOF
+          sed -i 's/^ *//' buildozer.spec
+          if [ -f icon.png ]; then sed -i '/^\\[app\\]/a icon.filename = %(source.dir)s/icon.png' buildozer.spec; fi
+      - name: cache
+        uses: actions/cache@v4
+        with:
+          path: apps/\${{ inputs.app }}/.buildozer
+          key: buildozer-\${{ inputs.app }}-\${{ github.run_number }}
+          restore-keys: buildozer-\${{ inputs.app }}-
+      - name: build
+        working-directory: apps/\${{ inputs.app }}
+        run: buildozer -v android debug
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: python-\${{ inputs.app }}-build-\${{ github.run_number }}
+          files: apps/\${{ inputs.app }}/bin/*.apk
+`;
+if(typeof WF!=='undefined'){WF.flutter.yaml=WF_FLUTTER2;WF.python.yaml=WF_PYTHON2}
+
+/* تحديث ملف البناء في GitHub لو كان قديماً */
+async function ensureWf(l){
+  const W=WF[l],repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
+  let cur='';
+  try{const f=await gh('/repos/'+repo+'/contents/.github/workflows/'+W.file+'?ref='+br);cur=atob(String(f.content||'').replace(/\s/g,''))}catch(e){if(e.status!==404)throw e}
+  if(cur.indexOf('# v2')<0){await put(repo,br,'.github/workflows/'+W.file,W.yaml);await sleep(5000)}}
+if(typeof buildNative!=='undefined'){
+  const _bn0=buildNative;
+  buildNative=async function(i,l){
+    if(!S.keys.ghToken)return toast('أدخل مفتاح GitHub في قائمة المفاتيح');
+    try{await ensureWf(l)}catch(e){return toast(arErr(e))}
+    return _bn0(i,l)}}
+
+/* التحقق من اسم الحزمة قبل البناء */
+if(typeof buildAny!=='undefined'){
+  const _bAny1=buildAny;
+  buildAny=function(i){
+    const p=(S.apps[i].pkg||'').trim().toLowerCase();
+    if(p&&!pkgOk(p))return toast('اسم الحزمة غير صحيح. مثال: com.awad.shop (حروف إنجليزية صغيرة وأرقام، وأجزاء مفصولة بنقطة)');
+    window._lb=i;return _bAny1(i)}}
+
+/* ---------- حفظ التطبيق كقالب ---------- */
+function saveTpl(kind,i){
+  const ap=kind===1?[S.apps[i]]:[S.apps[0],S.apps[1]];
+  if(ap.some(a=>!a.code.trim()))return toast(kind===1?'التطبيق ما فيهو كود بعد':'لازم يكون في كود في التطبيقين');
+  const nm=prompt('اسم القالب؟',kind===1?S.apps[i].name:S.apps[0].name+' + '+S.apps[1].name);
+  if(!nm||!nm.trim())return;
+  S.tpls=S.tpls||[];
+  S.tpls.unshift({id:Date.now(),name:nm.trim(),kind:kind,apps:ap.map(a=>({lang:a.lang||'html',code:a.code,pv:a.pv||''}))});
+  try{localStorage.setItem('apkapp',JSON.stringify(S))}catch(e){S.tpls.shift();return toast('تعذّر الحفظ: المساحة ممتلئة. احذف قوالب قديمة.')}
+  toast('تم حفظ القالب ⭐ تجده في قائمة القوالب')}
+
+function saveBox(i){return '<div class="card" style="margin-top:14px;border:1px dashed var(--acc)"><b>💾 عجبك التصميم؟</b><p class="note">تحب تحفظ تطبيقك كقالب تستخدمو بعدين؟</p><button class="acc" style="width:100%" onclick="saveTpl(1,'+i+')">حفظ قالب تطبيق واحد</button><button class="sec" style="width:100%;margin-top:8px" onclick="saveTpl(2)">حفظ قالب تطبيقين</button></div>'}
+
+const _progress0=progress;
+progress=function(title,labels){
+  const P=_progress0(title,labels),ex=P.extra;
+  P.extra=function(h){
+    if(String(h).indexOf('تحميل APK')>-1&&window._lb!==undefined)h+=saveBox(window._lb);
+    return ex.call(P,h)};
+  return P};
+
+/* ---------- قوالبي المحفوظة ---------- */
+function showUTpl(j){
+  const t=S.tpls[j],sh=$('#sheet');
+  const none='<body style="font-family:sans-serif;direction:rtl;padding:20px;background:#0b1220;color:#8fa0c4;text-align:center">لا توجد معاينة لهذا القالب. استخدمه ثم اضغط «معاينة بالذكاء الاصطناعي».</body>';
+  const prev=t.apps.map(a=>(a.lang||'html')==='html'?a.code:(a.pv||none));
+  sh.innerHTML='<div class="sheetbox"><h3>⭐ '+esc(t.name)+'</h3><p class="note">'+t.apps.map(a=>LANGN[a.lang||'html']).join(' + ')+'</p>'
+  +prev.map((h,n)=>'<div class="note" style="margin-top:8px">'+(t.apps.length>1?(n?'التطبيق الثاني':'التطبيق الأول'):'المعاينة')+'</div><iframe id="up'+n+'" sandbox="allow-scripts allow-modals" style="height:500px"></iframe>').join('')
+  +(t.apps.length===1?'<label>ضعه في</label><select id="uts"><option value="0">التطبيق الأول</option><option value="1">التطبيق الثاني</option></select>':'<p class="note">القالب يدخل في التطبيقين معاً.</p>')
+  +'<button class="acc" style="margin-top:12px;width:100%" onclick="applyUTpl('+j+')">✅ استخدم القالب</button><button class="sec" style="margin-top:8px;width:100%" onclick="delUTpl('+j+')">🗑 حذف القالب</button><button class="ghost" onclick="closeSheet()">إغلاق</button></div>';
+  sh.classList.add('on');
+  prev.forEach((h,n)=>{$('#up'+n).srcdoc=h})}
+
+function applyUTpl(j){
+  const t=S.tpls[j],targets=t.apps.length===1?[+$('#uts').value]:[0,1];
+  const used=targets.filter(k=>S.apps[k].code.trim());
+  if(used.length&&!confirm('الكود الحالي في '+used.map(k=>'التطبيق '+(k+1)).join(' و ')+' سيُستبدل (ويتحفظ في النسخ السابقة). تكمل؟'))return;
+  targets.forEach((k,n)=>{pushVersion(k);const a=S.apps[k],s=t.apps[n];a.lang=s.lang||'html';a.code=s.code;a.pv=s.pv||''});
+  save();closeSheet();go('code');toast('تم تطبيق القالب ✔')}
+
+function delUTpl(j){
+  if(!confirm('حذف هذا القالب نهائياً؟'))return;
+  S.tpls.splice(j,1);save();closeSheet();render()}
+
+/* ---------- قائمة القوالب بتبويبين ---------- */
+window._tt=window._tt||1;
+function setTT(n){window._tt=n;render()}
+vTpl=function(){
+  const tt=window._tt,u=S.tpls||[];
+  let h='<div class="card"><h2>🎨 قائمة القوالب</h2><div class="row"><button class="'+(tt===1?'acc':'sec')+'" onclick="setTT(1)">📱 تطبيق واحد</button><button class="'+(tt===2?'acc':'sec')+'" onclick="setTT(2)">🔗 تطبيقان</button></div></div>';
+  const mine=u.map((t,j)=>[t,j]).filter(x=>x[0].kind===tt);
+  if(mine.length)h+='<h3 style="margin:14px 4px 8px">⭐ قوالبي</h3>'+mine.map(x=>'<div class="card" style="border-right:6px solid var(--acc)"><h2>⭐ '+esc(x[0].name)+'</h2><p class="note">'+x[0].apps.map(a=>LANGN[a.lang||'html']).join(' + ')+'</p><button onclick="showUTpl('+x[1]+')">👁 معاينة واستخدام</button></div>').join('');
+  const list=TPL.map((t,i)=>[t,i]).filter(x=>x[0].apps===tt);
+  h+='<h3 style="margin:14px 4px 8px">القوالب الجاهزة ('+list.length+')</h3>'+list.map(x=>'<div class="card" style="border-right:6px solid '+(x[0].c||'#64748b')+'"><h2>'+x[0].name+'</h2><p class="note">'+esc(x[0].desc)+'</p><p class="note">'+(x[0].tag||'')+'</p><button onclick="showTpl('+x[1]+')">👁 معاينة واستخدام</button></div>').join('');
+  return h};
+
+/* ---------- قائمة البناء مع الحزمة وحفظ القالب ---------- */
+vBuild=function(){
+  return '<div class="card"><h2>🏗️ قائمة البناء</h2><p class="note">زر واحد يبني التطبيق حسب لغته. HTML حوالي 3-6 دقائق، وFlutter حوالي 5-10، وPython من 20 إلى 40 دقيقة.</p></div>'
+  +S.apps.map((a,i)=>'<div class="card"><h2>'+esc(a.name)+'</h2><p class="note">اللغة: '+LANGN[langOf(i)]+' | المجلد: apps/'+esc(slugOf(a.name)||'←')+'<br>الحزمة: <span style="direction:ltr;display:inline-block">'+esc(pkgOf(i)||'تلقائي')+'</span></p><button style="width:100%" onclick="buildAny('+i+')">🏗️ بناء APK</button>'+(a.apk?'<a class="btn acc" style="margin-top:8px" href="'+esc(a.apk)+'" target="_blank">⬇ تحميل آخر APK</a>':'')+'<button class="sec" style="width:100%;margin-top:8px" onclick="saveTpl(1,'+i+')">💾 حفظ كقالب تطبيق واحد</button></div>').join('')
+  +'<div class="card"><h2>💾 حفظ كقالب</h2><p class="note">عجبك تصميم التطبيقين؟ احفظهم كقالب تطبيقين تستخدمو بعدين.</p><button class="acc" style="width:100%" onclick="saveTpl(2)">💾 حفظ التطبيقين كقالب تطبيقين</button></div>'};
+
+/* ---------- خانة اسم الحزمة في كل تطبيق ---------- */
+const _render5=render;
+render=function(){
+  _render5();
+  if(tab==='code')document.querySelectorAll('#main section.card').forEach((sec,i)=>{
+    const a=S.apps[i],nm=sec.querySelector('p.note');
+    const box=document.createElement('div');
+    box.innerHTML='<label>اسم الحزمة (Package name)</label><input value="'+esc(a.pkg||'')+'" placeholder="com.myapps.'+esc(slugOf(a.name)||'name')+'" autocomplete="off" autocapitalize="off" spellcheck="false" style="direction:ltr;text-align:left" oninput="S.apps['+i+'].pkg=this.value.trim();save()"><p class="note">اتركه فارغاً للاسم التلقائي. مثال: com.awad.shop (حروف إنجليزية صغيرة وأرقام، وأجزاء مفصولة بنقطة).</p>';
+    if(nm)nm.insertAdjacentElement('afterend',box)})
+};
 render();
 </script>
 </body>
