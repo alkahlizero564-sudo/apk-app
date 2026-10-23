@@ -2194,6 +2194,142 @@ render=function(){
   cxBadge();
 };
 })();
+render();/* ===== إضافة: تحسين شاشة القوالب + قالب محادثة Claude ===== */
+(function(){
+const css=`
+.cx-chips{display:flex;gap:8px;overflow-x:auto;padding:10px 0 2px}
+.cx-chip{flex:none;padding:8px 14px;border-radius:99px;background:#0e1730;border:1px solid var(--line);color:var(--mut);font-size:13px}
+.cx-chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.cx-h{margin:16px 4px 8px;font-size:16px}
+.cx-tc{background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin-bottom:12px;transition:transform .12s}
+.cx-tc:active{transform:scale(.98)}
+.cx-th{height:84px;display:flex;align-items:center;justify-content:space-between;padding:0 16px}
+.cx-th .e{font-size:44px}
+.cx-pil{background:rgba(0,0,0,.28);color:#fff;font-size:12px;padding:5px 11px;border-radius:99px}
+.cx-tb2{padding:12px 14px 14px}
+.cx-tb2 b{font-size:17px}
+.cx-tb2 p{margin:6px 0;color:var(--mut);font-size:13px;line-height:1.7}
+.cx-tg{font-size:12px;color:var(--acc);margin-bottom:10px}
+.cx-tb2 button{width:100%;margin-top:6px}
+.empty-tpl{text-align:center;color:var(--mut);padding:36px 10px;line-height:2}
+.cx-ph{border:7px solid #1b2440;border-radius:32px;overflow:hidden;max-width:340px;margin:10px auto;background:#000}
+.cx-ph iframe{display:block;border:0;border-radius:0;margin:0;width:100%;height:500px;background:#fff}
+.cx-lc{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.cx-pt{display:flex;gap:4px;background:#0e1730;border:1px solid var(--line);border-radius:14px;padding:4px;margin-top:8px}
+.cx-pt button{background:transparent;color:var(--mut);padding:10px;font-size:14px;border-radius:11px}
+.cx-pt button.on{background:var(--pri);color:#fff}
+`;
+const stl=document.createElement('style');stl.textContent=css;document.head.appendChild(stl);
+
+/* ---------- قالب محادثة Claude ---------- */
+const nChat=nmk('dark',`<style>.msgs{display:flex;flex-direction:column;gap:10px;padding:16px;padding-bottom:110px}.b{max-width:86%;padding:11px 14px;border-radius:18px;line-height:1.8;font-size:15px;white-space:pre-wrap;word-break:break-word}.u{align-self:flex-start;background:var(--pri);color:#fff;border-bottom-right-radius:6px}.a{align-self:flex-end;background:var(--card);border:1px solid var(--line);border-bottom-left-radius:6px}.dots span{display:inline-block;width:8px;height:8px;margin:0 3px;border-radius:50%;background:var(--mut);animation:bl 1.2s infinite}.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}@keyframes bl{0%,80%,100%{opacity:.25}40%{opacity:1}}.bar{position:fixed;bottom:0;left:0;right:0;display:flex;gap:8px;align-items:flex-end;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--nav);backdrop-filter:blur(14px);border-top:1px solid var(--line)}.bar textarea{flex:1;resize:none;max-height:120px;margin:0;border-radius:18px}.snd{width:48px;height:48px;border-radius:50%;border:0;background:var(--pri);color:#fff;font-size:22px;flex:none}.snd:disabled{opacity:.4}</style><div class="top row"><div class="sp"><h1>🤖 مساعدي</h1><p>محادثة مع Claude</p></div><button class="btn g s" onclick="openS()">⚙️</button></div><div class="msgs" id="ms"></div><div class="bar"><textarea class="inp" id="in" rows="1" placeholder="اكتب رسالتك..."></textarea><button class="snd" id="sd" onclick="send()">↑</button></div><div class="mod" id="mod"><div><h3 style="margin-top:0">⚙️ الإعدادات</h3><input class="inp" id="ky" type="password" dir="ltr" placeholder="مفتاح Claude API (sk-ant-...)" autocomplete="off"><input class="inp" id="mo" dir="ltr" placeholder="claude-sonnet-5-5" autocomplete="off" autocapitalize="off"><button class="btn" onclick="sv()">حفظ</button><button class="btn g" style="margin-top:8px" onclick="clr()">🗑 مسح المحادثة</button><button class="btn g" style="margin-top:8px" onclick="hideM()">إغلاق</button></div></div>`,`var K='chat_tpl_v1',BT=String.fromCharCode(96,96,96),NL=String.fromCharCode(10);
+var SYS='أنت مساعد ذكي ودود. أجب بالعربي البسيط ما لم يكتب المستخدم بلغة أخرى، وليكن ردك واضحاً ومختصراً.';
+var C={key:'',model:'claude-sonnet-5-5',m:[]},busy=0;
+try{var o=JSON.parse(ST.g(K)||'null');if(o){C.key=o.key||'';C.model=o.model||C.model;C.m=o.m||[]}}catch(e){}
+function save(){ST.s(K,JSON.stringify(C))}
+function fmt(t){return String(t).split(BT).map(function(p,i){if(i%2){var n=p.indexOf(NL);return '<pre style="background:#0a0f1f;border-radius:12px;padding:10px;margin:8px 0;white-space:pre;overflow-x:auto;direction:ltr;text-align:left;font-size:12.5px;line-height:1.6">'+E(n>-1?p.slice(n+1):p)+'</pre>'}return E(p)}).join('')}
+function draw(){var h='';C.m.forEach(function(x){h+='<div class="b '+(x.r=='u'?'u':'a')+'">'+fmt(x.c)+'</div>'});if(busy)h+='<div class="b a dots"><span></span><span></span><span></span></div>';if(!h)h='<div class="empty">👋<br>أهلاً! اسألني أي شي<br>أنا هنا للمساعدة</div>';$('ms').innerHTML=h;window.scrollTo(0,document.body.scrollHeight);$('sd').disabled=!!busy}
+function openS(){$('ky').value=C.key;$('mo').value=C.model;showM()}
+function sv(){C.key=$('ky').value.trim();C.model=$('mo').value.trim()||'claude-sonnet-5-5';save();hideM();T('تم الحفظ ✔')}
+function clr(){if(!confirm('مسح كل المحادثة؟'))return;C.m=[];save();hideM();draw()}
+async function send(){
+  var i=$('in'),t=i.value.trim();if(!t||busy)return;
+  if(!C.key){openS();T('أدخل مفتاح Claude أولاً');return}
+  C.m.push({r:'u',c:t});i.value='';i.style.height='auto';save();busy=1;draw();
+  try{
+    var h=C.m.slice(-20).map(function(x){return {role:x.r=='u'?'user':'assistant',content:x.c}});
+    while(h.length&&h[0].role!='user')h.shift();
+    var r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':C.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:C.model,max_tokens:2000,system:SYS,messages:h})});
+    var j=await r.json().catch(function(){return {}});
+    if(!r.ok)throw new Error((j.error&&j.error.message)||('خطأ '+r.status));
+    C.m.push({r:'a',c:(j.content||[]).map(function(c){return c.text||''}).join('')||'(رد فارغ)'});save();
+  }catch(e){
+    C.m.pop();i.value=t;
+    var m=String((e&&e.message)||e);
+    T(/Failed to fetch|NetworkError|network/i.test(m)?'تعذّر الاتصال. تأكد من الإنترنت.':/api.?key|authentication|401/i.test(m)?'المفتاح غير صحيح. راجع الإعدادات ⚙️':m);
+  }
+  busy=0;draw();
+}
+$('in').addEventListener('input',function(){this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px'});
+draw()`);
+
+TPL.unshift({name:'🤖 مساعدي (Claude)',desc:'محادثة مع Claude بمفتاحك الخاص، تحفظ الرسائل وتعرض الأكواد بشكل منسق.',tag:'🌙 داكن',c:'#6366f1',apps:1,cat:'ai',html:[nChat]});
+
+/* ---------- التصنيفات والبحث ---------- */
+const TCATS=[['all','الكل'],['biz','🛒 تجارة'],['health','🩺 صحة'],['life','📚 تعلم وحياة'],['prod','⚡ إنتاجية'],['ai','🤖 ذكاء']];
+window._tq=window._tq||'';window._tc=window._tc||'all';
+const nz=s=>String(s).toLowerCase().replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+function catOf(t){
+  if(t.cat)return t.cat;
+  const n=t.name;
+  if(/Claude|محادثة/.test(n))return 'ai';
+  if(/صيدلية|مستشفى|دكتور/.test(n))return 'health';
+  if(/متجر|مطعم|حجوزات/.test(n))return 'biz';
+  if(/المدرسة|بطاقات|العادات/.test(n))return 'life';
+  return 'prod';
+}
+function emojiOf(n){const f=String(n).split(' ')[0];return /\p{Extended_Pictographic}/u.test(f)?f:'📱'}
+function titleOf(n){const f=String(n).split(' ')[0];return /\p{Extended_Pictographic}/u.test(f)?String(n).slice(f.length).trim():n}
+
+function cxTList(){
+  const el=$('#cx-list');if(!el)return;
+  const tt=window._tt||1,q=nz(window._tq),cat=window._tc,u=S.tpls||[];
+  const ok=t=>!q||nz(t.name+' '+(t.desc||'')+' '+(t.tag||'')).indexOf(q)>-1;
+  let h='';
+  const mine=cat==='all'?u.map((t,j)=>[t,j]).filter(x=>x[0].kind===tt&&ok({name:x[0].name})):[];
+  if(mine.length)h+='<h3 class="cx-h">⭐ قوالبي ('+mine.length+')</h3>'+mine.map(x=>'<div class="cx-tc" onclick="showUTpl('+x[1]+')"><div class="cx-th" style="background:linear-gradient(135deg,#ffb300,#ff8f00)"><span class="e">⭐</span><span class="cx-pil">'+x[0].apps.map(a=>LANGN[a.lang||'html']).join(' + ')+'</span></div><div class="cx-tb2"><b>'+esc(x[0].name)+'</b><button>👁 معاينة واستخدام</button></div></div>').join('');
+  const list=TPL.map((t,i)=>[t,i]).filter(x=>x[0].apps===tt&&(cat==='all'||catOf(x[0])===cat)&&ok(x[0]));
+  const card=x=>{
+    const t=x[0],c=t.c||'#64748b';
+    return '<div class="cx-tc" onclick="showTpl('+x[1]+')"><div class="cx-th" style="background:linear-gradient(135deg,'+c+','+c+'99)"><span class="e">'+emojiOf(t.name)+'</span><span class="cx-pil">'+(t.apps>1?'🔗 تطبيقان':'📱 تطبيق واحد')+'</span></div><div class="cx-tb2"><b>'+esc(titleOf(t.name))+'</b><p>'+esc(t.desc||'')+'</p><div class="cx-tg">'+esc(t.tag||'')+'</div><button>👁 معاينة واستخدام</button></div></div>';
+  };
+  h+='<h3 class="cx-h">القوالب الجاهزة ('+list.length+')</h3>'+(list.length?list.map(card).join(''):'<div class="empty-tpl">🔍<br>ما لقينا قوالب بهذا البحث</div>');
+  el.innerHTML=h;
+}
+window.cxCat=function(k){
+  window._tc=k;
+  document.querySelectorAll('.cx-chips .cx-chip').forEach((e,i)=>e.classList.toggle('on',TCATS[i][0]===k));
+  cxTList();
+};
+
+vTpl=function(){
+  const tt=window._tt||1;
+  const n1=TPL.filter(t=>t.apps===1).length,n2=TPL.filter(t=>t.apps===2).length;
+  return '<div class="card"><h2>🎨 قائمة القوالب</h2><div class="row"><button class="'+(tt===1?'acc':'sec')+'" onclick="setTT(1)">📱 تطبيق واحد ('+n1+')</button><button class="'+(tt===2?'acc':'sec')+'" onclick="setTT(2)">🔗 تطبيقان ('+n2+')</button></div>'
+   +'<input id="cx-q" placeholder="🔍 ابحث في القوالب" value="'+esc(window._tq)+'" oninput="window._tq=this.value;cxTList()" style="margin-top:10px">'
+   +'<div class="cx-chips">'+TCATS.map(c=>'<span class="cx-chip'+(c[0]===window._tc?' on':'')+'" onclick="cxCat(\''+c[0]+'\')">'+c[1]+'</span>').join('')+'</div></div><div id="cx-list"></div>';
+};
+
+/* ---------- نافذة المعاينة والاستخدام ---------- */
+window.cxTp=function(n){
+  const t=TPL[window._tp.i];window._tp.n=n;
+  $('#tpf').srcdoc=t.html[n];
+  document.querySelectorAll('#cx-ptabs button').forEach((b,k)=>b.classList.toggle('on',k===n));
+};
+window.cxPick=function(el,id,v){
+  $('#'+id).value=v;
+  el.parentElement.querySelectorAll('.cx-chip').forEach(c=>c.classList.toggle('on',c===el));
+  if(id==='tl'){const n=$('#cx-ln');if(n)n.textContent=v==='html'?'HTML جاهز فوراً.':'الذكاء الاصطناعي يحوّل القالب إلى '+LANGN[v]+' بنفس التصميم (قد يستغرق دقيقة).'}
+};
+showTpl=function(i){
+  const t=TPL[i],sh=$('#sheet');
+  window._tp={i:i,n:0};
+  sh.innerHTML='<div class="sheetbox"><h3 style="margin:0 0 4px">'+esc(t.name)+'</h3><p class="note">'+esc(t.desc||'')+'</p><p class="note" style="color:var(--acc)">'+esc(t.tag||'')+'</p>'
+   +(t.apps>1?'<div class="cx-pt" id="cx-ptabs"><button class="on" onclick="cxTp(0)">📱 التطبيق الأول</button><button onclick="cxTp(1)">📱 التطبيق الثاني</button></div><p class="note">في المعاينة كل تطبيق له بياناته المنفصلة. بعد الاستخدام اضغط «ربط عبر Firebase أو Supabase» ليتشاركا البيانات.</p>':'')
+   +'<div class="cx-ph"><iframe id="tpf" sandbox="allow-scripts allow-modals"></iframe></div>'
+   +'<label>اللغة</label><input type="hidden" id="tl" value="html"><div class="cx-lc">'+Object.keys(LANGN).map(k=>'<span class="cx-chip'+(k==='html'?' on':'')+'" onclick="cxPick(this,\'tl\',\''+k+'\')">'+LANGN[k]+'</span>').join('')+'</div><p class="note" id="cx-ln">HTML جاهز فوراً.</p>'
+   +(t.apps===1?'<label>ضعه في</label><input type="hidden" id="ts" value="0"><div class="cx-lc"><span class="cx-chip on" onclick="cxPick(this,\'ts\',\'0\')">التطبيق الأول</span><span class="cx-chip" onclick="cxPick(this,\'ts\',\'1\')">التطبيق الثاني</span></div>':'<p class="note">القالب يدخل في التطبيقين معاً.</p>')
+   +'<button class="acc" style="margin-top:14px;width:100%" onclick="applyTpl('+i+')">✅ استخدم القالب</button><button class="ghost" onclick="closeSheet()">إغلاق</button></div>';
+  sh.classList.add('on');
+  $('#tpf').srcdoc=t.html[0];
+};
+
+const _render11=render;
+render=function(){
+  _render11();
+  if(tab==='tpl')cxTList();
+};
+})();
 render();
 </script>
 </body>
