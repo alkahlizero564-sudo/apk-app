@@ -1,3 +1,5 @@
+# v3
+# v2 compatible
 name: build-flutter
 on:
   workflow_dispatch:
@@ -25,8 +27,12 @@ jobs:
           cache: true
       - name: create project
         run: |
+          PKG=$(cat apps/$APP/pkg.txt 2>/dev/null | tr -d '[:space:]')
+          if [ -z "$PKG" ]; then PKG=com.myapps.app_$APP; fi
           flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
           cp apps/$APP/main.dart flutter_out/lib/main.dart
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/><application|' flutter_out/android/app/src/main/AndroidManifest.xml
+          sed -i "/applicationId/s|com.myapps.app_$APP|$PKG|" flutter_out/android/app/build.gradle*
           if [ -f apps/$APP/icon.png ]; then
             for d in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
               cp apps/$APP/icon.png flutter_out/android/app/src/main/res/$d/ic_launcher.png
