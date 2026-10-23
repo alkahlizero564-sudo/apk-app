@@ -1700,6 +1700,172 @@ render=function(){
     d.innerHTML='<button class="acc" style="width:100%" onclick="aiMatch('+i+',this)">🧠 اقرأ التطبيق الآخر وطابق هذا الكود عليه</button>';
     ta.insertAdjacentElement('beforebegin',d)})
 };
+render();/* ===== إضافة: تحسين عرض صفحة الكود ===== */
+(function(){
+const css=`
+.cx-sw{display:flex;gap:8px;margin-bottom:12px}
+.cx-sw button{flex:1;background:var(--card);color:var(--mut);border:1px solid var(--line);border-radius:16px;padding:10px 8px;font-size:14px;font-weight:600;line-height:1.5;text-align:center}
+.cx-sw button b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:#243557;color:#fff;font-size:12px;margin-left:6px}
+.cx-sw button .nm{display:inline-block;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}
+.cx-sw button small{display:block;font-weight:400;font-size:11px;opacity:.8}
+.cx-sw button.on{background:linear-gradient(135deg,#0d47a1,#2f80ff);color:#fff;border-color:transparent}
+.cx-sw button.on b{background:rgba(255,255,255,.25)}
+.cx-hd{display:flex;align-items:center;gap:10px}
+.cx-n{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--pri);color:#fff;font-weight:700;font-size:14px}
+.cx-hd input.name{flex:1;margin:0;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:8px 4px}
+.cx-lg{flex:none;font-size:11px;padding:4px 9px;border-radius:99px;background:rgba(47,128,255,.18);color:#7fb2ff;white-space:nowrap}
+.cx-set{margin-top:12px}
+.cx-set summary{cursor:pointer;padding:11px 12px;background:#0e1730;border:1px solid var(--line);border-radius:12px;list-style:none;color:var(--tx);font-size:14px}
+.cx-set summary::-webkit-details-marker{display:none}
+.cx-in{padding:4px 2px 8px}
+.cx-cr{margin-top:6px}
+.cx-seg{display:flex;gap:4px;background:#0e1730;border:1px solid var(--line);border-radius:14px;padding:4px;margin-top:14px}
+.cx-seg button{background:transparent;color:var(--mut);padding:10px;font-size:14px;border-radius:11px}
+.cx-seg button.on{background:var(--pri);color:#fff}
+.cx-tb{display:none;gap:6px;margin-top:8px;flex-wrap:wrap}
+.cx-tb button{flex:none;padding:7px 12px;font-size:13px;font-weight:500;background:#243557;border-radius:10px}
+#main textarea.code{height:300px;background:#0a1124;border-radius:14px;line-height:1.6;font-size:12.5px;margin-top:8px;tab-size:2}
+#main textarea.code.cx-big{height:70vh}
+#main section.card iframe{height:440px;margin-top:8px}
+iframe.cx-fs{position:fixed!important;inset:0;width:100%!important;height:100%!important;margin:0!important;border:0!important;border-radius:0!important;z-index:50}
+#cxx{position:fixed;top:calc(10px + env(safe-area-inset-top));left:10px;z-index:60;display:none;width:auto;flex:none;padding:9px 16px;background:#ff5c5c;border-radius:20px;font-size:14px}
+.cx-ai{display:none;margin-top:8px}
+.cx-ax{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.cx-ax button{width:100%;padding:13px 6px;font-size:14px}
+.cx-ax .bld{grid-column:1/-1;background:linear-gradient(135deg,#ffb300,#ff8f00);color:#222;font-size:16px}
+`;
+const stl=document.createElement('style');stl.textContent=css;document.head.appendChild(stl);
+window._ap=window._ap||0;window._vw=window._vw||{};window._dt=window._dt||{};
+const secOf=i=>document.querySelectorAll('#main section.card')[i];
+
+function applyView(i){
+  const sec=secOf(i);if(!sec)return;
+  const v=window._vw[i]||'code',ta=$('#code'+i),fr=$('#pv'+i);
+  if(!ta||!fr)return;
+  ta.style.display=v==='code'?'block':'none';
+  fr.style.display=v==='pv'?'block':'none';
+  const t1=sec.querySelector('.cx-t1'),t2=sec.querySelector('.cx-t2'),ai=sec.querySelector('.cx-ai');
+  if(t1)t1.style.display=v==='code'?'flex':'none';
+  if(t2)t2.style.display=v==='pv'?'flex':'none';
+  if(ai)ai.style.display=v==='pv'?'block':'none';
+  sec.querySelectorAll('.cx-seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+}
+function statTxt(i){return LANGN[langOf(i)]+(S.apps[i].code.trim()?' • ✔':' • فارغ')}
+
+window.cxApp=function(n){
+  window._ap=n;
+  document.querySelectorAll('#main section.card').forEach((s,i)=>{s.style.display=i===n?'block':'none'});
+  document.querySelectorAll('.cx-sw button').forEach((b,i)=>b.classList.toggle('on',i===n));
+};
+window.cxView=function(i,v){window._vw[i]=v;applyView(i);if(v==='pv')preview(i)};
+window.cxRun=function(i){window._vw[i]='pv';applyView(i);preview(i)};
+window.cxEdit=function(i){toggleEdit(i);const e=$('#edit'+i);if(e&&!e.hidden)e.scrollIntoView({behavior:'smooth',block:'nearest'})};
+window.cxBig=function(i){const t=$('#code'+i);if(t)t.classList.toggle('cx-big')};
+window.cxCopy=function(i){
+  const t=S.apps[i].code;
+  if(!t.trim())return toast('لا يوجد كود لنسخه');
+  const ok=()=>toast('تم نسخ الكود ✔');
+  function fb(){const ta=$('#code'+i);ta.focus();ta.select();try{document.execCommand('copy');ok()}catch(e){toast('تعذّر النسخ')}}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb();
+};
+window.cxClear=function(i){
+  if(!S.apps[i].code.trim())return;
+  if(!confirm('مسح الكود؟ يتحفظ في النسخ السابقة.'))return;
+  pushVersion(i);S.apps[i].code='';S.apps[i].pv='';save();render();
+};
+window.cxFs=function(i){
+  const f=$('#pv'+i);if(!f)return;
+  const on=f.classList.toggle('cx-fs');
+  let b=$('#cxx');
+  if(!b){
+    b=document.createElement('button');b.id='cxx';b.textContent='✕ إغلاق';
+    b.onclick=function(){const x=document.querySelector('iframe.cx-fs');if(x)x.classList.remove('cx-fs');b.style.display='none'};
+    document.body.appendChild(b);
+  }
+  b.style.display=on?'block':'none';
+};
+
+function make(sec,i){
+  const a=S.apps[i],l=langOf(i),q=s=>sec.querySelector(s);
+  const nameIn=q('input.name'),hint=q('p.note');
+  const pk=q('input[placeholder^="com.myapps"]'),pkgBox=pk&&pk.parentElement;
+  const ls=q('select[onchange^="setLang"]'),langBox=ls&&ls.parentElement;
+  const icImg=$('#ic'+i),iconRow=icImg&&icImg.parentElement;
+  const descBtn=q('button[onclick^="toggleDesc"]'),desc=$('#desc'+i);
+  const ta=$('#code'+i),fr=$('#pv'+i);
+  const prevBtn=q('button[onclick^="preview("]'),editBtn=q('button[onclick^="toggleEdit("]');
+  const bldBtn=q('button[onclick^="buildAny("]'),aiBtn=q('button[onclick^="aiPreview("]');
+  const edit=$('#edit'+i);
+  if(!nameIn||!ta||!fr)return;
+
+  /* الترويسة */
+  const hd=document.createElement('div');hd.className='cx-hd';
+  hd.innerHTML='<span class="cx-n">'+(i+1)+'</span>';
+  hd.appendChild(nameIn);
+  hd.insertAdjacentHTML('beforeend','<span class="cx-lg">'+LANGN[l]+'</span>');
+  sec.prepend(hd);
+  nameIn.addEventListener('input',()=>{const n=document.querySelectorAll('.cx-sw button')[i];if(n){const e=n.querySelector('.nm');if(e)e.textContent=nameIn.value||'بدون اسم'}});
+
+  /* الإعدادات القابلة للطي */
+  const det=document.createElement('details');det.className='cx-set';det.open=!!window._dt[i];
+  det.innerHTML='<summary>⚙️ الإعدادات: اللغة، الحزمة، الأيقونة</summary>';
+  const inner=document.createElement('div');inner.className='cx-in';
+  [hint,langBox,pkgBox,iconRow].forEach(n=>{if(n)inner.appendChild(n)});
+  det.appendChild(inner);
+  det.addEventListener('toggle',()=>{window._dt[i]=det.open});
+  hd.after(det);
+
+  /* إنشاء بالوصف */
+  const cr=document.createElement('div');cr.className='cx-cr';
+  if(descBtn)cr.appendChild(descBtn);
+  if(desc)cr.appendChild(desc);
+  det.after(cr);
+
+  /* تبويب الكود والمعاينة */
+  const seg=document.createElement('div');seg.className='cx-seg';
+  seg.innerHTML='<button data-v="code" onclick="cxView('+i+',\'code\')">💻 الكود</button><button data-v="pv" onclick="cxView('+i+',\'pv\')">👁 المعاينة</button>';
+  const t1=document.createElement('div');t1.className='cx-tb cx-t1';
+  t1.innerHTML='<button onclick="cxCopy('+i+')">📋 نسخ</button><button onclick="cxBig('+i+')">⤢ تكبير</button><button onclick="cxClear('+i+')">🧹 مسح</button>';
+  const t2=document.createElement('div');t2.className='cx-tb cx-t2';
+  t2.innerHTML='<button onclick="cxRun('+i+')">🔄 تحديث</button><button onclick="cxFs('+i+')">⛶ ملء الشاشة</button>';
+  ta.before(seg,t1,t2);
+  ta.addEventListener('input',()=>{const n=document.querySelectorAll('.cx-sw button')[i];if(n){const s=n.querySelector('small');if(s)s.textContent=statTxt(i)}});
+
+  /* بعد المعاينة: معاينة الذكاء الاصطناعي ثم الأزرار ثم التعديل */
+  let ref=fr;
+  if(aiBtn){
+    const r=aiBtn.closest('.row'),n=r&&r.nextElementSibling;
+    const w=document.createElement('div');w.className='cx-ai';
+    if(r)w.appendChild(r);
+    if(n&&n.classList.contains('note'))w.appendChild(n);
+    ref.after(w);ref=w;
+  }
+  const ax=document.createElement('div');ax.className='cx-ax';
+  const r1=prevBtn&&prevBtn.parentElement,r2=bldBtn&&bldBtn.parentElement;
+  if(prevBtn){prevBtn.textContent='▶ تشغيل المعاينة';prevBtn.setAttribute('onclick','cxRun('+i+')');ax.appendChild(prevBtn)}
+  if(editBtn){editBtn.textContent='✏️ تعديل بالذكاء الاصطناعي';editBtn.setAttribute('onclick','cxEdit('+i+')');ax.appendChild(editBtn)}
+  if(bldBtn){bldBtn.classList.add('bld');ax.appendChild(bldBtn)}
+  [r1,r2].forEach(r=>{if(r&&r.parentElement&&!r.children.length)r.remove()});
+  ref.after(ax);
+  if(edit)ax.after(edit);
+
+  applyView(i);
+}
+
+const _render7=render;
+render=function(){
+  _render7();
+  if(tab!=='code')return;
+  const main=$('#main'),secs=[...main.querySelectorAll('section.card')];
+  if(secs.length<2)return;
+  const link=main.querySelector('.link');
+  const sw=document.createElement('div');sw.className='cx-sw';
+  sw.innerHTML=S.apps.map((a,i)=>'<button class="'+(i===window._ap?'on':'')+'" onclick="cxApp('+i+')"><b>'+(i+1)+'</b><span class="nm">'+esc(a.name||'بدون اسم')+'</span><small>'+statTxt(i)+'</small></button>').join('');
+  main.insertBefore(sw,secs[0]);
+  if(link)main.appendChild(link);
+  secs.forEach((sec,i)=>{make(sec,i);sec.style.display=i===window._ap?'block':'none'});
+};
+})();
 render();
 </script>
 </body>
