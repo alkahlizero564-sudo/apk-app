@@ -551,7 +551,7 @@ class _ShopTabState extends State<ShopTab> {
                                 ),
                                 const SizedBox(height: 4),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.between,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       '${product.price} ر.س',
