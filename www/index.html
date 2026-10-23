@@ -1663,6 +1663,43 @@ render=function(){
     r.innerHTML='<button class="acc" style="width:100%" onclick="aiPro('+i+',this)">💎 ترقية التصميم إلى Pro Max</button>';
     first.insertAdjacentElement('afterend',r)})
 };
+render();/* ===== إضافة: قراءة التطبيق الآخر وفهمه قبل الإنشاء أو المطابقة ===== */
+const CS_MARK='كود التطبيق الآخر:\n';
+const CS_ASK='اقرأ كود التطبيق التالي بعناية وافهمه جيداً، ثم اكتب ملخصاً دقيقاً ومنظماً بنقاط يشمل:\n1) فكرة التطبيق ودوره (زبون أم إدارة أم غيره).\n2) مكان تخزين البيانات: في Supabase اذكر الرابط والمفتاح وأسماء الجداول والأعمدة وأنواعها، وفي Firebase اذكر الرابط والمسارات، أو مفاتيح localStorage.\n3) شكل كل عنصر بيانات وحقوله والقيم الثابتة مثل حالات الطلب.\n4) ما يكتبه هذا التطبيق وما يقرأه، وطريقة التحديث.\n5) الألوان والخطوط ونمط التصميم.\nاكتب الملخص نصاً فقط بدون إعادة كتابة الكود.\n\n';
+
+/* عند إنشاء تطبيق بالوصف: يقرأ كود التطبيق الآخر ويفهمه أولاً ثم يكتب */
+const _ai5=ai;
+ai=async function(p){
+  const k=p.indexOf(CS_MARK);
+  if(k>-1&&p.indexOf('فهم مسبق للتطبيق الآخر')<0){
+    try{
+      toast('أقرأ التطبيق الآخر وأفهمه أولاً...');
+      const sum=(await _ai5(CS_ASK+p.slice(k+CS_MARK.length))).trim();
+      p+='\n\nفهم مسبق للتطبيق الآخر (استخلصته من قراءة كوده، التزم به حرفياً في أسماء الجداول والحقول والقيم والمسارات ومفاتيح التخزين):\n'+sum;
+    }catch(e){}
+  }
+  return _ai5(p)};
+
+/* عند لصق كود: زر يقرأ التطبيق الآخر ويطابق هذا الكود عليه */
+function aiMatch(i,btn){return busy(btn,async()=>{
+  const a=S.apps[i],o=S.apps[1-i];
+  if(!a.code.trim())throw new Error('الصق كود هذا التطبيق أولاً');
+  if(!o.code.trim())throw new Error('اكتب كود التطبيق الآخر أولاً ليقرأه');
+  toast('أقرأ التطبيق الآخر وأفهمه أولاً...');
+  const sum=(await _ai5(CS_ASK+BT+FENCE[langOf(1-i)]+'\n'+o.code+'\n'+BT)).trim();
+  const l=langOf(i);
+  const out=await ai((l==='html'?SYS:sysFor(i))+'عدّل هذا التطبيق ليتكامل مع التطبيق الآخر ويتشاركان نفس البيانات.\n\nملخص فهمي للتطبيق الآخر:\n'+sum+'\n\nالتزم حرفياً بنفس أسماء الجداول والحقول والقيم ومفاتيح التخزين وطريقة الاتصال، وأبقِ بقية وظائف هذا التطبيق وتصميمه كما هي. أعد الكود الكامل فقط.\n\nالتطبيق المطلوب تعديله:\n'+BT+FENCE[l]+'\n'+a.code+'\n'+BT);
+  setCode(i,clean(out));toast('تمت المطابقة ✔')})}
+
+const _render8=render;
+render=function(){
+  _render8();
+  if(tab==='code'&&S.mode==='link')document.querySelectorAll('#main section.card').forEach((sec,i)=>{
+    const ta=sec.querySelector('textarea.code');if(!ta)return;
+    const d=document.createElement('div');d.className='row';
+    d.innerHTML='<button class="acc" style="width:100%" onclick="aiMatch('+i+',this)">🧠 اقرأ التطبيق الآخر وطابق هذا الكود عليه</button>';
+    ta.insertAdjacentElement('beforebegin',d)})
+};
 render();
 </script>
 </body>
