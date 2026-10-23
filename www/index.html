@@ -1593,6 +1593,77 @@ function linkFbAny(btn){return busy(btn,async()=>{const k=S.keys;
 if(typeof _lA!=='undefined'&&typeof _lF!=='undefined'){
   linkApps=function(b){return (langOf(0)==='html'&&langOf(1)==='html')?_lA(b):linkSbAny(b)};
   linkFirebase=function(b){return (langOf(0)==='html'&&langOf(1)==='html')?_lF(b):linkFbAny(b)}}
+/* ===== إضافة: تصميم Pro Max لأي تطبيق جديد + زر ترقية التصميم ===== */
+const PRO_HTML=`
+
+تعليمات التصميم Pro Max (إلزامية، والتصميم هو أهم ما في الإجابة):
+هدفك واجهة تبدو كتطبيق مدفوع من شركة عالمية، فخمة ومميزة وليست قالباً تقليدياً.
+1) الهوية: اختر هوية بصرية واحدة مميزة تناسب فكرة التطبيق (ألوان، وخلفية متدرجة أو mesh gradient، وطابع زجاجي أو ناعم أو جريء). ممنوع الشكل الافتراضي: أزرار زرقاء عادية، وصناديق بيضاء بحدود رمادية، وجداول، ومظهر Bootstrap.
+2) نظام التصميم: عرّف على :root متغيرات للألوان (bg وsurface وsurface-2 وtext وmuted وprimary وprimary-2 وaccent وsuccess وdanger وline) وللزوايا (12 و20 و28px) وللظلال (طبقات ناعمة مع توهج ملون خفيف). التباين بين النص والخلفية لا يقل عن 4.5:1. وادعم الوضعين الفاتح والداكن عبر @media (prefers-color-scheme: dark) بقيم كاملة.
+3) الخطوط والمسافات: خط system-ui، وسلم واضح (عنوان ضخم 32 إلى 40px بوزن 800، وعنوان فرعي 20px، ونص 15px، وتعليق 12px)، وline-height بين 1.6 و1.8 للعربي، وللأرقام font-variant-numeric: tabular-nums. المسافات من مضاعفات 4px، وهوامش جانبية 16 إلى 20px، وفراغ تنفس سخي.
+4) المكونات: ترويسة Hero كبيرة بتدرج وعنوان ضخم، وبطاقات بعمق وظل وشفافية وزجاج (backdrop-filter: blur)، وشريط تنقل سفلي عائم بحبة نشطة متحركة (active pill)، وزر عائم FAB بتوهج، ونوافذ سفلية (bottom sheets) بمقبض سحب، وsegmented controls، وشارات (badges)، وصور رمزية دائرية، وحقول إدخال بتسمية عائمة وتحقق فوري. وللرسوم البيانية استخدم SVG مضمّن (حلقات تقدم وأعمدة وsparklines) بدون مكتبات.
+5) الأيقونات: استخدم أيقونات SVG مضمّنة بخط رفيع (stroke 1.75 وأطراف مستديرة) للتنقل والأزرار بدل الإيموجي، واستخدم الإيموجي للمحتوى فقط.
+6) الحركة: تأثير ضغط (transform: scale(.96)) على كل عنصر تفاعلي، ودخول متدرج للعناصر (fade مع translateY وanimation-delay متصاعد)، وانتقالات ناعمة بين الأقسام، وهيكل تحميل متلألئ (skeleton shimmer)، وعدّادات أرقام متحركة، وتنبيهات toast أنيقة، وحركة نجاح عند الحفظ. واحترم prefers-reduced-motion.
+7) تجربة الاستخدام: إجراء رئيسي واحد واضح في كل شاشة، وعناصر الاستخدام الرئيسي في منطقة الإبهام أسفل الشاشة، وأهداف لمس لا تقل عن 48px، وحالات فارغة جميلة (إيموجي كبير وجملة ودودة وزر إجراء)، ورسائل خطأ ونجاح واضحة، وتأكيد قبل الحذف مع إمكانية التراجع (Undo). واستخدم type وinputmode المناسبين، وnavigator.vibrate(10) عند الإجراءات المهمة بعد التحقق من وجودها.
+8) العربية وRTL: dir=rtl، واستخدم الخصائص المنطقية (margin-inline وpadding-inline)، وهوامش آمنة env(safe-area-inset-*)، ولا تستخدم letter-spacing مع العربي.
+9) ممنوع: مكتبات أو خطوط أو صور خارجية، ونصوص أصغر من 12px، وألوان كثيرة متنافرة، وحدود سميكة رمادية، والازدحام.
+10) قبل الإجابة راجع بنفسك: هل تبدو الشاشة الأولى فخمة ومميزة؟ هل فيها عمق وحركة وهوية واضحة؟ إن لم تكن فحسّنها.`;
+
+const PRO_FL=`
+
+تعليمات التصميم Pro Max (إلزامية):
+الهدف تطبيق Flutter يبدو كتطبيق مدفوع من شركة عالمية، وليس قالباً تقليدياً.
+- Material 3 مخصص بالكامل: useMaterial3 مع ColorScheme.fromSeed بلون هوية مميز يناسب الفكرة، وThemeData مخصصة (cardTheme وfilledButtonTheme وinputDecorationTheme وnavigationBarTheme وappBarTheme) بزوايا كبيرة (20 إلى 28) وبدون الشكل الافتراضي. وادعم الوضعين الفاتح والداكن عبر themeMode: ThemeMode.system.
+- ترويسة SliverAppBar مرنة (flexibleSpace) بتدرج لوني وعنوان كبير، وبطاقات بعمق وظلال ناعمة وزجاج عبر BackdropFilter عند الحاجة، وتدرجات عبر DecoratedBox وLinearGradient.
+- NavigationBar للتنقل لو في أكثر من قسم، وFloatingActionButton.extended للإضافة، وshowModalBottomSheet بحواف مستديرة ومقبض سحب للنماذج، وSegmentedButton وChoiceChip للفلاتر.
+- الحركة: AnimatedSwitcher وAnimatedContainer وTweenAnimationBuilder، ودخول متدرج لعناصر القوائم بتأخير متصاعد، وHero بين الشاشات، وCustomPainter للرسوم البيانية (حلقة تقدم وأعمدة) بدون حزم، وHapticFeedback.lightImpact عند الإجراءات المهمة، وDismissible للسحب لحذف عنصر مع SnackBar فيه تراجع (Undo).
+- مسافات 8 و12 و16 و24، وتدرج خطوط واضح (displaySmall للعنوان الكبير بوزن bold)، وتباين ألوان جيد، وأهداف لمس لا تقل عن 48.
+- حالات فارغة جميلة (أيقونة كبيرة وجملة ودودة وزر إجراء)، ومؤشرات تحميل أنيقة، وتحقق فوري في الحقول.
+- واجهة عربية RTL عبر Directionality ومن غير أي حزم خارجية.
+- قبل الإجابة راجع: هل تبدو الشاشة الأولى فخمة ومميزة؟ إن لم تكن فحسّنها.`;
+
+const PRO_PY=`
+
+تعليمات التصميم Pro Max (إلزامية):
+الهدف تطبيق Kivy يبدو كتطبيق عصري فخم وليس شكل Kivy الافتراضي.
+- عرّف قاموس ألوان واحداً (خلفية وسطح ونص ونص خافت ولون رئيسي ولون ثانوي) واستخدمه في كل مكان، وخلفية متناسقة، ولا تترك أي عنصر بشكله الافتراضي (أزرار Kivy الرمادية ممنوعة).
+- ارسم البطاقات والأزرار بزوايا مستديرة كبيرة عبر canvas.before مع RoundedRectangle، وظلال ناعمة بطبقات شبه شفافة.
+- أزرار كبيرة (ارتفاع 52dp على الأقل) بتأثير ضغط عبر Animation، وعناوين بحجم خط ضخم وأوزان متباينة، ومسافات واسعة (padding من 16 إلى 24 وspacing 12).
+- الحركة: kivy.animation.Animation لدخول متدرج للعناصر وانتقالات ناعمة، وScreenManager مع SlideTransition أو FadeTransition، وشريط تنقل سفلي مخصص بحبة نشطة متحركة.
+- حالات فارغة جميلة، ونوافذ منبثقة (Popup) مستديرة، وتنبيهات خفيفة.
+- لو التطبيق بسيط فاجعله شاشة واحدة نظيفة بدون ازدحام.
+- قبل الإجابة راجع: هل تبدو الشاشة الأولى فخمة ومميزة؟ إن لم تكن فحسّنها.`;
+
+/* يحل محل تعليمات التصميم القديمة عند إنشاء تطبيق بالوصف */
+const CRE_MARK='أنشئ تطبيقاً كاملاً يعمل من الصفر';
+const _ai4=ai;
+ai=function(p){
+  if(p.indexOf(CRE_MARK)>-1){
+    p=p.split(CRE_MARK).join('أنشئ تطبيقاً متكاملاً يعمل من الصفر');
+    p+=p.indexOf(BT+'dart بدون')>-1?PRO_FL:p.indexOf(BT+'python بدون')>-1?PRO_PY:PRO_HTML;
+    const st=window._sty;if(st&&STYH[st])p+='\n- نمط الألوان المطلوب: '+STYH[st]+'.'}
+  return _ai4(p)};
+
+/* ترقية تصميم تطبيق موجود بدون المساس بوظائفه */
+function aiPro(i,btn){return busy(btn,async()=>{
+  const a=S.apps[i],l=langOf(i);
+  if(!a.code.trim())throw new Error('اكتب أو أنشئ الكود أولاً');
+  const hint=l==='flutter'?PRO_FL:l==='python'?PRO_PY:PRO_HTML;
+  const head=l==='html'?SYS:sysFor(i);
+  const out=await ai(head+'ارتقِ بتصميم واجهة هذا التطبيق إلى مستوى Pro Max، مع الحفاظ التام على كل الوظائف والبيانات وأسماء الدوال والمفاتيح كما هي. غيّر المظهر وتجربة الاستخدام فقط.'+hint+'\n\nالكود الحالي:\n'+BT+FENCE[l]+'\n'+a.code+'\n'+BT);
+  setCode(i,clean(out));toast('تمت ترقية التصميم 💎')})}
+
+const _render6=render;
+render=function(){
+  _render6();
+  if(tab==='code')document.querySelectorAll('#main section.card').forEach((sec,i)=>{
+    const ed=sec.querySelector('.edit');if(!ed)return;
+    const first=ed.querySelector('.row');if(!first)return;
+    const r=document.createElement('div');r.className='row';
+    r.innerHTML='<button class="acc" style="width:100%" onclick="aiPro('+i+',this)">💎 ترقية التصميم إلى Pro Max</button>';
+    first.insertAdjacentElement('afterend',r)})
+};
+render();
 </script>
 </body>
 </html>
