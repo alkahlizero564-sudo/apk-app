@@ -43,9 +43,6 @@ class _ProMaxTasksAppState extends State<ProMaxTasksApp> {
   }
 
   @override
-  Widget.fromHostPlatform() {}
-
-  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'UI/UX Pro Max مهامي',
@@ -55,7 +52,7 @@ class _ProMaxTasksAppState extends State<ProMaxTasksApp> {
         useMaterial3: true,
         brightness: Brightness.light,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(s: 0xFF6366F1), // Indigo Pro Max
+          seedColor: const Color(0xFF6366F1), // Indigo Pro Max
           brightness: Brightness.light,
         ),
         scaffoldBackgroundColor: const Color(0xFFF8FAFC),
@@ -615,7 +612,7 @@ class AddTaskSheet extends StatefulWidget {
 class _AddTaskSheetState extends State<AddTaskSheet> {
   final _controller = TextEditingController();
   String _category = 'عمل';
-  int _priority = 1;
+  final int _priority = 1;
   bool _isValid = false;
 
   @override
@@ -630,8 +627,6 @@ class _AddTaskSheetState extends State<AddTaskSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom + 24,
