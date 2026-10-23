@@ -1,0 +1,37 @@
+# ck1
+name: check-flutter
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP: ${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: analyze
+        run: |
+          flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
+          rm -rf flutter_out/test
+          cp apps/$APP/main.dart flutter_out/lib/main.dart
+          cd flutter_out
+          flutter pub get
+          flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
+          cd ..
+          if grep -E "^[[:space:]]*error" analyze.txt > errs.txt; then
+            echo APKERR_START
+            cat errs.txt
+            echo APKERR_END
+            exit 1
+          fi
