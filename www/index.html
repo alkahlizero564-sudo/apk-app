@@ -2054,6 +2054,146 @@ render=function(){
   }
 };
 })();
+render();/* ===== إضافة: تحسين شاشة المفاتيح ===== */
+(function(){
+const css=`
+.cx-ks{background:var(--card);border:1px solid var(--line);border-radius:16px;margin:0 0 10px;color:var(--tx);font-size:15px}
+.cx-ks summary{display:flex;align-items:center;gap:10px;padding:14px;list-style:none;cursor:pointer}
+.cx-ks summary::-webkit-details-marker{display:none}
+.cx-ks summary::after{content:'▾';color:var(--mut);margin-inline-start:6px;transition:transform .2s}
+.cx-ks[open] summary::after{transform:rotate(180deg)}
+.cx-ic{font-size:22px}
+.cx-tt{flex:1;font-weight:700}
+.cx-bd{font-size:12px;padding:4px 10px;border-radius:99px;white-space:nowrap}
+.cx-bd.ok{background:rgba(46,204,113,.15);color:var(--ok)}
+.cx-bd.no{background:#243557;color:var(--mut)}
+.cx-kb{padding:0 14px 14px}
+.cx-kb input,.cx-kb select{text-align:left}
+.cx-pw{position:relative}
+.cx-pw input{padding-left:46px!important}
+.cx-eye{position:absolute;left:4px;top:50%;transform:translateY(-50%);width:38px;height:38px;flex:none;padding:0;border:0;background:transparent;font-size:18px;border-radius:10px}
+.cx-res{margin-top:10px;font-size:13px;line-height:1.8;white-space:pre-wrap}
+.cx-sub{border:1px solid var(--line);border-radius:14px;padding:4px 12px 12px;margin-top:12px}
+.cx-sub.on{border-color:var(--pri)}
+.cx-st{margin-top:8px;font-weight:700;font-size:14px}
+`;
+const stl=document.createElement('style');stl.textContent=css;document.head.appendChild(stl);
+window._ko=window._ko||{};
+
+function fld(n){
+  const f=FIELDS.find(x=>x[0]===n);
+  if(!f)return '';
+  const pw=f[2]==='password';
+  return '<label>'+f[1]+'</label><div class="cx-pw"><input dir="ltr" type="'+f[2]+'" value="'+esc(S.keys[n]||'')+'" placeholder="'+esc(f[3]||'')+'" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="S.keys[\''+n+'\']=this.value.trim();save();cxBadge()">'+(pw?'<button type="button" class="cx-eye" onclick="cxEye(this)">👁</button>':'')+'</div>';
+}
+function secHTML(k,ic,t,inner){
+  return '<details class="cx-ks" data-k="'+k+'"'+(window._ko[k]?' open':'')+'><summary><span class="cx-ic">'+ic+'</span><span class="cx-tt">'+t+'</span><span class="cx-bd" data-k="'+k+'"></span></summary><div class="cx-kb">'+inner+'<div class="row"><button class="sec" onclick="cxTest(\''+k+'\',this)">🔌 اختبر الاتصال</button></div><div class="cx-res" id="cxr-'+k+'"></div></div></details>';
+}
+
+vKeys=function(){
+  const prov=S.keys.provider||'gemini';
+  const sel='<label>الذكاء الاصطناعي المستخدم في التعديل</label><select onchange="S.keys.provider=this.value;save();cxBadge()">'+[['gemini','Gemini'],['claude','Claude'],['openrouter','OpenRouter'],['groq','Groq']].map(p=>'<option value="'+p[0]+'"'+(prov===p[0]?' selected':'')+'>'+p[1]+'</option>').join('')+'</select>';
+  const subs=[['gm','Gemini',['gemini','gemini2','gemini3']],['cl','Claude',['claude']],['or','OpenRouter',['orKey','orModel']],['gq','Groq',['gqKey','gqModel']]].map(x=>'<div class="cx-sub" id="cxs-'+x[0]+'"><div class="cx-st" data-n="'+x[1]+'">'+x[1]+'</div>'+x[2].map(n=>fld(n)).join('')+'</div>').join('');
+  return '<div class="card"><h2>🔑 قائمة المفاتيح</h2><p class="note">افتح كل قسم وأدخل مفاتيحه، ثم اضغط «اختبر الاتصال» للتأكد قبل البناء. المفاتيح تُحفظ تلقائياً على جهازك.</p></div>'
+   +secHTML('gh','🐙','GitHub',fld('ghToken')+fld('repo'))
+   +secHTML('sb','⚡','Supabase',fld('sbToken')+fld('sbRef'))
+   +secHTML('fb','🔥','Firebase',fld('fbUrl')+fld('fbKey'))
+   +secHTML('ai','🤖','الذكاء الاصطناعي',sel+subs);
+};
+
+window.cxEye=function(b){
+  const i=b.previousElementSibling,h=i.type==='password';
+  i.type=h?'text':'password';
+  b.textContent=h?'🙈':'👁';
+};
+
+window.cxBadge=function(){
+  const K=S.keys,p=K.provider||'gemini';
+  const sub={gm:!!(K.gemini||K.gemini2||K.gemini3),cl:!!K.claude,or:!!(K.orKey&&K.orModel),gq:!!K.gqKey};
+  const act={gemini:'gm',claude:'cl',openrouter:'or',groq:'gq'}[p];
+  const st={gh:!!K.ghToken,sb:!!(K.sbToken&&K.sbRef),fb:!!K.fbUrl,ai:!!sub[act]};
+  document.querySelectorAll('.cx-bd').forEach(b=>{
+    const ok=st[b.dataset.k];
+    b.textContent=ok?'✔ جاهز':'○ ناقص';
+    b.className='cx-bd '+(ok?'ok':'no');
+  });
+  Object.keys(sub).forEach(x=>{
+    const e=$('#cxs-'+x);if(!e)return;
+    e.classList.toggle('on',x===act);
+    const t=e.querySelector('.cx-st');
+    t.textContent=t.dataset.n+(sub[x]?' ✔':'')+(x===act?' • المستخدم الآن':'');
+  });
+};
+
+function res(k,st,msg){
+  const e=$('#cxr-'+k);if(!e)return;
+  e.style.color=st===true?'var(--ok)':st==='w'?'var(--acc)':'var(--bad)';
+  e.textContent=(st===true?'✔ ':st==='w'?'⚠ ':'✖ ')+msg;
+}
+
+window.cxTest=async function(k,btn){
+  const t=btn.textContent;
+  btn.disabled=true;btn.textContent='⏳ جاري الاختبار...';
+  const e=$('#cxr-'+k);if(e){e.style.color='var(--mut)';e.textContent=''}
+  try{
+    const K=S.keys;
+    if(k==='gh'){
+      if(!K.ghToken)throw new Error('أدخل مفتاح GitHub أولاً');
+      const H={Authorization:'Bearer '+K.ghToken,Accept:'application/vnd.github+json'};
+      const r=await fetch('https://api.github.com/user',{headers:H});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(r.status===401?'المفتاح غير صحيح أو انتهت صلاحيته':(j.message||('خطأ '+r.status)));
+      let msg='الحساب: '+j.login,warn='';
+      const sc=r.headers.get('x-oauth-scopes');
+      if(sc!==null){
+        const s=sc.split(',').map(x=>x.trim());
+        if(s.indexOf('repo')<0)warn+='\nينقصه صلاحية repo';
+        if(s.indexOf('workflow')<0)warn+='\nينقصه صلاحية workflow';
+      }
+      try{
+        const full=await repoFull();
+        const rr=await fetch('https://api.github.com/repos/'+full,{headers:H});
+        msg+='\n'+(rr.ok?'المستودع: '+full+' موجود':'المستودع '+full+' غير موجود (سيُنشأ عند أول بناء)');
+      }catch(x){}
+      res('gh',warn?'w':true,msg+warn);
+    }else if(k==='sb'){
+      if(!K.sbToken||!K.sbRef)throw new Error('أدخل مفتاح Supabase والـ project ref');
+      const keys=await sb('/v1/projects/'+K.sbRef+'/api-keys');
+      const anon=(keys.find(x=>x.name==='anon')||{}).api_key;
+      if(!anon)throw new Error('المفتاح شغّال لكن ما لقيت مفتاح المشروع. تأكد من الـ project ref.');
+      res('sb',true,'الاتصال سليم والمشروع موجود');
+    }else if(k==='fb'){
+      const url=(K.fbUrl||'').trim().replace(/\/+$/,'');
+      if(!url)throw new Error('أدخل رابط Firebase أولاً');
+      if(!/^https:\/\/[a-z0-9.-]+\.(firebaseio\.com|firebasedatabase\.app)$/i.test(url))throw new Error('رابط Firebase غير صحيح. شكله: https://اسم-مشروعك-default-rtdb.firebaseio.com');
+      let r;
+      try{r=await fetch(url+'/apk_test.json',{method:'PUT',body:JSON.stringify({ok:Date.now()})})}
+      catch(x){throw new Error('تعذّر الاتصال بـ Firebase. تأكد من الرابط ومن الإنترنت.')}
+      if(r.status===401||r.status===403)throw new Error('Firebase يرفض الكتابة. اضبط Rules على: {"rules":{".read":true,".write":true}} واضغط Publish.');
+      if(!r.ok)throw new Error('الرابط غير صحيح أو قاعدة البيانات غير موجودة (خطأ '+r.status+').');
+      try{await fetch(url+'/apk_test.json',{method:'DELETE'})}catch(x){}
+      res('fb',true,'الاتصال والكتابة شغّالين');
+    }else if(k==='ai'){
+      const out=await ai('أجب بكلمة واحدة فقط: تم');
+      res('ai',true,'رد '+(K.provider||'gemini')+': '+String(out).trim().slice(0,60));
+    }
+  }catch(er){
+    res(k,false,arErr(er));
+  }
+  btn.disabled=false;btn.textContent=t;
+};
+
+const _render10=render;
+render=function(){
+  _render10();
+  if(tab!=='keys')return;
+  const main=$('#main');
+  const gm=main.querySelector('#gmodel'),card=gm&&gm.closest('.card'),host=$('#cxs-gm');
+  if(card&&host){card.style.margin='12px 0 0';host.appendChild(card)}
+  main.querySelectorAll('details.cx-ks').forEach(d=>d.addEventListener('toggle',()=>{window._ko[d.dataset.k]=d.open}));
+  cxBadge();
+};
+})();
 render();
 </script>
 </body>
