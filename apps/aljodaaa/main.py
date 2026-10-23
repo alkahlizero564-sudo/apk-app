@@ -1,5 +1,4 @@
 import json
-import certifi
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -188,7 +187,6 @@ class OrderScreen(Screen):
             UrlRequest(
                 SUPABASE_URL,
                 req_headers=headers,
-                ca_file=certifi.where(),
                 on_success=self.on_fetch_success,
                 on_error=self.on_fetch_error,
                 on_failure=self.on_fetch_error
@@ -250,7 +248,6 @@ class OrderScreen(Screen):
                 req_headers=headers,
                 req_body=json.dumps(order_data),
                 method='POST',
-                ca_file=certifi.where(),
                 on_success=self.on_submit_success,
                 on_error=self.on_submit_error,
                 on_failure=self.on_submit_error
