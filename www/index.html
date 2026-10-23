@@ -1866,6 +1866,194 @@ render=function(){
   secs.forEach((sec,i)=>{make(sec,i);sec.style.display=i===window._ap?'block':'none'});
 };
 })();
+render();/* ===== إضافة: فحص Flutter و Python قبل البناء وإصلاحه تلقائياً ===== */
+(function(){
+const MAXFIX=5;
+
+const CK_FL=`# ck1
+name: check-flutter
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: analyze
+        run: |
+          flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
+          rm -rf flutter_out/test
+          cp apps/$APP/main.dart flutter_out/lib/main.dart
+          cd flutter_out
+          flutter pub get
+          flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
+          cd ..
+          if grep -E "^[[:space:]]*error" analyze.txt > errs.txt; then
+            echo APKERR_START
+            cat errs.txt
+            echo APKERR_END
+            exit 1
+          fi
+`;
+
+const CK_PY=`# ck1
+name: check-python
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: analyze
+        run: |
+          pip install pyflakes
+          : > errs.txt
+          python -m py_compile apps/$APP/main.py 2> comp.txt || cat comp.txt >> errs.txt
+          python -m pyflakes apps/$APP/main.py 2>&1 | grep -v -E "imported but unused|unable to detect undefined names|may be undefined, or defined from star|redefinition of unused|assigned to but never used|f-string is missing placeholders" >> errs.txt || true
+          if [ -s errs.txt ]; then
+            echo APKERR_START
+            cat errs.txt
+            echo APKERR_END
+            exit 1
+          fi
+`;
+
+const CK={
+  flutter:{file:'check-flutter.yml',yaml:CK_FL,main:'main.dart',name:'Flutter',min:'2-4'},
+  python:{file:'check-python.yml',yaml:CK_PY,main:'main.py',name:'Python',min:'1'}
+};
+
+function extractErr(log){
+  const lines=String(log).replace(/\r/g,'').split('\n').map(x=>x.replace(/^\S+Z\s?/,''));
+  const txt=lines.join('\n');
+  const s=txt.lastIndexOf('APKERR_START');
+  if(s<0)return null;
+  const e=txt.indexOf('APKERR_END',s);
+  if(e<0)return null;
+  return txt.slice(s+12,e).trim().slice(0,2500);
+}
+function tailOf(log){
+  return String(log).replace(/\r/g,'').split('\n').map(x=>x.replace(/^\S+Z\s?/,'')).filter(x=>x.trim()).slice(-12).join('\n').slice(0,1200);
+}
+function bal(t){return (String(t).match(/\{/g)||[]).length===(String(t).match(/\}/g)||[]).length}
+
+async function nativeCheck(i,l,P){
+  const C=CK[l],key=slugOf(S.apps[i].name);
+  const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
+  let cur='';
+  try{const f=await gh('/repos/'+repo+'/contents/.github/workflows/'+C.file+'?ref='+br);cur=atob(String(f.content||'').replace(/\s/g,''))}catch(e){if(e.status!==404)throw e}
+  if(cur.indexOf('# ck1')<0){P.set(0,'run','إنشاء ملف الفحص '+C.file+'...');await put(repo,br,'.github/workflows/'+C.file,C.yaml);await sleep(6000)}
+  await put(repo,br,'apps/'+key+'/'+C.main,S.apps[i].code);
+  const t0=Date.now();
+  for(let n=0;n<8;n++){
+    try{await gh('/repos/'+repo+'/actions/workflows/'+C.file+'/dispatches',{method:'POST',body:JSON.stringify({ref:br,inputs:{app:key}})});break}
+    catch(e){if((e.status===404||e.status===422)&&n<7){P.set(0,'run','بانتظار تجهيز الفحص...');await sleep(4000)}else throw e}
+  }
+  P.set(0,'run','جاري الفحص... (قد يستغرق '+C.min+' دقيقة)');
+  let run=null;const lim=Date.now()+15*60000;
+  while(Date.now()<lim){
+    await sleep(5000);
+    const rs=await gh('/repos/'+repo+'/actions/workflows/'+C.file+'/runs?event=workflow_dispatch&per_page=5');
+    run=rs.workflow_runs.find(x=>new Date(x.created_at).getTime()>=t0-30000)||null;
+    if(run&&run.status==='completed')break;
+  }
+  if(!run||run.status!=='completed')throw new Error('انتهى وقت انتظار الفحص. تابعه من تبويب Actions في GitHub.');
+  if(run.conclusion==='success')return {ok:true};
+  if(run.conclusion!=='failure')throw new Error('توقف الفحص ('+run.conclusion+').');
+  const jobs=await gh('/repos/'+repo+'/actions/runs/'+run.id+'/jobs');
+  const job=jobs.jobs.find(j=>j.conclusion==='failure')||jobs.jobs[0];
+  let log='';try{log=await ghText('/repos/'+repo+'/actions/jobs/'+job.id+'/logs')}catch(e){}
+  const err=extractErr(log);
+  if(!err)throw new Error('تعذّر الفحص بسبب مشكلة في الإعداد أو الخادم (وليس في كودك):\n'+tailOf(log));
+  return {ok:false,err:err};
+}
+
+const _bAny3=buildAny;
+window.cxForceNative=function(i){closeSheet();return _bAny3(i)};
+
+buildAny=async function(i){
+  const a=S.apps[i],l=langOf(i);
+  if(l==='html'||S.keys.noPreN||!CK[l]||!a.code.trim()||!slugOf(a.name)||!S.keys.ghToken)return _bAny3(i);
+  const pk=(a.pkg||'').trim().toLowerCase();
+  if(pk&&typeof pkgOk==='function'&&!pkgOk(pk))return _bAny3(i);
+  if(S.apps.some((x,j)=>j!==i&&slugOf(x.name)===slugOf(a.name)))return _bAny3(i);
+  if(window._preN)return toast('الفحص شغّال، انتظر...');
+  window._preN=true;
+  const C=CK[l];
+  const P=progress(C.name+' — فحص قبل البناء: '+a.name,['فحص الكود على GitHub','إصلاح الأخطاء بالذكاء الاصطناعي']);
+  const force='<button class="acc" style="margin-top:10px;width:100%" onclick="cxForceNative('+i+')">🏗 ابنِ رغم ذلك</button>';
+  try{
+    let errs='';
+    for(let n=0;n<=MAXFIX;n++){
+      P.set(0,'run',n?'إعادة الفحص بعد الإصلاح '+n+'...':'تجهيز الفحص...');
+      const r=await nativeCheck(i,l,P);
+      if(r.ok){
+        P.set(0,'ok','لا توجد أخطاء ✔');
+        P.set(1,'ok',n?'تم الإصلاح ✔ (بعد '+n+' محاولة)':'لا حاجة للإصلاح');
+        errs='';break;
+      }
+      errs=r.err;
+      P.set(0,'bad',errs);
+      if(n===MAXFIX)break;
+      P.set(1,'run','محاولة إصلاح '+(n+1)+' من '+MAXFIX+'...');
+      const old=S.apps[i].code;
+      const out=await ai(sysFor(i)+'الكود الحالي:\n'+BT+FENCE[l]+'\n'+old+'\n'+BT+'\n\nنتيجة الفحص الآلي (أخطاء حقيقية يجب إصلاحها):\n'+errs+'\n\nأصلح هذه الأخطاء فقط وأبقِ كل شي آخر كما هو (الوظائف والتصميم والأسماء). أعد الكود الكامل.');
+      const nw=clean(out);
+      if(nw===old.trim())throw new Error('الذكاء الاصطناعي لم يغيّر الكود.');
+      if(nw.length<old.length*0.4||(l==='flutter'&&bal(old)&&!bal(nw)))throw new Error('رد الذكاء الاصطناعي بدا ناقصاً (انقطع)، فلم أستبدل كودك.');
+      setCode(i,nw);
+    }
+    if(errs){
+      P.set(1,'bad','ما قدرت أصلحها بعد '+MAXFIX+' محاولات');
+      P.extra('<div class="errbox">'+esc(errs)+'</div>'+force);
+      return;
+    }
+    return _bAny3(i);
+  }catch(e){
+    P.set(1,'bad',arErr(e));
+    P.extra('<div class="errbox">'+esc(arErr(e))+'</div>'+force);
+  }finally{
+    window._preN=false;
+  }
+};
+
+/* خيار تشغيل أو إيقاف الفحص في قائمة المفاتيح */
+const _render9=render;
+render=function(){
+  _render9();
+  if(tab==='keys'){
+    const c=document.createElement('div');c.className='card';
+    c.innerHTML='<h2>🔎 فحص Flutter و Python قبل البناء</h2><label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noPreN?'':'checked')+' onchange="S.keys.noPreN=!this.checked;save()"> فحص الكود وإصلاح الأخطاء تلقائياً قبل بناء تطبيقات Flutter و Python</label><p class="note">الفحص يضيف دقائق قبل البناء. الغِ العلامة لو تريد البناء مباشرة.</p>';
+    $('#main').appendChild(c);
+  }
+};
+})();
 render();
 </script>
 </body>
