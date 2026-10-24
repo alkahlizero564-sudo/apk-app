@@ -1,4 +1,6 @@
-# v3
+# v5
+# v4 compatible
+# v3 compatible
 # v2 compatible
 name: build-flutter
 on:
@@ -21,6 +23,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -31,8 +34,60 @@ jobs:
           if [ -z "$PKG" ]; then PKG=com.myapps.app_$APP; fi
           flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
           cp apps/$APP/main.dart flutter_out/lib/main.dart
-          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/><application|' flutter_out/android/app/src/main/AndroidManifest.xml
+          if grep -q "package:url_launcher" apps/$APP/main.dart; then
+            (cd flutter_out && flutter pub add url_launcher)
+          fi
+          MF=flutter_out/android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/><application|' $MF
           sed -i "/applicationId/s|com.myapps.app_$APP|$PKG|" flutter_out/android/app/build.gradle*
+          SET=apps/$APP/settings.json
+          LABEL=$(jq -r '.label // empty' $SET 2>/dev/null || true)
+          ORI=$(jq -r '.ori // "auto"' $SET 2>/dev/null || echo auto)
+          if [ -n "$LABEL" ]; then sed -i 's|android:label="[^"]*"|android:label="'"$LABEL"'"|' $MF; fi
+          if [ "$ORI" = "portrait" ] || [ "$ORI" = "landscape" ]; then sed -i 's|android:name=".MainActivity"|android:name=".MainActivity" android:screenOrientation="'"$ORI"'"|' $MF; fi
+          KS="$GITHUB_WORKSPACE/keys/shared.keystore"
+          if [ -f "$KS" ]; then
+            cp "$KS" flutter_out/android/app/shared.keystore
+            if [ -f flutter_out/android/app/build.gradle.kts ]; then
+              cat >> flutter_out/android/app/build.gradle.kts <<'EOF'
+
+          android {
+              signingConfigs {
+                  create("shared") {
+                      storeFile = file("shared.keystore")
+                      storePassword = "android123"
+                      keyAlias = "shared"
+                      keyPassword = "android123"
+                  }
+              }
+              buildTypes {
+                  getByName("release") {
+                      signingConfig = signingConfigs.getByName("shared")
+                  }
+              }
+          }
+          EOF
+            else
+              cat >> flutter_out/android/app/build.gradle <<'EOF'
+
+          android {
+              signingConfigs {
+                  shared {
+                      storeFile file("shared.keystore")
+                      storePassword "android123"
+                      keyAlias "shared"
+                      keyPassword "android123"
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.shared
+                  }
+              }
+          }
+          EOF
+            fi
+          fi
           if [ -f apps/$APP/icon.png ]; then
             for d in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
               cp apps/$APP/icon.png flutter_out/android/app/src/main/res/$d/ic_launcher.png
@@ -40,7 +95,10 @@ jobs:
           fi
       - name: build
         working-directory: flutter_out
-        run: flutter build apk --release
+        run: |
+          VN=$(jq -r '.versionName // "1.0.0"' ../apps/$APP/settings.json 2>/dev/null || echo 1.0.0)
+          VC=$(jq -r '.versionCode // 1' ../apps/$APP/settings.json 2>/dev/null || echo 1)
+          flutter build apk --release --build-name=$VN --build-number=$VC
       - name: release
         uses: softprops/action-gh-release@v2
         with:
