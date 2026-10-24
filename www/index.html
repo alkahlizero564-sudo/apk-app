@@ -3310,7 +3310,21 @@ buildNative=async function(i,l){
   return _bn5(i,l);
 };
 })();
-render();
+render();/* ===== إضافة: حماية ملفات بناء Flutter و Python من الكتابة فوقها ===== */
+(function(){
+const _put9=put;
+put=async function(repo,branch,path,content){
+  if(/^\.github\/workflows\/build-(flutter|python)\.yml$/.test(String(path))){
+    try{
+      await gh('/repos/'+repo+'/contents/'+path+'?ref='+branch);
+      return;
+    }catch(e){
+      if(e.status!==404)throw e;
+    }
+  }
+  return _put9(repo,branch,path,content);
+};
+})();
 </script>
 </body>
 </html>
