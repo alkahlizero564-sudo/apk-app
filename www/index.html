@@ -2894,6 +2894,422 @@ vBuild=function(){
   +'<div class="card"><h2>💾 حفظ كقالب</h2><p class="note">عجبك تصميم التطبيقين؟ احفظهم كقالب تطبيقين تستخدمو بعدين.</p><button class="acc" style="width:100%" onclick="saveTpl(2)">💾 حفظ التطبيقين كقالب تطبيقين</button></div>';
 };
 })();
+render();/* ===== إضافة: نظام متكامل بزر واحد + نوع البناء + تسريع البناء ===== */
+(function(){
+
+/* ---------- 1) نظام متكامل بزر واحد ---------- */
+window._sysf=window._sysf||{desc:'',be:'firebase',lang:'html',sty:''};
+
+function nm(x,def){let s=slugOf(x);if(!s)s=def;return s.slice(0,16)}
+function bal2(t){return (String(t).match(/\{/g)||[]).length===(String(t).match(/\}/g)||[]).length}
+function okCode(l,c){
+  if(!c||c.length<200)return false;
+  if(l==='html')return /<\/html>/i.test(c);
+  if(l==='flutter')return /void\s+main\s*\(/.test(c)&&bal2(c);
+  return /\.run\(\)/.test(c);
+}
+function parsePlan(t){
+  const s=String(t),a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a<0||b<a)throw new Error('الخطة غير صالحة');
+  const o=JSON.parse(s.slice(a,b+1));
+  if(!o.d1||!o.d2||!o.data)throw new Error('الخطة ناقصة');
+  o.d1=String(o.d1);o.d2=String(o.d2);
+  o.data=typeof o.data==='string'?o.data:JSON.stringify(o.data);
+  return o;
+}
+function netRules(be,env,l){
+  if(be==='firebase')return 'قواعد الاتصال بـ Firebase (REST فقط):\n- القراءة: GET '+env.url+'/المسار.json وتأتي النتيجة كائناً مفاتيحه معرّفات أو null، حوّلها لمصفوفة.\n- إضافة: POST إلى المسار ويرجع {name:"المعرّف"}. تعديل: PATCH أو PUT على المسار/المعرّف.json. حذف: DELETE.\n- لا تستخدم orderBy ولا فلترة من السيرفر، افلتر في الكود.\n- للتحديث المباشر اعمل polling كل 5 ثوانٍ، وتعامل مع انقطاع الإنترنت بدون أن ينهار التطبيق.\n'+netHint(l);
+  return 'قواعد الاتصال بـ Supabase (REST فقط): '+env.url+'/rest/v1/اسم_الجدول مع الهيدرز apikey وAuthorization: Bearer (anon key) وContent-Type: application/json. عند الإضافة استخدم Prefer: return=representation، والتعديل والحذف عبر ?id=eq.القيمة، والفلترة عبر ?عمود=eq.القيمة. استخدم أسماء الجداول والأعمدة بالضبط كما في SQL، وتعامل مع انقطاع الإنترنت بدون أن ينهار التطبيق.\n'+netHint(l);
+}
+function appPrompt(i,plan,be,env,other){
+  const l=langOf(i);
+  const head=l==='html'?SYS:sysFor(i);
+  const role=i?'تطبيق الإدارة (صاحب النشاط)':'تطبيق الزبائن';
+  let p=head+'أنشئ تطبيقاً كاملاً يعمل من الصفر حسب هذا الوصف. واجهة عربية من اليمين لليسار مناسبة للهاتف بأزرار كبيرة، وبدون مكتبات خارجية. أضف كل ما يلزم ليكون التطبيق مفيداً وكاملاً.\n\nدور التطبيق: '+role+'\nوصف التطبيق:\n'+(i?plan.d2:plan.d1)+'\n\n';
+  p+='هذا التطبيق أحد تطبيقين يتشاركان البيانات في السحابة، فلا تحفظ البيانات المشتركة في التخزين المحلي.\n';
+  if(be==='firebase')p+='رابط قاعدة البيانات: '+env.url+'\nجذر البيانات: '+plan.root+' (ضع كل البيانات تحت هذا الجذر)\n';
+  else p+='URL: '+env.url+'\nanon key: '+env.anon+'\nالجداول المنفذة (SQL):\n'+BT+'sql\n'+env.sql+'\n'+BT+'\n';
+  p+='\nهيكل البيانات المتفق عليه (التزم به حرفياً):\n'+plan.data+'\n\n'+netRules(be,env,l);
+  if(other)p+='\n\nمهم: هذا التطبيق مكمّل للتطبيق الآخر ويتشاركان نفس البيانات. استخدم نفس المسارات والحقول وقيم الحالة تماماً، وواجهة متناسقة معه. لا تعدّل التطبيق الآخر.\n\nكود التطبيق الآخر:\n'+BT+FENCE[langOf(0)]+'\n'+other.code+'\n'+BT;
+  return p;
+}
+async function gen(i,P,k,plan,be,env,other){
+  const l=langOf(i);
+  for(let n=0;n<2;n++){
+    P.set(k,'run',n?'إعادة المحاولة (الرد كان ناقصاً)...':'جاري الكتابة...');
+    const out=clean(await ai(appPrompt(i,plan,be,env,other)));
+    if(okCode(l,out)){setCode(i,out);P.set(k,'ok','');return}
+  }
+  throw new Error('رد الذكاء الاصطناعي انقطع قبل نهاية الكود. جرّب نموذجاً أقوى أو وصفاً أبسط.');
+}
+
+window.cxSysGo=async function(){
+  const f=window._sysf,K=S.keys;
+  if(window._sysBusy)return toast('العمل جارٍ، انتظر...');
+  const desc=String(f.desc||'').trim();
+  if(desc.length<8)return toast('اكتب وصفاً أوضح للنشاط');
+  const be=f.be==='supabase'?'supabase':'firebase';
+  const lang=['html','flutter','python'].indexOf(f.lang)>-1?f.lang:'html';
+  if(S.apps.some(a=>a.code.trim())&&!confirm('الكود الحالي في التطبيقين سيُستبدل (ويتحفظ في النسخ السابقة). تكمل؟'))return;
+  window._sysBusy=true;
+  const labels=['فحص المفاتيح والاتصال','تصميم الخطة (الأدوار والبيانات)'].concat(be==='supabase'?['إنشاء الجداول في Supabase']:[]).concat(['إنشاء التطبيق الأول (الزبائن)','إنشاء التطبيق الثاني (الإدارة)']);
+  const P=progress('🚀 نظام متكامل',labels);
+  const bak=S.apps.map(a=>({name:a.name,lang:a.lang}));
+  const done=[false,false];
+  let k=0;
+  try{
+    /* فحص المفاتيح والاتصال */
+    P.set(k,'run');
+    const prov=K.provider||'gemini';
+    const hasAI=prov==='claude'?K.claude:prov==='openrouter'?(K.orKey&&K.orModel):prov==='groq'?K.gqKey:(K.gemini||K.gemini2||K.gemini3);
+    if(!hasAI)throw new Error('أدخل مفتاح الذكاء الاصطناعي في 🔑 المفاتيح');
+    let env={};
+    if(be==='firebase'){
+      const url=String(K.fbUrl||'').trim().replace(/\/+$/,'');
+      if(!url)throw new Error('أدخل رابط Firebase في 🔑 المفاتيح');
+      if(!/^https:\/\/[a-z0-9.-]+\.(firebaseio\.com|firebasedatabase\.app)$/i.test(url))throw new Error('رابط Firebase غير صحيح. شكله: https://اسم-مشروعك-default-rtdb.firebaseio.com');
+      let r;
+      try{r=await fetch(url+'/apk_test.json',{method:'PUT',body:JSON.stringify({ok:Date.now()})})}
+      catch(e){throw new Error('تعذّر الاتصال بـ Firebase. تأكد من الرابط ومن الإنترنت.')}
+      if(r.status===401||r.status===403)throw new Error('Firebase يرفض الكتابة. افتح Firebase > Realtime Database > Rules، والصق:\n{"rules":{".read":true,".write":true}}\nثم اضغط Publish وأعد المحاولة.');
+      if(!r.ok)throw new Error('الرابط غير صحيح أو قاعدة البيانات غير موجودة (خطأ '+r.status+').');
+      try{await fetch(url+'/apk_test.json',{method:'DELETE'})}catch(e){}
+      env={url:url};
+    }else{
+      if(!K.sbToken||!K.sbRef)throw new Error('أدخل مفتاح Supabase والـ project ref في 🔑 المفاتيح');
+      const keys=await sb('/v1/projects/'+K.sbRef+'/api-keys');
+      const anon=(keys.find(x=>x.name==='anon')||{}).api_key;
+      if(!anon)throw new Error('ما قدرت أجيب مفتاح المشروع. تأكد من الـ project ref.');
+      env={url:'https://'+K.sbRef+'.supabase.co',anon:anon};
+    }
+    P.set(k,'ok');k++;
+
+    /* الخطة */
+    P.set(k,'run');
+    const planP='أنت مهندس منتجات خبير. صمم نظاماً من تطبيقين مترابطين لهذا النشاط: «'+desc+'».\nالتطبيق الأول للزبائن أو المستخدمين، والتطبيق الثاني لصاحب النشاط أو الإدارة (إلا إذا اقتضى الوصف غير ذلك). يتشارك التطبيقان البيانات في السحابة.\nأعد JSON فقط بدون أي شرح وبدون كتل markdown وبدون علامات اقتباس مزدوجة داخل النصوص، بهذا الشكل:\n{"n1":"اسم إنجليزي للتطبيق الأول بحروف صغيرة وأرقام فقط","n2":"اسم إنجليزي للتطبيق الثاني","t1":"اسم عربي قصير للتطبيق الأول","t2":"اسم عربي قصير للتطبيق الثاني","d1":"وصف مفصل لوظائف وشاشات التطبيق الأول","d2":"وصف مفصل لوظائف وشاشات التطبيق الثاني","data":"هيكل البيانات المشترك: لكل مجموعة بيانات اذكر اسمها الإنجليزي وحقولها وأنواعها، ومن يكتب فيها ومن يقرأ، وقيم الحالة status وتسلسلها"}';
+    let plan=null,le='';
+    for(let n=0;n<2&&!plan;n++){
+      try{plan=parsePlan(await ai(planP+(n?'\n\nمحاولتك السابقة لم تكن JSON صالحاً ('+le+'). أعد JSON صالحاً فقط.':'')))}
+      catch(e){le=e.message}
+    }
+    if(!plan)throw new Error('تعذّر تصميم الخطة: '+le);
+    plan.root='s'+Math.random().toString(36).slice(2,7);
+    const n1=nm(plan.n1,'shop');
+    let n2=nm(plan.n2,'admin');if(n2===n1)n2=n2+'admin';
+    P.set(k,'ok',String(plan.t1||n1)+' + '+String(plan.t2||n2));k++;
+
+    /* جداول Supabase */
+    if(be==='supabase'){
+      P.set(k,'run');
+      const base='اكتب SQL كامل يُنشئ الجداول اللازمة لنظام من تطبيقين مترابطين حسب هذا الوصف وهيكل البيانات. ابدأ أسماء كل الجداول بـ '+plan.root+'_ . استخدم create table if not exists، وفعّل RLS، وأضف سياسات تسمح لـ anon بالقراءة والكتابة (drop policy if exists ثم create policy). أضف لكل جدول عمود id من نوع bigint generated by default as identity primary key وعمود created_at timestamptz default now(). أعد SQL فقط داخل كتلة '+BT+'sql بدون شرح.\n\nالنشاط: '+desc+'\nهيكل البيانات:\n'+plan.data;
+      let sql=clean(await ai(base));
+      for(let n=0;n<2;n++){
+        try{
+          if(/drop\s+table|truncate|delete\s+from|drop\s+schema/i.test(sql)&&!confirm('الـ SQL يحتوي أمر حذف. هل تريد المتابعة؟'))throw new Error('تم إلغاء التنفيذ');
+          await sb('/v1/projects/'+K.sbRef+'/database/query',{method:'POST',body:JSON.stringify({query:sql})});
+          break;
+        }catch(e){
+          if(n===1||/تم إلغاء/.test(e.message))throw e;
+          P.set(k,'run','حدث خطأ، جاري إصلاحه تلقائياً...');
+          sql=clean(await ai(base+'\n\nتنفيذ SQL السابق فشل بهذا الخطأ: '+e.message+'\nأعد SQL المصحح فقط.'));
+        }
+      }
+      env.sql=sql;
+      P.set(k,'ok');k++;
+    }
+
+    /* التطبيقان */
+    window._sty=f.sty||'';
+    for(let i=0;i<2;i++){
+      const a=S.apps[i];
+      a.lang=lang;a.name=i?n2:n1;a.pv='';
+      a.set=Object.assign({},a.set,{label:String(i?plan.t2:plan.t1||'')});
+      await gen(i,P,k,plan,be,env,i?S.apps[0]:null);
+      done[i]=true;k++;
+    }
+    save();render();
+    P.extra('<p style="color:var(--ok)">تم إنشاء النظام ✔</p><p class="note">'+esc(plan.t1||n1)+' + '+esc(plan.t2||n2)+'<br>القاعدة: '+(be==='firebase'?'Firebase':'Supabase')+'</p><button class="acc" style="margin-top:10px;width:100%" onclick="closeSheet();go(\'code\')">💻 اذهب للكود وعاين</button>');
+  }catch(e){
+    S.apps.forEach((a,i)=>{if(!done[i]){a.name=bak[i].name;a.lang=bak[i].lang}});
+    save();
+    P.set(Math.min(k,labels.length-1),'bad',arErr(e));
+    P.extra('<div class="errbox">'+esc(arErr(e))+'</div>');
+  }finally{
+    window._sysBusy=false;
+  }
+};
+
+function sel(k,opts,cur){
+  return '<select onchange="window._sysf.'+k+'=this.value">'+opts.map(o=>'<option value="'+o[0]+'"'+(cur===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';
+}
+function sysCard(){
+  const f=window._sysf;
+  const sty=(typeof STY!=='undefined')?STY:[['','تلقائي']];
+  return '<details class="card" id="cx-sys"'+(window._sysO?' open':'')+' ontoggle="window._sysO=this.open"><summary style="color:var(--tx);font-size:16px;font-weight:700;cursor:pointer">🚀 نظام متكامل بزر واحد</summary>'
+   +'<p class="note">اكتب وصف نشاطك، فيُنشئ الذكاء الاصطناعي تطبيقين مترابطين (الأول للزبائن والثاني للإدارة) ويربطهم بقاعدة بيانات سحابية، ويضعهم في خانتي التطبيق 1 و2.</p>'
+   +'<textarea id="sysd" placeholder="مثال: مخبز. الزبون يطلب خبز وحلويات ويتابع حالة طلبه، وصاحب المخبز يستلم الطلبات ويحدّث حالتها ويدير المنتجات" oninput="window._sysf.desc=this.value" style="height:110px;margin-top:8px">'+esc(f.desc)+'</textarea>'
+   +'<label>قاعدة البيانات</label>'+sel('be',[['firebase','Firebase (الأسهل)'],['supabase','Supabase']],f.be)
+   +'<label>لغة التطبيقين</label>'+sel('lang',[['html','HTML'],['flutter','Flutter (Dart)'],['python','Python (Kivy)']],f.lang)
+   +'<label>نمط التصميم</label>'+sel('sty',sty,f.sty)
+   +'<button class="acc" style="width:100%;margin-top:12px" onclick="cxSysGo()">🚀 أنشئ النظام</button>'
+   +'<p class="note">يستغرق من 3 إلى 8 دقائق. يحتاج مفتاح الذكاء الاصطناعي، ورابط Firebase أو مفاتيح Supabase في 🔑 المفاتيح.</p></details>';
+}
+
+/* ---------- 2) نوع البناء (Debug أو Release) ---------- */
+window.cxBt=function(i,v){const a=S.apps[i];a.set=a.set||{};a.set.build=v;save()};
+
+const _render13=render;
+render=function(){
+  _render13();
+  const m=$('#main');if(!m)return;
+  if(tab==='code'){
+    const d=document.createElement('div');
+    d.innerHTML=sysCard();
+    m.insertBefore(d.firstChild,m.firstChild);
+  }
+  if(tab==='build'){
+    let n=0;
+    m.querySelectorAll('details').forEach(d=>{
+      const sm=d.querySelector('summary');
+      if(!sm||sm.textContent.indexOf('إعدادات التطبيق')<0)return;
+      const i=n++;
+      if(i>1||langOf(i)!=='html')return;
+      const cur=(S.apps[i].set&&S.apps[i].set.build)==='release'?'release':'debug';
+      d.insertAdjacentHTML('beforeend','<label>نوع البناء</label><select onchange="cxBt('+i+',this.value)"><option value="debug"'+(cur==='debug'?' selected':'')+'>Debug (الافتراضي)</option><option value="release"'+(cur==='release'?' selected':'')+'>Release (أخف وأكثر أماناً)</option></select><p class="note">Release لا يمكن فحصه بأدوات المطور، ويتثبت فوق نسخة Debug لأن التوقيع واحد.</p>');
+    });
+  }
+};
+
+const _put3=put;
+put=async function(repo,branch,path,content){
+  await _put3(repo,branch,path,content);
+  const m=String(path).match(/^apps\/([^/]+)\/(www\/index\.html|main\.dart|main\.py)$/);
+  if(m){
+    const a=S.apps.find(x=>slugOf(x.name)===m[1]);
+    if(a){
+      const t=(a.set&&a.set.build==='release'&&/index\.html$/.test(m[2]))?'release':'debug';
+      await _put3(repo,branch,'apps/'+m[1]+'/buildtype.txt',t+'\n');
+    }
+  }
+};
+
+/* ---------- 3) ملفات بناء Flutter و Python النسخة 5 (تخزين مؤقت + توقيع ثابت) ---------- */
+const WF_FLUTTER5=`# v5
+# v4 compatible
+# v3 compatible
+# v2 compatible
+name: build-flutter
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: create project
+        run: |
+          PKG=$(cat apps/$APP/pkg.txt 2>/dev/null | tr -d '[:space:]')
+          if [ -z "$PKG" ]; then PKG=com.myapps.app_$APP; fi
+          flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
+          cp apps/$APP/main.dart flutter_out/lib/main.dart
+          MF=flutter_out/android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/><application|' $MF
+          sed -i "/applicationId/s|com.myapps.app_$APP|$PKG|" flutter_out/android/app/build.gradle*
+          SET=apps/$APP/settings.json
+          LABEL=$(jq -r '.label // empty' $SET 2>/dev/null || true)
+          ORI=$(jq -r '.ori // "auto"' $SET 2>/dev/null || echo auto)
+          if [ -n "$LABEL" ]; then sed -i 's|android:label="[^"]*"|android:label="'"$LABEL"'"|' $MF; fi
+          if [ "$ORI" = "portrait" ] || [ "$ORI" = "landscape" ]; then sed -i 's|android:name=".MainActivity"|android:name=".MainActivity" android:screenOrientation="'"$ORI"'"|' $MF; fi
+          KS="$GITHUB_WORKSPACE/keys/shared.keystore"
+          if [ -f "$KS" ]; then
+            cp "$KS" flutter_out/android/app/shared.keystore
+            if [ -f flutter_out/android/app/build.gradle.kts ]; then
+              cat >> flutter_out/android/app/build.gradle.kts <<'EOF'
+
+          android {
+              signingConfigs {
+                  create("shared") {
+                      storeFile = file("shared.keystore")
+                      storePassword = "android123"
+                      keyAlias = "shared"
+                      keyPassword = "android123"
+                  }
+              }
+              buildTypes {
+                  getByName("release") {
+                      signingConfig = signingConfigs.getByName("shared")
+                  }
+              }
+          }
+          EOF
+            else
+              cat >> flutter_out/android/app/build.gradle <<'EOF'
+
+          android {
+              signingConfigs {
+                  shared {
+                      storeFile file("shared.keystore")
+                      storePassword "android123"
+                      keyAlias "shared"
+                      keyPassword "android123"
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.shared
+                  }
+              }
+          }
+          EOF
+            fi
+          fi
+          if [ -f apps/$APP/icon.png ]; then
+            for d in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+              cp apps/$APP/icon.png flutter_out/android/app/src/main/res/$d/ic_launcher.png
+            done
+          fi
+      - name: build
+        working-directory: flutter_out
+        run: |
+          VN=$(jq -r '.versionName // "1.0.0"' ../apps/$APP/settings.json 2>/dev/null || echo 1.0.0)
+          VC=$(jq -r '.versionCode // 1' ../apps/$APP/settings.json 2>/dev/null || echo 1)
+          flutter build apk --release --build-name=$VN --build-number=$VC
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: flutter-\${{ inputs.app }}-build-\${{ github.run_number }}
+          files: flutter_out/build/app/outputs/flutter-apk/app-release.apk
+`;
+
+const WF_PYTHON5=`# v5
+# v4 compatible
+# v3 compatible
+# v2 compatible
+name: build-python
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.36 virtualenv
+      - name: cache buildozer global
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-global-v5
+      - name: cache app build
+        uses: actions/cache@v4
+        with:
+          path: apps/\${{ inputs.app }}/.buildozer
+          key: buildozer-app-v5-\${{ inputs.app }}
+      - name: signing key
+        run: |
+          if [ -f keys/shared.keystore ]; then
+            mkdir -p ~/.android
+            rm -f ~/.android/debug.keystore
+            keytool -importkeystore -noprompt -srckeystore keys/shared.keystore -srcstorepass android123 -srcalias shared -srckeypass android123 -destkeystore ~/.android/debug.keystore -deststorepass android -destalias androiddebugkey -destkeypass android -deststoretype PKCS12 || echo "signing key import skipped"
+          fi
+      - name: write spec
+        working-directory: apps/\${{ inputs.app }}
+        run: |
+          PKG=$(cat pkg.txt 2>/dev/null | tr -d '[:space:]')
+          if [ -z "$PKG" ]; then PKG=com.myapps.app$APP; fi
+          NAM=$(echo "$PKG" | awk -F. '{print $NF}')
+          DOM=$(echo "$PKG" | sed 's/\\.[^.]*$//')
+          LABEL=$(jq -r '.label // empty' settings.json 2>/dev/null || true)
+          if [ -z "$LABEL" ]; then LABEL=$APP; fi
+          ORI=$(jq -r '.ori // "auto"' settings.json 2>/dev/null || echo auto)
+          case "$ORI" in
+            portrait) OR=portrait ;;
+            landscape) OR=landscape ;;
+            *) OR=all ;;
+          esac
+          VN=$(jq -r '.versionName // "1.0"' settings.json 2>/dev/null || echo 1.0)
+          VC=$(jq -r '.versionCode // 1' settings.json 2>/dev/null || echo 1)
+          cat > buildozer.spec <<EOF
+          [app]
+          title = $LABEL
+          package.name = $NAM
+          package.domain = $DOM
+          source.dir = .
+          source.include_exts = py,png,jpg,kv,atlas,json,ttf
+          version = $VN
+          requirements = python3,kivy==2.3.0,certifi
+          orientation = $OR
+          fullscreen = 0
+          android.numeric_version = $VC
+          android.permissions = INTERNET
+          android.api = 33
+          android.minapi = 24
+          android.archs = arm64-v8a
+          android.accept_sdk_license = True
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          EOF
+          sed -i 's/^ *//' buildozer.spec
+          if [ -f icon.png ]; then sed -i '/^\\[app\\]/a icon.filename = %(source.dir)s/icon.png' buildozer.spec; fi
+      - name: build
+        working-directory: apps/\${{ inputs.app }}
+        run: buildozer -v android debug
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: python-\${{ inputs.app }}-build-\${{ github.run_number }}
+          files: apps/\${{ inputs.app }}/bin/*.apk
+`;
+if(typeof WF!=='undefined'){WF.flutter.yaml=WF_FLUTTER5;WF.python.yaml=WF_PYTHON5}
+
+async function ensureWf5(l){
+  if(typeof WF==='undefined'||!WF[l])return;
+  const W=WF[l],repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
+  let cur='';
+  try{const f=await gh('/repos/'+repo+'/contents/.github/workflows/'+W.file+'?ref='+br);cur=atob(String(f.content||'').replace(/\s/g,''))}catch(e){if(e.status!==404)throw e}
+  if(cur.indexOf('# v5')<0){await put(repo,br,'.github/workflows/'+W.file,W.yaml);await sleep(5000)}
+}
+const _bn5=buildNative;
+buildNative=async function(i,l){
+  if(S.keys.ghToken){try{await ensureWf5(l)}catch(e){return toast(arErr(e))}}
+  return _bn5(i,l);
+};
+})();
 render();
 </script>
 </body>
