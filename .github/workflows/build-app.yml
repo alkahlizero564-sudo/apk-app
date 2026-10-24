@@ -19,6 +19,15 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ runner.os }}-cap7
+          restore-keys: |
+            npm-${{ runner.os }}-
+      - name: Setup Gradle with cache
+        uses: gradle/actions/setup-gradle@v4
       - name: Find app folder
         id: find
         run: |
@@ -66,9 +75,13 @@ jobs:
             exit 1
           fi
       - name: Build
+        id: build
         if: steps.type.outputs.type == 'capacitor'
         working-directory: ${{ steps.find.outputs.dir }}
         run: |
+          BT=$(cat buildtype.txt 2>/dev/null | tr -d '[:space:]')
+          [ "$BT" = "release" ] || BT=debug
+          echo "build type = $BT"
           npm install
           npx cap add android
           npx cap sync android
@@ -135,12 +148,29 @@ jobs:
                   debug {
                       signingConfig signingConfigs.shared
                   }
+                  release {
+                      signingConfig signingConfigs.shared
+                  }
               }
           }
           EOF
+          if [ "$BT" = "release" ]; then
+            cat >> android/app/build.gradle <<'EOF'
+
+          android {
+              lint {
+                  abortOnError = false
+                  checkReleaseBuilds = false
+              }
+          }
+          EOF
+          fi
+          printf '\norg.gradle.parallel=true\norg.gradle.caching=true\n' >> android/gradle.properties
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          if [ "$BT" = "release" ]; then ./gradlew assembleRelease; else ./gradlew assembleDebug; fi
+          cd ..
+          echo "apk=android/app/build/outputs/apk/$BT/app-$BT.apk" >> "$GITHUB_OUTPUT"
       - name: Build Kotlin
         if: steps.type.outputs.type == 'kotlin'
         working-directory: ${{ steps.find.outputs.dir }}
@@ -150,4 +180,4 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.find.outputs.name }}-build-${{ github.run_number }}
-          files: ${{ steps.find.outputs.dir }}/${{ steps.type.outputs.apk }}
+          files: ${{ steps.find.outputs.dir }}/${{ steps.build.outputs.apk || steps.type.outputs.apk }}
