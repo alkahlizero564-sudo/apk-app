@@ -56,9 +56,9 @@ jobs:
           case "$ID" in [0-9]*) ID="a$ID";; esac
           [ -z "$ID" ] && ID="app"
           APPID="com.myapps.$ID"
-          echo "appId = $APPID"
+          echo "default appId = $APPID"
           if [ -f capacitor.config.json ]; then
-            node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('capacitor.config.json','utf8'));c.appId='$APPID';fs.writeFileSync('capacitor.config.json',JSON.stringify(c,null,2))"
+            node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('capacitor.config.json','utf8'));const ok=/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+\$/.test(c.appId||'');if(!ok)c.appId='$APPID';console.log('final appId = '+c.appId);fs.writeFileSync('capacitor.config.json',JSON.stringify(c,null,2))"
           elif [ -f capacitor.config.ts ]; then
             sed -i "s|appId:.*|appId: '$APPID',|" capacitor.config.ts
           else
@@ -78,6 +78,21 @@ jobs:
           done
           echo "--- permissions ---"
           grep "uses-permission" "$M"
+          if [ -f settings.json ]; then
+            echo "--- applying settings ---"
+            G=android/app/build.gradle
+            VC=$(jq -r '.versionCode // empty' settings.json)
+            VN=$(jq -r '.versionName // empty' settings.json)
+            ORI=$(jq -r '.ori // "auto"' settings.json)
+            if [ -n "$VC" ]; then sed -i "s/versionCode [0-9][0-9]*/versionCode $VC/" "$G"; fi
+            if [ -n "$VN" ]; then sed -i "s/versionName \"[^\"]*\"/versionName \"$VN\"/" "$G"; fi
+            sed -i 's/ android:screenOrientation="[^"]*"//' "$M"
+            if [ "$ORI" = "portrait" ] || [ "$ORI" = "landscape" ]; then
+              sed -i "s|android:name=\".MainActivity\"|android:name=\".MainActivity\" android:screenOrientation=\"$ORI\"|" "$M"
+            fi
+            grep -E "versionCode|versionName" "$G" || true
+            grep "screenOrientation" "$M" || true
+          fi
           if [ -f icon.png ]; then
             echo "--- applying icon ---"
             npm install --no-save sharp
