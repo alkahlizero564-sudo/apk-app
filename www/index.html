@@ -3452,6 +3452,253 @@ render=function(){
   });
 };
 })();
+render();/* ===== إضافة: إشعار التحديث داخل تطبيقات Flutter ===== */
+(function(){
+
+/* كود Dart الذي يُضاف تلقائياً وقت الرفع (كودك المحفوظ في التطبيق ما بيتغير) */
+const DART_UPD=`
+// ===== تحديث التطبيق (يُضاف تلقائياً) =====
+const int _apkCur = __CUR__;
+const String _apkUrl = '__URL__';
+
+void runApp(apkw.Widget app) => apkw.runApp(ApkUpdateGate(child: app));
+
+class ApkUpdateGate extends apkw.StatefulWidget {
+  final apkw.Widget child;
+  const ApkUpdateGate({super.key, required this.child});
+
+  @override
+  apkw.State<ApkUpdateGate> createState() => _ApkUpdateGateState();
+}
+
+class _ApkUpdateGateState extends apkw.State<ApkUpdateGate> {
+  Map<String, dynamic>? _u;
+
+  @override
+  void initState() {
+    super.initState();
+    apkas.Timer(const Duration(seconds: 3), _check);
+  }
+
+  apkio.File _skipFile() => apkio.File(apkio.Directory.systemTemp.path + '/apk_upd_skip.txt');
+
+  Future<bool> _skipped(int code) async {
+    try {
+      final s = await _skipFile().readAsString();
+      final p = s.split('|');
+      if (p.length == 2 && p[0] == code.toString()) {
+        final t = int.tryParse(p[1]) ?? 0;
+        return DateTime.now().millisecondsSinceEpoch - t < 86400000;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  Future<void> _later(int code) async {
+    try {
+      await _skipFile().writeAsString(code.toString() + '|' + DateTime.now().millisecondsSinceEpoch.toString());
+    } catch (_) {}
+  }
+
+  Future<void> _check() async {
+    try {
+      final c = apkio.HttpClient();
+      c.connectionTimeout = const Duration(seconds: 8);
+      final req = await c.getUrl(Uri.parse(_apkUrl + '?t=' + DateTime.now().millisecondsSinceEpoch.toString()));
+      final res = await req.close();
+      if (res.statusCode != 200) return;
+      final body = await res.transform(apkjs.utf8.decoder).join();
+      final j = apkjs.jsonDecode(body);
+      if (j is! Map<String, dynamic>) return;
+      final code = (j['code'] is num) ? (j['code'] as num).toInt() : 0;
+      if (code <= _apkCur || j['url'] is! String) return;
+      if (j['force'] != true && await _skipped(code)) return;
+      if (mounted) setState(() => _u = j);
+    } catch (_) {}
+  }
+
+  @override
+  apkw.Widget build(apkw.BuildContext context) {
+    final u = _u;
+    return apkw.Directionality(
+      textDirection: apkw.TextDirection.rtl,
+      child: apkw.Stack(
+        textDirection: apkw.TextDirection.rtl,
+        fit: apkw.StackFit.expand,
+        children: [
+          widget.child,
+          if (u != null) _overlay(u),
+        ],
+      ),
+    );
+  }
+
+  apkw.Widget _overlay(Map<String, dynamic> u) {
+    final force = u['force'] == true;
+    final name = (u['name'] ?? u['code']).toString();
+    final notes = (u['notes'] ?? '').toString();
+    final code = (u['code'] is num) ? (u['code'] as num).toInt() : 0;
+    return apkw.Container(
+      color: const apkw.Color(0xA3020617),
+      alignment: apkw.Alignment.bottomCenter,
+      child: apkw.Container(
+        width: double.infinity,
+        padding: const apkw.EdgeInsets.fromLTRB(20, 22, 20, 34),
+        decoration: const apkw.BoxDecoration(
+          color: apkw.Color(0xFFFFFFFF),
+          borderRadius: apkw.BorderRadius.only(
+            topLeft: apkw.Radius.circular(28),
+            topRight: apkw.Radius.circular(28),
+          ),
+        ),
+        child: apkw.DefaultTextStyle(
+          style: const apkw.TextStyle(
+            color: apkw.Color(0xFF0F172A),
+            fontSize: 14,
+            fontWeight: apkw.FontWeight.normal,
+            decoration: apkw.TextDecoration.none,
+          ),
+          child: apkw.Column(
+            mainAxisSize: apkw.MainAxisSize.min,
+            crossAxisAlignment: apkw.CrossAxisAlignment.start,
+            children: [
+              apkw.Text(
+                force ? 'تحديث مطلوب' : 'يتوفر إصدار جديد',
+                style: const apkw.TextStyle(fontSize: 19, fontWeight: apkw.FontWeight.w800),
+              ),
+              const apkw.SizedBox(height: 8),
+              apkw.Text(
+                'الإصدار ' + name + (notes.isEmpty ? '' : '\\n\\n' + notes),
+                style: const apkw.TextStyle(color: apkw.Color(0xFF475569), height: 1.7),
+              ),
+              const apkw.SizedBox(height: 16),
+              _btn('⬇ تحميل التحديث', const apkw.Color(0xFF2563EB), const apkw.Color(0xFFFFFFFF), () {
+                apkul.launchUrl(Uri.parse(u['url'] as String), mode: apkul.LaunchMode.externalApplication);
+              }),
+              if (!force) ...[
+                const apkw.SizedBox(height: 10),
+                _btn('لاحقاً', const apkw.Color(0xFFE2E8F0), const apkw.Color(0xFF0F172A), () {
+                  _later(code);
+                  setState(() => _u = null);
+                }),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  apkw.Widget _btn(String t, apkw.Color bg, apkw.Color fg, void Function() f) {
+    return apkw.GestureDetector(
+      onTap: f,
+      child: apkw.Container(
+        width: double.infinity,
+        padding: const apkw.EdgeInsets.symmetric(vertical: 14),
+        decoration: apkw.BoxDecoration(color: bg, borderRadius: apkw.BorderRadius.circular(16)),
+        child: apkw.Text(
+          t,
+          textAlign: apkw.TextAlign.center,
+          style: apkw.TextStyle(color: fg, fontSize: 16, fontWeight: apkw.FontWeight.w700),
+        ),
+      ),
+    );
+  }
+}
+`;
+
+function injectDart(h,a,repo,br,key){
+  if(h.indexOf('ApkUpdateGate')>-1)return h;
+  const imp="import 'dart:async' as apkas;\nimport 'dart:convert' as apkjs;\nimport 'dart:io' as apkio;\nimport 'package:flutter/widgets.dart' as apkw;\nimport 'package:url_launcher/url_launcher.dart' as apkul;\n";
+  const re=/^import\s+[^;]+;\s*$/gm;
+  let last=-1,m;
+  while((m=re.exec(h))!==null)last=m.index+m[0].length;
+  const body=last>-1?h.slice(0,last)+'\n'+imp+h.slice(last):imp+h;
+  const code=DART_UPD.split('__CUR__').join(String((a.vc||0)+1)).split('__URL__').join('https://raw.githubusercontent.com/'+repo+'/'+br+'/apps/'+key+'/update.json');
+  return body+'\n'+code;
+}
+
+async function isPub2(repo){
+  window._pub=window._pub||{};
+  if(window._pub[repo]===undefined){
+    try{const r=await gh('/repos/'+repo);window._pub[repo]=!r.private}
+    catch(e){window._pub[repo]=true}
+  }
+  return window._pub[repo];
+}
+
+/* حقن الكود عند رفع main.dart إلى GitHub */
+const _put5=put;
+put=async function(repo,branch,path,content){
+  const m=String(path).match(/^apps\/([^/]+)\/main\.dart$/);
+  if(m){
+    const idx=S.apps.findIndex(x=>slugOf(x.name)===m[1]);
+    if(idx>-1){
+      const a=S.apps[idx],st=a.set||{};
+      if(st.upd&&langOf(idx)==='flutter'){
+        if(await isPub2(repo))content=injectDart(content,a,repo,branch,m[1]);
+        else toast('المستودع خاص: التحديث التلقائي يحتاج مستودعاً عاماً');
+      }
+    }
+  }
+  return _put5(repo,branch,path,content);
+};
+
+/* نشر معلومات التحديث بعد كل بناء ناجح */
+S.apps.forEach(a=>{if(a.apk&&a.updf===undefined)a.updf=a.apk});
+async function pubFl(i,now){
+  const a=S.apps[i];
+  if(!a||!a.apk||langOf(i)!=='flutter')return;
+  if(!now&&a.apk===a.updf)return;
+  a.updf=a.apk;save();
+  const st=a.set||{};
+  if(!st.upd)return;
+  try{
+    const repo=await repoFull();
+    if(!(await isPub2(repo)))return toast('المستودع خاص: لا يمكن نشر معلومات التحديث');
+    const info=await gh('/repos/'+repo),br=info.default_branch||'main',key=slugOf(a.name);
+    const n=a.vc||1;
+    const j={code:n,name:(a.vbase||'1.0')+'.'+n,url:a.apk,notes:String(st.notes||'').slice(0,300),force:!!st.updForce,t:Date.now()};
+    await put(repo,br,'apps/'+key+'/update.json',JSON.stringify(j,null,2));
+    toast('تم نشر معلومات التحديث ✔');
+  }catch(e){
+    toast('تعذّر نشر معلومات التحديث: '+arErr(e));
+  }
+}
+const _f2=buildNative;
+buildNative=async function(i,l){await _f2(i,l);await pubFl(i)};
+const _f3=buildAny;
+buildAny=async function(i){await _f3(i);await pubFl(i)};
+
+/* الواجهة داخل إعدادات تطبيقات Flutter */
+window.cxUp2=function(i,k,v){const a=S.apps[i];a.set=a.set||{};a.set[k]=v;save()};
+window.cxPubNow2=async function(i){
+  const a=S.apps[i];
+  if(!a||!a.apk||!a.vc)return toast('ابنِ التطبيق أولاً');
+  if(!(a.set&&a.set.upd))return toast('فعّل إشعار التحديث أولاً');
+  await pubFl(i,true);
+};
+const _render16=render;
+render=function(){
+  _render16();
+  if(tab!=='build')return;
+  const m=$('#main');if(!m)return;
+  let n=0;
+  m.querySelectorAll('details').forEach(d=>{
+    const sm=d.querySelector('summary');
+    if(!sm||sm.textContent.indexOf('إعدادات التطبيق')<0)return;
+    const i=n++;
+    if(i>1||langOf(i)!=='flutter')return;
+    const st=S.apps[i].set||{};
+    d.insertAdjacentHTML('beforeend',
+      '<label style="display:flex;gap:10px;align-items:center;color:var(--tx);margin-top:14px"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(st.upd?'checked':'')+' onchange="cxUp2('+i+',\'upd\',this.checked)"> إشعار التحديث داخل التطبيق</label>'
+     +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx)"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(st.updForce?'checked':'')+' onchange="cxUp2('+i+',\'updForce\',this.checked)"> تحديث إجباري (يمنع استخدام النسخ القديمة)</label>'
+     +'<label>ما الجديد؟ (يظهر للزبون عند التحديث)</label><input value="'+esc(st.notes||'')+'" maxlength="300" placeholder="مثال: إضافة بحث وإصلاحات" oninput="cxUp2('+i+',\'notes\',this.value)">'
+     +'<div class="row" style="margin-top:8px"><button class="sec" onclick="cxPubNow2('+i+')">📤 نشر الآن بدون بناء</button></div>'
+     +'<p class="note">يضيف حزمة url_launcher تلقائياً، ويحتاج مستودعاً عاماً. غيّر «ما الجديد» قبل كل بناء. النسخ المثبتة قبل تفعيل الميزة ما بتحصل على الإشعار.</p>');
+  });
+};
+})();
 render();
 </script>
 </body>
