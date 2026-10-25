@@ -843,7 +843,7 @@ class OrderCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('طلب #${order['id']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 Container(
@@ -858,7 +858,7 @@ class OrderCard extends StatelessWidget {
             ),
             const Divider(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('المبلغ: ${order['amount']} ج.س', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 Container(
@@ -917,7 +917,7 @@ class CurrentMonitorTab extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
-                              mainAxisAlignment: MainAxisAlignment.between,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text('طلب رقم #${order['id']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                                 Text('${order['amount']} ج.س', style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
@@ -1006,7 +1006,7 @@ class ArchiveTab extends StatelessWidget {
                       index: index,
                       child: AppCard(
                         child: Row(
-                          mainAxisAlignment: MainAxisAlignment.between,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
