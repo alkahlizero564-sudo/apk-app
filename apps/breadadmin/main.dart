@@ -465,7 +465,7 @@ class MainDashboardTab extends StatelessWidget {
                   AppCard(
                     padding: const EdgeInsets.all(24),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.between,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -613,7 +613,7 @@ class AdminOrderCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('طلب #${order['id']} - ${order['customer_name']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               Container(
@@ -627,7 +627,7 @@ class AdminOrderCard extends StatelessWidget {
           Text('مكان العمل: ${order['workplace']}', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
           const Divider(height: 20),
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('${order['amount']} ج.س (${order['payment_method']})', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: kPrimaryColor)),
               DropdownButton<String>(
@@ -710,7 +710,7 @@ class ReportsTab extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.between,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text('إجمالي عدد الطلبات الكلي:', style: TextStyle(fontWeight: FontWeight.bold)),
                           Text('${orders.length}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
@@ -718,7 +718,7 @@ class ReportsTab extends StatelessWidget {
                       ),
                       const Divider(height: 24),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.between,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           const Text('إجمالي المبالغ الكلي:', style: TextStyle(fontWeight: FontWeight.bold)),
                           Text('$totalAmount ج.س', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kPrimaryColor)),
@@ -752,7 +752,7 @@ class SettingsTab extends StatelessWidget {
                 AppCard(
                   padding: const EdgeInsets.all(24),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.between,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
