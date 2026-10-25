@@ -3699,6 +3699,339 @@ render=function(){
   });
 };
 })();
+render();/* ===== إضافة: مراجعة توافق التطبيقين + تسجيل دخول وأدوار (Firebase Auth) ===== */
+(function(){
+
+const FAM='<!'+'--FA-PRO-REMOVED--'+'>';
+const PLAN_MARK='أنت مهندس منتجات خبير. صمم نظاماً من تطبيقين مترابطين';
+
+/* ---------- أدوات مشتركة ---------- */
+function ok2(l,c){
+  if(!c||c.length<200)return false;
+  if(l==='html')return /<\/html>/i.test(c);
+  if(l==='flutter')return /void\s+main\s*\(/.test(c);
+  return /\.run\(\)/.test(c);
+}
+function fence(i){return BT+FENCE[langOf(i)]+'\n'+S.apps[i].code+'\n'+BT}
+function jparse(t){
+  const s=String(t),a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a<0||b<a)throw new Error('رد غير صالح');
+  return JSON.parse(s.slice(a,b+1));
+}
+
+/* ---------- 1) مراجعة توافق التطبيقين ---------- */
+async function audit(){
+  const p='أنت مراجع جودة برمجيات. التطبيقان التاليان يتشاركان البيانات في السحابة (Firebase أو Supabase). قارن بينهما بدقة:\n- مسارات أو جداول البيانات وأسماؤها حرفياً\n- أسماء الحقول وأنواعها وشكل القيم\n- قيم الحالة (status) وتسلسل تغييرها\n- شكل الطوابع الزمنية والمعرّفات\n- من يكتب ومن يقرأ، وهل كل بيان يكتبه تطبيق يقرؤه الآخر بنفس الاسم\nاذكر فقط الاختلافات الحقيقية التي تجعل أحد التطبيقين لا يفهم بيانات الآخر أو لا يعرضها أو يخطئ فيها. لا تذكر ملاحظات تصميم أو أسلوب.\nأعد JSON فقط بدون شرح وبدون markdown: {"ok":true أو false,"issues":["وصف مختصر لكل اختلاف"],"fix":"1 أو 2"} حيث fix هو رقم التطبيق الذي يجب تعديله ليوافق الآخر (غالباً الثاني).\n\nالتطبيق 1 ('+LANGN[langOf(0)]+'):\n'+fence(0)+'\n\nالتطبيق 2 ('+LANGN[langOf(1)]+'):\n'+fence(1);
+  return jparse(await ai(p));
+}
+async function fixApp(i,issues){
+  const l=langOf(i),o=1-i;
+  const head=l==='html'?SYS:sysFor(i);
+  const p=head+'عدّل هذا التطبيق فقط ليتوافق تماماً مع التطبيق الآخر في بنية البيانات المشتركة، بحيث يقرأ ويكتب بنفس المسارات والحقول وقيم الحالة. أبقِ بقية الوظائف والتصميم كما هي. المشاكل المكتشفة:\n- '+issues.join('\n- ')+'\n\nالتطبيق المراد تعديله:\n'+fence(i)+'\n\nالتطبيق الآخر (مرجع فقط، لا تعدّله ولا تعد كتابته):\n'+fence(o)+'\n\nأعد الكود الكامل للتطبيق المراد تعديله فقط.';
+  const out=clean(await ai(p));
+  if(!ok2(l,out))throw new Error('رد الذكاء الاصطناعي انقطع قبل نهاية الكود، فلم أستبدل كودك.');
+  setCode(i,out);
+}
+window.cxReview=async function(auto){
+  if(window._rvBusy)return;
+  if(!S.apps[0].code.trim()||!S.apps[1].code.trim())return toast('لازم يكون في كود في التطبيقين');
+  window._rvBusy=true;
+  const P=progress('🤝 مراجعة توافق التطبيقين',['مقارنة بنية البيانات','إصلاح الاختلافات']);
+  let step=0,r=null;
+  try{
+    for(let n=0;n<3;n++){
+      step=0;P.set(0,'run',n?'إعادة الفحص بعد الإصلاح...':'جاري المقارنة...');
+      r=await audit();
+      const issues=Array.isArray(r.issues)?r.issues.map(String):[];
+      if(r.ok===true||!issues.length){
+        P.set(0,'ok','متوافقان ✔');
+        P.set(1,'ok',n?'تم الإصلاح ✔':'لا حاجة للإصلاح');
+        r={ok:true,issues:[]};break;
+      }
+      r.issues=issues;
+      P.set(0,'bad',issues.join('\n'));
+      if(n===2)break;
+      step=1;
+      const idx=String(r.fix)==='1'?0:1;
+      P.set(1,'run','تعديل التطبيق '+(idx?'الثاني':'الأول')+'...');
+      await fixApp(idx,issues);
+      P.set(1,'ok','');
+    }
+    if(r&&r.ok===true){
+      window._rvResult='✔ التطبيقان متوافقان في البيانات';
+      P.extra('<p style="color:var(--ok)">✔ التطبيقان متوافقان</p>');
+    }else{
+      window._rvResult='⚠ بقيت اختلافات: '+((r&&r.issues)||[]).join('، ');
+      P.set(1,'bad','بقيت اختلافات');
+      P.extra('<div class="errbox">'+esc(((r&&r.issues)||[]).join('\n'))+'</div><p class="note">ما قدرت أصلح كل الاختلافات تلقائياً. جرّب نموذجاً أقوى أو عدّل يدوياً.</p>');
+    }
+    save();render();
+  }catch(e){
+    window._rvResult='';
+    P.set(step,'bad',arErr(e));
+    P.extra('<div class="errbox">'+esc(arErr(e))+'</div>');
+  }finally{
+    window._rvBusy=false;
+  }
+};
+function rvCard(){
+  return '<div class="card" id="cx-rv"><h2>🤝 مراجعة التوافق</h2><p class="note">يقارن التطبيقين (المسارات والحقول وقيم الحالة) ويصلح أي اختلاف بينهما.</p><button class="acc" style="width:100%" onclick="cxReview()">🤝 راجع التوافق الآن</button><label style="display:flex;gap:10px;align-items:center;color:var(--tx);margin-top:10px"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(window._rvAuto===false?'':'checked')+' onchange="window._rvAuto=this.checked"> تشغيلها تلقائياً بعد إنشاء النظام</label></div>';
+}
+
+/* ---------- 2) كائن FA: تسجيل الدخول وقاعدة البيانات ---------- */
+const FA_JS=`(function(){
+var C=window.FA_CFG||{};
+var K="fa_sess_v1",S=null;
+try{S=JSON.parse(localStorage.getItem(K)||"null")}catch(e){}
+function save(){try{if(S)localStorage.setItem(K,JSON.stringify(S));else localStorage.removeItem(K)}catch(e){}}
+function post(u,b,form){
+  return fetch(u,{method:"POST",headers:{"Content-Type":form?"application/x-www-form-urlencoded":"application/json"},body:b}).then(function(r){
+    return r.json().catch(function(){return {}}).then(function(j){
+      if(!r.ok){var m=(j&&j.error&&(j.error.message||j.error))||("HTTP "+r.status);throw new Error(String(m))}
+      return j;
+    });
+  });
+}
+function apply(j){
+  S={t:j.idToken||j.id_token,r:j.refreshToken||j.refresh_token,u:j.localId||j.user_id,m:j.email||"",e:Date.now()+((+j.expiresIn||+j.expires_in||3600)-60)*1000};
+  save();F.uid=S.u;F.email=S.m;return S;
+}
+function idt(path,b){return post("https://identitytoolkit.googleapis.com/v1/accounts:"+path+"?key="+encodeURIComponent(C.key||""),JSON.stringify(b))}
+function refresh(){
+  if(!S||!S.r)return Promise.reject(new Error("NO_SESSION"));
+  return post("https://securetoken.googleapis.com/v1/token?key="+encodeURIComponent(C.key||""),"grant_type=refresh_token&refresh_token="+encodeURIComponent(S.r),true).then(function(j){return apply(j)});
+}
+function token(){
+  if(!S)return Promise.reject(new Error("NO_SESSION"));
+  if(Date.now()<S.e)return Promise.resolve(S.t);
+  return refresh().then(function(s){return s.t});
+}
+function req(method,path,body,retry){
+  return token().then(function(t){
+    var u=C.url+"/"+String(path).replace(/^[/]+/,"")+".json?auth="+encodeURIComponent(t);
+    var o={method:method,headers:{}};
+    if(body!==undefined){o.headers["Content-Type"]="application/json";o.body=JSON.stringify(body)}
+    return fetch(u,o).then(function(r){
+      return r.text().then(function(tx){
+        var j=null;try{j=tx?JSON.parse(tx):null}catch(e){}
+        if(r.status===401&&!retry){S.e=0;return req(method,path,body,true)}
+        if(!r.ok)throw new Error(r.status===401?"PERMISSION_DENIED":String((j&&j.error)||("HTTP "+r.status)));
+        return j;
+      });
+    });
+  });
+}
+var F=window.FA={
+  uid:S?S.u:null,
+  email:S?S.m:"",
+  init:function(mode){
+    if(S){
+      return token().then(function(){F.uid=S.u;F.email=S.m;return S.u}).catch(function(){
+        S=null;save();F.uid=null;
+        return mode==="anon"?F.init("anon"):null;
+      });
+    }
+    if(mode==="anon"){return idt("signUp",{returnSecureToken:true}).then(function(j){apply(j);return S.u})}
+    return Promise.resolve(null);
+  },
+  signIn:function(e,p){return idt("signInWithPassword",{email:e,password:p,returnSecureToken:true}).then(function(j){apply(j);return S.u})},
+  signUp:function(e,p){return idt("signUp",{email:e,password:p,returnSecureToken:true}).then(function(j){apply(j);return S.u})},
+  signOut:function(){S=null;save();F.uid=null;F.email="";return Promise.resolve()},
+  token:token,
+  get:function(p){return req("GET",p)},
+  post:function(p,b){return req("POST",p,b)},
+  put:function(p,b){return req("PUT",p,b)},
+  patch:function(p,b){return req("PATCH",p,b)},
+  del:function(p){return req("DELETE",p)},
+  isAdmin:function(){
+    if(!F.uid||!C.root)return Promise.resolve(false);
+    return F.get(C.root+"/admins/"+F.uid).then(function(v){return v===true}).catch(function(){return false});
+  },
+  claimAdmin:function(){
+    if(!F.uid||!C.root)return Promise.resolve(false);
+    return F.put(C.root+"/admins/"+F.uid,true).then(function(){return true}).catch(function(){return false});
+  },
+  addStaff:function(e,p){
+    return idt("signUp",{email:e,password:p,returnSecureToken:true}).then(function(j){
+      var uid=j.localId;
+      return F.put(C.root+"/admins/"+uid,true).then(function(){return uid});
+    });
+  },
+  err:function(e){
+    var m=String((e&&e.message)||e);
+    var M={EMAIL_EXISTS:"هذا البريد مسجّل مسبقاً",INVALID_LOGIN_CREDENTIALS:"البريد أو كلمة السر غير صحيحة",INVALID_PASSWORD:"كلمة السر غير صحيحة",EMAIL_NOT_FOUND:"هذا البريد غير مسجّل",WEAK_PASSWORD:"كلمة السر ضعيفة (6 أحرف على الأقل)",INVALID_EMAIL:"البريد غير صحيح",OPERATION_NOT_ALLOWED:"طريقة الدخول غير مفعّلة في Firebase",PERMISSION_DENIED:"لا توجد صلاحية لهذه العملية",NO_SESSION:"يلزم تسجيل الدخول",TOO_MANY_ATTEMPTS_TRY_LATER:"محاولات كثيرة، حاول لاحقاً"};
+    for(var k in M){if(m.indexOf(k)>-1)return M[k]}
+    if(/Failed to fetch|NetworkError|Load failed/i.test(m))return "تعذّر الاتصال، تأكد من الإنترنت";
+    return m;
+  }
+};
+})();`;
+
+function injectFA(h){
+  h=h.split(FAM).join('');
+  if(h.indexOf('id="fa-pro"')>-1)return h;
+  let cfg='';
+  if(h.indexOf('id="fa-cfg"')<0){
+    const o={url:String(S.keys.fbUrl||'').trim().replace(/\/+$/,''),key:String(S.keys.fbKey||'').trim(),root:window._lastRoot||''};
+    cfg='<scr'+'ipt id="fa-cfg">window.FA_CFG='+JSON.stringify(o)+';<\/scr'+'ipt>';
+  }
+  const blk=cfg+'<scr'+'ipt id="fa-pro">'+FA_JS+'<\/scr'+'ipt>';
+  if(/<head[^>]*>/i.test(h))return h.replace(/<head[^>]*>/i,function(m){return m+blk});
+  if(/<html[^>]*>/i.test(h))return h.replace(/<html[^>]*>/i,function(m){return m+'<head>'+blk+'</head>'});
+  return blk+h;
+}
+function stripFA(p){
+  return String(p).replace(new RegExp('<scr'+'ipt id="fa-pro">[\\s\\S]*?<\\/scr'+'ipt>\\s*','g'),FAM);
+}
+
+/* ---------- 3) تعليمات الذكاء الاصطناعي لوضع الصلاحيات ---------- */
+const PLAN_AUTH='\n\nمهم (نظام الصلاحيات): النظام يستخدم تسجيل دخول Firebase: الزبائن يدخلون تلقائياً كمستخدم مجهول، وتطبيق الإدارة يدخل بالبريد وكلمة السر. صنّف كل مجموعات البيانات وأضف إلى JSON ثلاثة مفاتيح مصفوفات بأسماء المجموعات الإنجليزية: "pub" للمجموعات التي يقرأها كل المستخدمين وتكتبها الإدارة فقط (مثل المنتجات والأسعار)، و"priv" للمجموعات الخاصة بكل مستخدم (مثل طلبات الزبون) وتُخزَّن بالشكل مجموعة/uid/المعرّف وكل عنصر فيها يحمل حقل uid، و"adm" للمجموعات التي تخص الإدارة فقط. اذكر في حقل data المسارات الكاملة بهذا الشكل.';
+
+const FA_BASE=[
+'',
+'',
+'=== نظام الدخول والصلاحيات (إلزامي، ويلغي قواعد الاتصال المباشر أعلاه) ===',
+'يُحقن تلقائياً في head كائن عام اسمه FA للتعامل مع Firebase Auth وقاعدة البيانات. لا تكتبه ولا تستخدم fetch مباشرة للقاعدة، واستخدم هذه الدوال فقط (كلها ترجع Promise):',
+'- FA.init(mode): وضع "anon" يدخل تلقائياً كمستخدم مجهول ويحفظ الجلسة، ووضع "email" يستعيد الجلسة السابقة إن وجدت. ترجع uid أو null.',
+'- FA.signIn(email,password) وFA.signUp(email,password) وFA.signOut(). و FA.uid هو معرّف المستخدم الحالي وFA.email بريده.',
+'- FA.get(path) وFA.post(path,obj) وFA.put(path,obj) وFA.patch(path,obj) وFA.del(path): المسار نص بدون .json ويبدأ بجذر البيانات مثل ROOT/products. وFA.post ترجع {name:"المعرّف"}. التوثيق والتجديد تلقائيان.',
+'- FA.err(e) ترجع رسالة خطأ عربية مناسبة للعرض. اعرض كل الأخطاء للمستخدم برسالة واضحة.',
+'- لا تعرّف متغيراً عاماً باسم FA، ولا تحذف وسم script الذي id="fa-cfg" إن وُجد.'
+];
+const FA_CUST=[
+'تطبيق الزبائن: عند فتح التطبيق نفّذ await FA.init("anon") قبل أي قراءة أو كتابة، ولا تعرض أي شاشة تسجيل دخول. البيانات الخاصة بالزبون (مثل طلباته) تُخزَّن تحت uid الخاص به بالشكل ROOT/المجموعة/uid/المعرّف (استخدم FA.uid)، وخزّن حقل uid داخل كل عنصر أيضاً. لا يستطيع الزبون قراءة بيانات غيره، والبيانات العامة (مثل المنتجات) للقراءة فقط. إن فشل الاتصال أو الدخول اعرض رسالة واضحة وزر إعادة المحاولة.'
+];
+const FA_ADM=[
+'تطبيق الإدارة: أول شاشة تسجيل دخول بالبريد وكلمة السر، مع تبديل بين «دخول» (FA.signIn) و«إنشاء حساب إدارة» (FA.signUp). بعد نجاح الدخول نفّذ await FA.claimAdmin() الذي يجعل المستخدم أول مدير تلقائياً إن لم يوجد مدير بعد، ثم await FA.isAdmin(). إن لم يكن مديراً اعرض «ليس لديك صلاحية الإدارة» مع زر خروج. أضف في الإعدادات زر خروج (FA.signOut) وشاشة «الموظفون» لإضافة موظف بالبريد وكلمة السر عبر await FA.addStaff(email,password) وعرض المديرين عبر FA.get("ROOT/admins") (مفاتيحه uid). اقرأ المجموعات الخاصة بالزبائن كاملة من ROOT/المجموعة (مستويان: uid ثم المعرّف) وسطّحها، وللتعديل على عنصر خاص بزبون استخدم المسار ROOT/المجموعة/uidالزبون/المعرّف (uid مخزّن داخل العنصر).'
+];
+function faRef(root,admin){
+  return FA_BASE.concat(admin?FA_ADM:FA_CUST).join('\n').split('ROOT').join(root||'ROOT');
+}
+const FA_REF_MIN='\n\nملاحظة: دوال تسجيل الدخول والقاعدة موجودة في كائن FA (FA.init وFA.signIn وFA.signUp وFA.signOut وFA.get وFA.post وFA.put وFA.patch وFA.del وFA.claimAdmin وFA.isAdmin وFA.addStaff وFA.err)، وقد حُذف كودها من الأعلى ويُعاد تلقائياً بعد ردك. لا تكتبه، ولا تحذف وسم script الذي id="fa-cfg"، ولا تستخدم fetch مباشراً للقاعدة.';
+
+function authOn(){
+  const f=window._sysf||{};
+  return !!window._authOn&&f.be==='firebase'&&f.lang==='html';
+}
+
+const _ai6=ai;
+ai=function(p){
+  if(typeof p==='string'){
+    const auth=authOn();
+    if(auth&&p.indexOf(PLAN_MARK)>-1){
+      return _ai6(p+PLAN_AUTH).then(function(t){try{window._lastPlan=jparse(t)}catch(e){}return t});
+    }
+    if(auth&&p.indexOf('دور التطبيق: ')>-1&&p.indexOf('جذر البيانات: ')>-1){
+      const m=p.match(/جذر البيانات: (\S+)/);
+      if(m)window._lastRoot=m[1];
+      p+=faRef(window._lastRoot,p.indexOf('دور التطبيق: تطبيق الإدارة')>-1);
+    }else{
+      p=stripFA(p);
+      if(p.indexOf(FAM)>-1)p+=FA_REF_MIN;
+    }
+  }
+  return _ai6(p);
+};
+
+const _clean2=clean;
+clean=function(t){
+  const r=_clean2(t);
+  if(!/<html[\s>]/i.test(r))return r;
+  if(/\bFA\.(init|get|post|put|patch|del|signIn|signUp|signOut|claimAdmin|isAdmin|addStaff)\b/.test(r)||r.indexOf('id="fa-cfg"')>-1)return injectFA(r);
+  return r;
+};
+
+/* ---------- 4) قواعد Firebase الجاهزة ---------- */
+function nm2(x){return String(x).replace(/[^A-Za-z0-9_]/g,'')}
+function nodeRules(root,plan){
+  const A="root.child('"+root+"/admins/'+auth.uid).exists()";
+  const n={};
+  n.admins={
+    '.read':'auth != null && '+A,
+    '$uid':{
+      '.read':'auth != null && auth.uid === $uid',
+      '.write':"auth != null && ((auth.uid === $uid && auth.token.firebase.sign_in_provider === 'password' && !root.child('"+root+"/admins').exists()) || "+A+")"
+    }
+  };
+  (plan.pub||[]).map(nm2).filter(Boolean).forEach(x=>{n[x]={'.read':'auth != null','.write':'auth != null && '+A}});
+  (plan.priv||[]).map(nm2).filter(Boolean).forEach(x=>{n[x]={'.read':'auth != null && '+A,'$uid':{'.read':'auth != null && (auth.uid === $uid || '+A+')','.write':'auth != null && (auth.uid === $uid || '+A+')'}}});
+  (plan.adm||[]).map(nm2).filter(Boolean).forEach(x=>{n[x]={'.read':'auth != null && '+A,'.write':'auth != null && '+A}});
+  return n;
+}
+function fullRules(url,root,plan){
+  S.fbr=S.fbr||{};
+  const k=url||'default';
+  S.fbr[k]=S.fbr[k]||{};
+  S.fbr[k][root]=nodeRules(root,plan);
+  save();
+  const rules={'.read':false,'.write':false,'apk_test':{'.read':true,'.write':true}};
+  Object.keys(S.fbr[k]).forEach(r=>{rules[r]=S.fbr[k][r]});
+  return {rules:rules};
+}
+window.cxCopyRules=function(){
+  const t=$('#cx-rules');if(!t)return;
+  const ok=()=>toast('تم نسخ القواعد ✔');
+  function fb(){t.focus();t.select();try{document.execCommand('copy');ok()}catch(e){toast('تعذّر النسخ، انسخ يدوياً')}}
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t.value).then(ok,fb);else fb();
+};
+async function showRules(){
+  const root=window._lastRoot;
+  let plan=window._lastPlan;
+  if(!plan||!root)return toast('ما قدرت أحدد هيكل الصلاحيات، أعد إنشاء النظام');
+  try{
+    if(!Array.isArray(plan.pub)&&!Array.isArray(plan.priv)&&!Array.isArray(plan.adm)){
+      const t=await ai('صنّف مجموعات البيانات التالية إلى: pub (يقرأها كل المستخدمين وتكتبها الإدارة فقط)، priv (خاصة بكل مستخدم ومسارها مجموعة/uid/المعرّف)، adm (للإدارة فقط). أعد JSON فقط بدون شرح: {"pub":[],"priv":[],"adm":[]} بأسماء مجموعات إنجليزية.\n\nهيكل البيانات:\n'+plan.data);
+      plan=Object.assign({},plan,jparse(t));
+    }
+  }catch(e){return toast('تعذّر تحديد الصلاحيات: '+arErr(e))}
+  const url=String(S.keys.fbUrl||'').trim().replace(/\/+$/,'');
+  const json=JSON.stringify(fullRules(url,root,plan),null,2);
+  const sh=$('#sheet');
+  sh.innerHTML='<div class="sheetbox"><h3>🔐 قواعد Firebase جاهزة</h3>'
+   +(window._rvResult?'<p class="note">'+esc(window._rvResult)+'</p>':'')
+   +'<p class="note">خطوات التفعيل (مرة واحدة):</p>'
+   +'<p class="note">1) Firebase Console ← Authentication ← Sign-in method: فعّل <b>Anonymous</b> و<b>Email/Password</b>.<br>2) Realtime Database ← Rules: امسح كل شي والصق القواعد أدناه، ثم <b>Publish</b>.<br>3) افتح <b>تطبيق الإدارة</b> أولاً وأنشئ حساب الإدارة فوراً (أول حساب يصير مديراً)، قبل ما توزع تطبيق الزبون.</p>'
+   +'<textarea id="cx-rules" readonly style="height:240px;direction:ltr;text-align:left;font-family:monospace;font-size:11px;margin-top:8px">'+esc(json)+'</textarea>'
+   +'<button class="acc" style="width:100%;margin-top:8px" onclick="cxCopyRules()">📋 انسخ القواعد</button>'
+   +'<p class="note" style="color:var(--acc)">تنبيه: القواعد بتقفل أي نظام قديم في نفس القاعدة لم يتم تأمينه. الأفضل مشروع Firebase مستقل للأنظمة المؤمّنة. وهذه القواعد تجمع كل الأنظمة المؤمّنة اللي أنشأتها على نفس الرابط.</p>'
+   +'<button class="ghost" onclick="closeSheet()">إغلاق</button></div>';
+  sh.classList.add('on');
+}
+
+/* ---------- 5) ربط الأداة بالنظام المتكامل ---------- */
+const _g0=window.cxSysGo;
+if(typeof _g0==='function'){
+  window.cxSysGo=async function(){
+    const auth=authOn();
+    if(auth&&!String(S.keys.fbKey||'').trim())return toast('أدخل Web API Key لـ Firebase في 🔑 المفاتيح (مطلوب لتسجيل الدخول)');
+    const before=S.apps.map(a=>a.code);
+    window._lastPlan=null;window._lastRoot=null;window._rvResult='';
+    await _g0();
+    const changed=S.apps.every((a,i)=>a.code.trim()&&a.code!==before[i]);
+    if(!changed)return;
+    if(window._rvAuto!==false)await window.cxReview(true);
+    if(auth)await showRules();
+  };
+}
+
+/* ---------- 6) الواجهة ---------- */
+const _render17=render;
+render=function(){
+  _render17();
+  if(tab!=='code')return;
+  const m=$('#main');if(!m)return;
+  const s=$('#cx-sys');
+  if(s){
+    const b=s.querySelector('button.acc');
+    if(b&&!s.querySelector('#cx-auth')){
+      b.insertAdjacentHTML('beforebegin','<div id="cx-auth"><label style="display:flex;gap:10px;align-items:center;color:var(--tx);margin-top:12px"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(window._authOn?'checked':'')+' onchange="window._authOn=this.checked"> 🔐 تسجيل دخول وأدوار (HTML + Firebase فقط)</label><p class="note">الزبائن يدخلون تلقائياً بدون كلمة سر، والإدارة بالبريد وكلمة السر. ويطلع لك ملف قواعد Firebase جاهز. يحتاج Web API Key في 🔑 المفاتيح.</p></div>');
+    }
+    s.insertAdjacentHTML('afterend',rvCard());
+  }else{
+    m.insertAdjacentHTML('afterbegin',rvCard());
+  }
+};
+})();
 render();
 </script>
 </body>
