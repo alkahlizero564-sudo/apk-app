@@ -1,4 +1,6 @@
-# v3
+# v5
+# v4 compatible
+# v3 compatible
 # v2 compatible
 name: build-python
 on:
@@ -26,6 +28,25 @@ jobs:
           sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev
           pip install --upgrade pip
           pip install buildozer cython==0.29.36 virtualenv
+      - name: cache buildozer global
+        uses: actions/cache@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-global-v5
+      - name: cache app build
+        uses: actions/cache@v4
+        with:
+          path: apps/${{ inputs.app }}/.buildozer
+          key: buildozer-app-v5-${{ inputs.app }}
+      - name: signing key
+        run: |
+          if [ -f keys/shared.keystore ]; then
+            mkdir -p ~/.android
+            rm -f ~/.android/debug.keystore
+            keytool -importkeystore -noprompt -srckeystore keys/shared.keystore -srcstorepass android123 -srcalias shared -srckeypass android123 -destkeystore ~/.android/debug.keystore -deststorepass android -destalias androiddebugkey -destkeypass android -deststoretype PKCS12 || echo "signing key import skipped"
+          else
+            echo "keys/shared.keystore not found, using a random debug key"
+          fi
       - name: write spec
         working-directory: apps/${{ inputs.app }}
         run: |
@@ -33,17 +54,28 @@ jobs:
           if [ -z "$PKG" ]; then PKG=com.myapps.app$APP; fi
           NAM=$(echo "$PKG" | awk -F. '{print $NF}')
           DOM=$(echo "$PKG" | sed 's/\.[^.]*$//')
+          LABEL=$(jq -r '.label // empty' settings.json 2>/dev/null || true)
+          if [ -z "$LABEL" ]; then LABEL=$APP; fi
+          ORI=$(jq -r '.ori // "auto"' settings.json 2>/dev/null || echo auto)
+          case "$ORI" in
+            portrait) OR=portrait ;;
+            landscape) OR=landscape ;;
+            *) OR=all ;;
+          esac
+          VN=$(jq -r '.versionName // "1.0"' settings.json 2>/dev/null || echo 1.0)
+          VC=$(jq -r '.versionCode // 1' settings.json 2>/dev/null || echo 1)
           cat > buildozer.spec <<EOF
           [app]
-          title = $APP
+          title = $LABEL
           package.name = $NAM
           package.domain = $DOM
           source.dir = .
           source.include_exts = py,png,jpg,kv,atlas,json,ttf
-          version = 1.0
+          version = $VN
           requirements = python3,kivy==2.3.0,certifi
-          orientation = portrait
+          orientation = $OR
           fullscreen = 0
+          android.numeric_version = $VC
           android.permissions = INTERNET
           android.api = 33
           android.minapi = 24
@@ -55,12 +87,6 @@ jobs:
           EOF
           sed -i 's/^ *//' buildozer.spec
           if [ -f icon.png ]; then sed -i '/^\[app\]/a icon.filename = %(source.dir)s/icon.png' buildozer.spec; fi
-      - name: cache
-        uses: actions/cache@v4
-        with:
-          path: apps/${{ inputs.app }}/.buildozer
-          key: buildozer-${{ inputs.app }}-${{ github.run_number }}
-          restore-keys: buildozer-${{ inputs.app }}-
       - name: build
         working-directory: apps/${{ inputs.app }}
         run: buildozer -v android debug
