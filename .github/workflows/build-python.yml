@@ -1,4 +1,5 @@
-# v5
+# v6
+# v5 compatible
 # v4 compatible
 # v3 compatible
 # v2 compatible
@@ -28,8 +29,9 @@ jobs:
           sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev
           pip install --upgrade pip
           pip install buildozer cython==0.29.36 virtualenv
-      - name: cache buildozer global
-        uses: actions/cache@v4
+      - name: restore buildozer global cache
+        id: gcache
+        uses: actions/cache/restore@v4
         with:
           path: ~/.buildozer
           key: buildozer-global-v5
@@ -38,15 +40,37 @@ jobs:
         with:
           path: apps/${{ inputs.app }}/.buildozer
           key: buildozer-app-v5-${{ inputs.app }}
+      - name: app signing key
+        run: |
+          mkdir -p keys
+          KS=keys/$APP.keystore
+          PR=keys/$APP.properties
+          if [ ! -f "$KS" ] || [ ! -f "$PR" ]; then
+            PASS=$(openssl rand -hex 12)
+            rm -f "$KS"
+            keytool -genkeypair -keystore "$KS" -storetype PKCS12 -storepass "$PASS" -keypass "$PASS" -alias appkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=$APP, O=MyApps, C=SD"
+            echo "pass=$PASS" > "$PR"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$KS" "$PR"
+            git commit -m "add signing key for $APP"
+            PUSHED=0
+            for n in 1 2 3; do
+              if git pull --rebase origin "$GITHUB_REF_NAME" && git push origin "HEAD:$GITHUB_REF_NAME"; then PUSHED=1; break; fi
+              sleep 4
+            done
+            if [ "$PUSHED" != "1" ]; then echo "failed to save the signing key to the repo"; exit 1; fi
+            echo "NEW signing key created for $APP"
+          else
+            echo "using existing signing key for $APP"
+          fi
       - name: signing key
         run: |
-          if [ -f keys/shared.keystore ]; then
-            mkdir -p ~/.android
-            rm -f ~/.android/debug.keystore
-            keytool -importkeystore -noprompt -srckeystore keys/shared.keystore -srcstorepass android123 -srcalias shared -srckeypass android123 -destkeystore ~/.android/debug.keystore -deststorepass android -destalias androiddebugkey -destkeypass android -deststoretype PKCS12 || echo "signing key import skipped"
-          else
-            echo "keys/shared.keystore not found, using a random debug key"
-          fi
+          PASS=$(grep '^pass=' keys/$APP.properties | cut -d= -f2)
+          mkdir -p ~/.android
+          rm -f ~/.android/debug.keystore
+          keytool -importkeystore -noprompt -srckeystore keys/$APP.keystore -srcstorepass "$PASS" -srcalias appkey -srckeypass "$PASS" -destkeystore ~/.android/debug.keystore -deststorepass android -destalias androiddebugkey -destkeypass android -deststoretype PKCS12 || { echo "signing key import FAILED"; exit 1; }
+          echo "signing key imported for $APP"
       - name: write spec
         working-directory: apps/${{ inputs.app }}
         run: |
@@ -90,6 +114,26 @@ jobs:
       - name: build
         working-directory: apps/${{ inputs.app }}
         run: buildozer -v android debug
+      - name: verify signing
+        if: always()
+        continue-on-error: true
+        run: |
+          APK=$(ls apps/$APP/bin/*.apk 2>/dev/null | head -n 1)
+          if [ -z "$APK" ]; then echo "no apk to verify"; exit 0; fi
+          AS=$(ls ~/.buildozer/android/platform/android-sdk/build-tools/*/apksigner 2>/dev/null | tail -n 1)
+          if [ -z "$AS" ]; then echo "apksigner not found"; exit 0; fi
+          PASS=$(grep '^pass=' keys/$APP.properties | cut -d= -f2)
+          A=$("$AS" verify --print-certs "$APK" | grep -i "SHA-256 digest" | head -n 1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          K=$(keytool -list -v -keystore keys/$APP.keystore -storepass "$PASS" -alias appkey 2>/dev/null | grep -i "SHA256:" | head -n 1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          echo "apk:      $A"
+          echo "keystore: $K"
+          if [ -n "$A" ] && [ "$A" = "$K" ]; then echo "SIGNING OK: this app uses its own key"; else echo "SIGNING MISMATCH"; fi
+      - name: save buildozer global cache
+        if: always() && steps.gcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-global-v5
       - name: release
         uses: softprops/action-gh-release@v2
         with:
