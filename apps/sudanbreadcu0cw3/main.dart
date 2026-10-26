@@ -109,7 +109,7 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+      fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
       focusedBorder: OutlineInputBorder(
@@ -141,7 +141,7 @@ class AppCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -209,7 +209,7 @@ class EmptyState extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: kPrimary.withValues(alpha: 0.1),
+              color: kPrimary.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, size: 56, color: kPrimary),
@@ -247,7 +247,7 @@ class StatTile extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(16)),
+            decoration: BoxDecoration(color: color.withOpacity(0.15), borderRadius: BorderRadius.circular(16)),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(width: 16),
@@ -335,7 +335,6 @@ class _AuthCheckScreenState extends State<AuthCheckScreen> {
   }
 
   Future<void> _checkCustomer() async {
-    // سنستخدم ملف مؤقت صغير لحفظ معرف المستخدم فقط للتعرف عليه في الجهاز
     try {
       final file = File('${Directory.systemTemp.path}/s2evsm_customer_id.txt');
       if (await file.exists()) {
@@ -444,7 +443,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(color: kPrimary.withValues(alpha: 0.1), shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: kPrimary.withOpacity(0.1), shape: BoxShape.circle),
                     child: const Icon(Icons.bakery_dining_rounded, size: 64, color: kPrimary),
                   ),
                   const SizedBox(height: 24),
@@ -454,10 +453,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       style: TextStyle(fontSize: 14, color: Theme.of(context).hintColor), textAlign: TextAlign.center),
                   const SizedBox(height: 32),
 
-                  // صورة البروفايل
                   GestureDetector(
                     onTap: () async {
-                      // محاكاة اختيار صورة أو استخدام رابط افتراضي أنيق
                       setState(() {
                         _profileImage = 'https://api.dicebear.com/7.x/avataaars/svg?seed=${DateTime.now()}';
                       });
@@ -466,7 +463,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       children: [
                         CircleAvatar(
                           radius: 50,
-                          backgroundColor: kPrimary.withValues(alpha: 0.2),
+                          backgroundColor: kPrimary.withOpacity(0.2),
                           backgroundImage: _profileImage != null ? NetworkImage(_profileImage!) : null,
                           child: _profileImage == null
                               ? const Icon(Icons.person, size: 50, color: kPrimary)
@@ -603,20 +600,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchData() async {
-    // جلب الإعدادات
     final settingsRes = await supabaseGet('s2evsm_settings');
     if (settingsRes is List && settingsRes.isNotEmpty) {
       _bookingStatus = settingsRes.first['booking_status'] ?? 'closed';
     }
 
-    // جلب حجز الزبون الحالي لهذا اليوم أو الأخير
     final bookingsRes = await supabaseGet(
       's2evsm_bookings',
       query: 'customer_id=eq.${widget.customer['customer_id']}&order=created_at.desc&limit=1',
     );
     if (bookingsRes is List && bookingsRes.isNotEmpty) {
       _activeBooking = bookingsRes.first;
-      // إذا كان الحجز ملغياً أو تم الاستلام، نتحقق إن كان اليوم أم لا، للتسهيل نعرضه إن كان booked
       if (_activeBooking!['status'] != 'booked') {
         _activeBooking = null;
       }
@@ -671,11 +665,10 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           sliver: SliverList(
             delegate: SliverChildListDelegate([
-              // حالة الحجز
               FadeIn(
                 index: 0,
                 child: AppCard(
-                  color: isOpen ? kPrimary.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                  color: isOpen ? kPrimary.withOpacity(0.1) : Colors.red.withOpacity(0.1),
                   child: Row(
                     children: [
                       Container(
@@ -713,7 +706,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ملخص الحجز الحالي أو رسالة الإغلاق
               const SectionTitle(title: 'حجزك الحالي'),
               if (_loading)
                 const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
@@ -731,7 +723,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                               decoration: BoxDecoration(
-                                color: kSecondary.withValues(alpha: 0.15),
+                                color: kSecondary.withOpacity(0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text('قيد الانتظار', style: TextStyle(color: kSecondary, fontWeight: FontWeight.bold, fontSize: 12)),
@@ -742,18 +734,22 @@ class _HomeScreenState extends State<HomeScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            StatTile(
-                              title: 'عدد القروش',
-                              value: '${_activeBooking!['qorosh_count']}',
-                              icon: Icons.bakery_dining,
-                              color: kPrimary,
+                            Expanded(
+                              child: StatTile(
+                                title: 'عدد القروش',
+                                value: '${_activeBooking!['qorosh_count']}',
+                                icon: Icons.bakery_dining,
+                                color: kPrimary,
+                              ),
                             ),
                             const SizedBox(width: 12),
-                            StatTile(
-                              title: 'المبلغ (جنيه)',
-                              value: '${_activeBooking!['amount_ssp']}',
-                              icon: Icons.money,
-                              color: kAccent,
+                            Expanded(
+                              child: StatTile(
+                                title: 'المبلغ (جنيه)',
+                                value: '${_activeBooking!['amount_ssp']}',
+                                icon: Icons.money,
+                                color: kAccent,
+                              ),
                             ),
                           ],
                         ),
@@ -777,7 +773,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               Expanded(
                                 child: OutlinedButton.icon(
                                   onPressed: () async {
-                                    // إلغاء الحجز
                                     await supabasePatch(
                                       's2evsm_bookings',
                                       'booking_id=eq.${_activeBooking!['booking_id']}',
@@ -836,7 +831,7 @@ class BookingFormSheet extends StatefulWidget {
 
 class _BookingFormSheetState extends State<BookingFormSheet> {
   double _qoroshCount = 5;
-  double _pricePerQorosh = 100.0; // افتراضي للسعر
+  final double _pricePerQorosh = 100.0;
   String _paymentMethod = 'cash';
   bool _loading = false;
 
@@ -855,7 +850,6 @@ class _BookingFormSheetState extends State<BookingFormSheet> {
     final todayStr = DateTime.now().toIso8601String().split('T').first;
 
     if (widget.existingBooking != null) {
-      // تعديل الحجز الموجود
       await supabasePatch(
         's2evsm_bookings',
         'booking_id=eq.${widget.existingBooking!['booking_id']}',
@@ -866,7 +860,6 @@ class _BookingFormSheetState extends State<BookingFormSheet> {
         },
       );
     } else {
-      // إنشاء حجز جديد
       final bookingId = 'bk_${DateTime.now().millisecondsSinceEpoch}';
       await supabasePost('s2evsm_bookings', {
         'booking_id': bookingId,
@@ -924,7 +917,7 @@ class _BookingFormSheetState extends State<BookingFormSheet> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: kPrimary.withValues(alpha: 0.1),
+                color: kPrimary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -945,7 +938,7 @@ class _BookingFormSheetState extends State<BookingFormSheet> {
                     label: const Text('نقدي'),
                     selected: _paymentMethod == 'cash',
                     onSelected: (s) => setState(() => _paymentMethod = 'cash'),
-                    selectedColor: kPrimary.withValues(alpha: 0.2),
+                    selectedColor: kPrimary.withOpacity(0.2),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -954,7 +947,7 @@ class _BookingFormSheetState extends State<BookingFormSheet> {
                     label: const Text('أجل'),
                     selected: _paymentMethod == 'deferred',
                     onSelected: (s) => setState(() => _paymentMethod = 'deferred'),
-                    selectedColor: kPrimary.withValues(alpha: 0.2),
+                    selectedColor: kPrimary.withOpacity(0.2),
                   ),
                 ),
               ],
@@ -1068,7 +1061,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(14),
                                   decoration: BoxDecoration(
-                                    color: color.withValues(alpha: 0.15),
+                                    color: color.withOpacity(0.15),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: Icon(Icons.bakery_dining, color: color, size: 28),
@@ -1085,7 +1078,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen> {
                                           Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                             decoration: BoxDecoration(
-                                              color: color.withValues(alpha: 0.15),
+                                              color: color.withOpacity(0.15),
                                               borderRadius: BorderRadius.circular(8),
                                             ),
                                             child: Text(_getStatusText(status), style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
@@ -1178,7 +1171,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 children: [
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: kPrimary.withValues(alpha: 0.2),
+                    backgroundColor: kPrimary.withOpacity(0.2),
                     backgroundImage: _profileImage.isNotEmpty ? NetworkImage(_profileImage) : null,
                     child: _profileImage.isEmpty ? const Icon(Icons.person, size: 50, color: kPrimary) : null,
                   ),
