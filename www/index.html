@@ -4032,6 +4032,68 @@ render=function(){
   }
 };
 })();
+render();/* ===== إضافة: تطبيقات مستقلة (اسم حزمة فريد + حماية من التعارض) ===== */
+(function(){
+
+/* اسم الحزمة الفعلي لكل تطبيق */
+function pkgFor(i){
+  const a=S.apps[i];
+  const p=(typeof pkgOf==='function')?pkgOf(i):'';
+  if(p)return p;
+  const s=slugOf(a.name),l=langOf(i);
+  return l==='flutter'?'com.myapps.app_'+s:l==='python'?'com.myapps.app'+s:'com.myapps.'+s;
+}
+
+/* 1) رمز فريد لكل تطبيق ينشئه النظام المتكامل */
+const _g1=window.cxSysGo;
+if(typeof _g1==='function'){
+  window.cxSysGo=async function(){
+    const before=S.apps.map(a=>a.code);
+    await _g1();
+    const ok=S.apps.every((a,i)=>a.code.trim()&&a.code!==before[i]);
+    if(!ok)return;
+    const suf=(Math.random().toString(36).replace(/[^a-z0-9]/g,'')+'x1k9').slice(0,4);
+    S.apps.forEach(a=>{
+      a.name=(slugOf(a.name)||'app').slice(0,12)+suf;
+      a.pkg='';
+      a.nameOk=a.name;
+    });
+    save();render();
+    toast('أسماء التطبيقين الفريدة: '+S.apps[0].name+' و'+S.apps[1].name);
+  };
+}
+
+/* 2) حماية قبل البناء */
+const GEN=['first','second','shop','admin','app','test','my','demo','new','main'];
+const _bA2=buildAny;
+buildAny=async function(i){
+  const a=S.apps[i];
+  if(a&&a.code&&a.code.trim()){
+    const p0=pkgFor(0),p1=pkgFor(1);
+    if(S.apps[0].code.trim()&&S.apps[1].code.trim()&&p0.toLowerCase()===p1.toLowerCase()){
+      return toast('التطبيقان لهما نفس اسم الحزمة ('+p0+') فسيستبدل أحدهما الآخر على الجوال. غيّر اسم أحدهما أولاً.');
+    }
+    const s=slugOf(a.name);
+    if(GEN.indexOf(s)>-1&&a.nameOk!==s){
+      if(!confirm('اسم التطبيق «'+s+'» عام جداً. أي تطبيق آخر بنفس الاسم سيُستبدل على الجوال عند التثبيت. الأفضل تغيير الاسم. هل تريد المتابعة بنفس الاسم؟'))return;
+      a.nameOk=s;save();
+    }
+  }
+  return _bA2(i);
+};
+
+/* 3) إظهار اسم الحزمة الفعلي في قائمة البناء */
+const _render19=render;
+render=function(){
+  _render19();
+  if(tab!=='build')return;
+  const m=$('#main');if(!m)return;
+  m.querySelectorAll('span[style*="direction:ltr;display:inline-block"]').forEach((sp,k)=>{
+    if(k>1||!S.apps[k])return;
+    if(sp.textContent.trim()==='تلقائي')sp.textContent=pkgFor(k)+' (تلقائي)';
+  });
+};
+})();
 render();
 </script>
 </body>
