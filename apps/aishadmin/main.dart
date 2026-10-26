@@ -1071,7 +1071,7 @@ class AdminOrderCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'طلب #${order['order_id']?.toString().substring(order['order_id'].toString().length - 6) ?? ''}',
@@ -1411,7 +1411,7 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                         index: entry.key,
                         child: AppCard(
                           child: Row(
-                            mainAxisAlignment: MainAxisAlignment.between,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
