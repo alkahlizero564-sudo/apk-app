@@ -993,7 +993,7 @@ class OrderCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.between,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'طلب #${order['order_id']?.toString().substring(order['order_id'].toString().length - 6) ?? ''}',
