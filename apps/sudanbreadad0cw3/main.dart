@@ -284,7 +284,7 @@ class FadeIn extends StatelessWidget {
 // --- نقطة الدخول الرئيسية ---
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  run(const BreadAdminApp());
+  runApp(const BreadAdminApp());
 }
 
 class BreadAdminApp extends StatelessWidget {
@@ -339,7 +339,7 @@ class _AdminMainNavigationState extends State<AdminMainNavigation> {
         onDestinationSelected: (i) => setState(() => _currentIndex = i),
         destinations: const [
           NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'الرئيسية'),
-          NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people), label: 'المسجلون'),
+          NavigationDestination(icon: Icon(Icons.people_outlined), selectedIcon: Icon(Icons.people), label: 'المسجلون'),
           NavigationDestination(icon: Icon(Icons.today_outlined), selectedIcon: Icon(Icons.today), label: 'حجوزات اليوم'),
           NavigationDestination(icon: Icon(Icons.bar_chart_outlined), selectedIcon: Icon(Icons.bar_chart), label: 'التقارير'),
         ],
@@ -1077,7 +1077,6 @@ class _AdminReportsScreenState extends State<AdminReportsScreen> {
                     const SizedBox(height: 12),
                     AppCard(
                       child: sortedDates.isEmpty
-                          .isEmpty // ignore: unnecessary_cast
                           ? const Padding(
                               padding: EdgeInsets.all(32),
                               child: Center(child: Text('لا توجد بيانات كافية لعرض الرسم البياني في هذه الفترة')),
