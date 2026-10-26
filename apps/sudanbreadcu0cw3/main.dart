@@ -291,7 +291,7 @@ class FadeIn extends StatelessWidget {
 // --- نقطة الدخول الرئيسية ---
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  run(const BreadCustomerApp());
+  runApp(const BreadCustomerApp());
 }
 
 class BreadCustomerApp extends StatelessWidget {
@@ -902,7 +902,7 @@ class _BookingFormSheetState extends State<BookingFormSheet> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(widget.existingBooking != null ? 'تعديل الحجز' : 'حجز خبز جديد',
                     style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
@@ -928,7 +928,7 @@ class _BookingFormSheetState extends State<BookingFormSheet> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.between,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text('المبلغ الإجمالي:', style: TextStyle(fontWeight: FontWeight.bold)),
                   Text('$totalAmount جنيه سوداني', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: kPrimaryDark)),
