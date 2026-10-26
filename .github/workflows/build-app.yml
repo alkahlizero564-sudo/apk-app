@@ -74,10 +74,39 @@ jobs:
             echo "No capacitor config found"
             exit 1
           fi
+      - name: App signing key
+        if: steps.type.outputs.type == 'capacitor'
+        env:
+          APPN: ${{ steps.find.outputs.name }}
+        run: |
+          mkdir -p keys
+          KS=keys/$APPN.keystore
+          PR=keys/$APPN.properties
+          if [ ! -f "$KS" ] || [ ! -f "$PR" ]; then
+            PASS=$(openssl rand -hex 12)
+            rm -f "$KS"
+            keytool -genkeypair -keystore "$KS" -storetype PKCS12 -storepass "$PASS" -keypass "$PASS" -alias appkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=$APPN, O=MyApps, C=SD"
+            echo "pass=$PASS" > "$PR"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$KS" "$PR"
+            git commit -m "add signing key for $APPN"
+            PUSHED=0
+            for n in 1 2 3; do
+              if git pull --rebase origin "$GITHUB_REF_NAME" && git push origin "HEAD:$GITHUB_REF_NAME"; then PUSHED=1; break; fi
+              sleep 4
+            done
+            if [ "$PUSHED" != "1" ]; then echo "failed to save the signing key to the repo"; exit 1; fi
+            echo "NEW signing key created for $APPN"
+          else
+            echo "using existing signing key for $APPN"
+          fi
       - name: Build
         id: build
         if: steps.type.outputs.type == 'capacitor'
         working-directory: ${{ steps.find.outputs.dir }}
+        env:
+          APPN: ${{ steps.find.outputs.name }}
         run: |
           BT=$(cat buildtype.txt 2>/dev/null | tr -d '[:space:]')
           [ "$BT" = "release" ] || BT=debug
@@ -132,24 +161,25 @@ jobs:
           EOF
             node make-icon.js
           fi
-          cp "$GITHUB_WORKSPACE/keys/shared.keystore" android/app/shared.keystore
-          cat >> android/app/build.gradle <<'EOF'
+          PASS=$(grep '^pass=' "$GITHUB_WORKSPACE/keys/$APPN.properties" | cut -d= -f2)
+          cp "$GITHUB_WORKSPACE/keys/$APPN.keystore" android/app/app.keystore
+          cat >> android/app/build.gradle <<EOF
 
           android {
               signingConfigs {
-                  shared {
-                      storeFile file("shared.keystore")
-                      storePassword "android123"
-                      keyAlias "shared"
-                      keyPassword "android123"
+                  appkey {
+                      storeFile file("app.keystore")
+                      storePassword "$PASS"
+                      keyAlias "appkey"
+                      keyPassword "$PASS"
                   }
               }
               buildTypes {
                   debug {
-                      signingConfig signingConfigs.shared
+                      signingConfig signingConfigs.appkey
                   }
                   release {
-                      signingConfig signingConfigs.shared
+                      signingConfig signingConfigs.appkey
                   }
               }
           }
@@ -171,6 +201,22 @@ jobs:
           if [ "$BT" = "release" ]; then ./gradlew assembleRelease; else ./gradlew assembleDebug; fi
           cd ..
           echo "apk=android/app/build/outputs/apk/$BT/app-$BT.apk" >> "$GITHUB_OUTPUT"
+      - name: Verify signing
+        if: always() && steps.type.outputs.type == 'capacitor'
+        continue-on-error: true
+        env:
+          APPN: ${{ steps.find.outputs.name }}
+          APKP: ${{ steps.find.outputs.dir }}/${{ steps.build.outputs.apk }}
+        run: |
+          if [ ! -f "$APKP" ]; then echo "no apk to verify"; exit 0; fi
+          AS=$(ls $ANDROID_SDK_ROOT/build-tools/*/apksigner 2>/dev/null | tail -n 1)
+          if [ -z "$AS" ]; then echo "apksigner not found"; exit 0; fi
+          PASS=$(grep '^pass=' keys/$APPN.properties | cut -d= -f2)
+          A=$("$AS" verify --print-certs "$APKP" | grep -i "SHA-256 digest" | head -n 1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          K=$(keytool -list -v -keystore keys/$APPN.keystore -storepass "$PASS" -alias appkey 2>/dev/null | grep -i "SHA256:" | head -n 1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          echo "apk:      $A"
+          echo "keystore: $K"
+          if [ -n "$A" ] && [ "$A" = "$K" ]; then echo "SIGNING OK: this app uses its own key"; else echo "SIGNING MISMATCH"; fi
       - name: Build Kotlin
         if: steps.type.outputs.type == 'kotlin'
         working-directory: ${{ steps.find.outputs.dir }}
