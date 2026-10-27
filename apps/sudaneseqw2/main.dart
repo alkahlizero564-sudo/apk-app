@@ -94,7 +94,7 @@ class _PhoneStoreAppState extends State<PhoneStoreApp> {
           title: "متجر الفارس للتقنية",
           subtitle: "وجهتك الأولى لأحدث الهواتف الذكية الأصلية",
           trailing: const DsBadge(text: "عروض مميزة", kind: "ok"),
-          child: Container(
+          content: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
