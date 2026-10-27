@@ -94,7 +94,7 @@ class _PhoneStoreAppState extends State<PhoneStoreApp> {
           title: "متجر الفارس للتقنية",
           subtitle: "وجهتك الأولى لأحدث الهواتف الذكية الأصلية",
           trailing: const DsBadge(text: "عروض مميزة", kind: "ok"),
-          big: Container(
+          child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.15),
@@ -296,7 +296,7 @@ class _PhoneStoreAppState extends State<PhoneStoreApp> {
 
   void _showPhoneDetails(PhoneItem phone) {
     dsSheet(
-      context: context,
+      context,
       title: phone.name,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -337,7 +337,7 @@ class _PhoneStoreAppState extends State<PhoneStoreApp> {
     final descCtrl = TextEditingController();
 
     dsSheet(
-      context: context,
+      context,
       title: "إضافة هاتف جديد",
       child: Column(
         children: [
