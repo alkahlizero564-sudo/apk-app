@@ -83,17 +83,18 @@ count:function(el,to,ms){if(!el)return;ms=ms||700;var t0=performance.now();funct
 function go(){D.icons()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',go);else go();
 try{new MutationObserver(function(){D.icons()}).observe(document.documentElement,{childList:true,subtree:true})}catch(e){}
-})();</script><!--UI-SPEC
+})();</script>
+<!--UI-SPEC
 [شاشة: الطلبات الجديدة]
 - «قبول الطلب»: يغير حالة الطلب إلى مقبول (يكتب إلى: sfj6qx_orders)
 - «بدء التجهيز»: يغير حالة الطلب إلى جاري التجهيز (يكتب إلى: sfj6qx_orders)
 - «جاهز للتوصيل»: يغير حالة الطلب إلى جاهز (يكتب إلى: sfj6qx_orders)
 - «تحديث الحالة»: يعرض تفاصيل الطلب وتتبع خط سير العمل (يقرأ ويكتب: sfj6qx_orders)
-- «تحديث فوري»: يتابع التخزين المحلي (localStorage) بصورة مستمرة وفورية لضمان ظهور أي حجز جديد من التطبيق الأول لحظياً (يقرأ من: sfj6qx_orders)
+- «تحديث فوري»: يتابع السحابة بصورة مستمرة وفورية لضمان ظهور أي حجز جديد من التطبيق الأول لحظياً (يقرأ من: sfj6qx_orders)
 
 [شاشة: إعدادات المخبز]
-- «قفل وحجز»: التحكم في إيقاف أو فتح استقبال الحجوزات والطلبات (يقرأ ويكتب: settings)
-- «عدد المسجلين»: عرض إجمالي عدد المسجلين المتغير بناءً على المستخدمين (يقرأ من: users / analytics)
+- «قفل وحجز»: التحكم في إيقاف أو فتح استقبال الحجوزات والطلبات (يقرأ ويكتب: sfj6qx_settings)
+- «عدد المسجلين»: عرض إجمالي عدد المسجلين المتغير بناءً على المستخدمين (يقرأ من: sfj6qx_orders)
 - «توجيه عمال التوصيل»: يربط الطلبات الجاهزة بمناديب التوصيل (يكتب إلى: sfj6qx_orders)
 - «تحديث حالة المخبوزات»: يغير حالة التوفر العامة (يكتب إلى: sfj6qx_products)
 
@@ -123,7 +124,6 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         background: var(--sf2); display: flex; align-items: center;
         justify-content: center; font-size: 22px;
     }
-    /* تحسينات تصميم شاشة التقارير التحليلية */
     .report-card-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -193,7 +193,7 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
 </head>
 <body>
 
-    <!-- الترويعة الرئيسية للإدارة -->
+    <!-- الترويسة الرئيسية للإدارة -->
     <div class="hero">
         <div class="row">
             <div>
@@ -278,6 +278,14 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                 </div>
             </div>
 
+            <!-- إدارة توفر أصناف الخبز -->
+            <div class="sec">
+                <h3>حالة توفر المخبوزات</h3>
+            </div>
+            <div class="card mb-3" id="admin-products-container">
+                <div class="mu text-center">جاري تحميل قائمة المخبوزات...</div>
+            </div>
+
             <div class="card">
                 <div class="row mb-2">
                     <span>قبول الحجوزات الآلية</span>
@@ -307,7 +315,7 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                 </div>
                 <div class="report-metric-box">
                     <small>متوسط قيمة الطلب</small>
-                    <b>24.50 جنيه</b>
+                    <b id="report-avg-order">0 جنيه</b>
                 </div>
                 <div class="report-metric-box">
                     <small>مبيعات الأسبوع</small>
@@ -333,11 +341,11 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                     <b id="report-total-revenue" style="color:var(--ok); font-size: 1.1rem;">0.00 جنيه سوداني</b>
                 </div>
                 <div class="row mb-2">
-                    <span class="mu">الطلبات المكتملة اليوم</span>
-                    <b id="report-completed-count">12 طلب</b>
+                    <span class="mu">الطلبات المكتملة</span>
+                    <b id="report-completed-count">0 طلب</b>
                 </div>
                 <div class="row">
-                    <span class="mu">المنتج الأكثر مبيعاً</span>
+                    <span class="mu">المنتج الأكثر طلباً</span>
                     <b>رغيف خبز طازج</b>
                 </div>
             </div>
@@ -380,7 +388,7 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                     <span>مندوب التوصيل: أحمد السريع</span>
                     <span class="badge ok">نشط</span>
                 </div>
-                <p class="mu text-xs">يقوم حالياً بتوصيل الطلب رقم #1041 في حي النخيل</p>
+                <p class="mu text-xs">يقوم حالياً بتوصيل الطلبات الجاهزة للزبائن في الأحياء المجاورة</p>
             </div>
         </div>
 
@@ -399,7 +407,7 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                 </div>
                 <label class="fld mb-2">
                     <span>اسم المخبز</span>
-                    <input type="text" class="in" value="BCC">
+                    <input type="text" class="in" value="مخبز BCC">
                 </label>
                 <label class="fld mb-2">
                     <span>وقت التجهيز التقديري (دقيقة)</span>
@@ -450,13 +458,13 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
             <div class="sp"></div>
             <button class="icb ghost" onclick="DS.close()"><i data-i="x"></i></button>
         </div>
-        <button class="btn danger block mb-2" onclick="DS.toast('تم إيقاف استقبال الطلبات مؤقتاً'); DS.close();">إيقاف استقبال الطلبات مؤقتاً</button>
-        <button class="btn soft block" onclick="DS.toast('تم تحديث النظام بنجاح'); DS.close();">التحقق من التحديثات</button>
+        <button class="btn danger block mb-2" onclick="toggleBookingStatus(false); DS.close();">إيقاف استقبال الطلبات مؤقتاً</button>
+        <button class="btn soft block" onclick="fetchAdminOrders(); fetchAdminProducts(); fetchSettings(); DS.toast('تم تحديث البيانات بنجاح'); DS.close();">التحقق من التحديثات</button>
     </div>
 
 <script>
     const SUPABASE_URL = "https://qlvmxnoewxzykgbneadv.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsdm14bm9ld3h6eWtnYm5lYWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OI2NDAwMjIsImV4cCI6MjEwNzIxNjAyMn0.WtsiO0PrUrwxKjpcyB3949kXSZeijtlJYySSbh0ieRk";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsdm14bm9ld3h6eWtnYm5lYWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDAwMjIsImV4cCI6MjEwNzIxNjAyMn0.WtsiO0PrUrwxKjpcyB3949kXSZeijtlJYySSbh0ieRk";
     
     const headers = {
         "apikey": SUPABASE_KEY,
@@ -470,14 +478,14 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
     document.addEventListener("DOMContentLoaded", () => {
         fetchAdminOrders();
         fetchAdminProducts();
-        initSettingsScreen();
+        fetchSettings();
 
-        // التحديث الفوري المباشر كل 5 ثوانٍ من سحابة Supabase لضمان المزامنة
+        // التحديث الفوري التلقائي كل 4 ثوانٍ من سحابة Supabase
         setInterval(() => {
             fetchAdminOrders();
             fetchAdminProducts();
-            initSettingsScreen();
-        }, 5000);
+            fetchSettings();
+        }, 4000);
     });
 
     async function fetchAdminOrders() {
@@ -487,6 +495,7 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                 globalOrders = await res.json();
                 renderAdminOrders();
                 updateAdminStats();
+                initSettingsScreen();
             }
         } catch (e) {
             console.error("خطأ في جلب الطلبات من السحابة", e);
@@ -495,19 +504,34 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
 
     async function fetchAdminProducts() {
         try {
-            const res = await fetch(`${SUPABASE_URL}/rest/v1/sfj6qx_products?select=*`, { headers });
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/sfj6qx_products?select=*&order=id.asc`, { headers });
             if (res.ok) {
                 globalProducts = await res.json();
+                renderAdminProducts();
             }
         } catch (e) {
             console.error("خطأ في جلب المنتجات", e);
         }
     }
 
-    // التنقل بين الشاشات
+    async function fetchSettings() {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/sfj6qx_settings?key=eq.booking_status`, { headers });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.length > 0 && data[0].value) {
+                    updateBookingStatusUI(Boolean(data[0].value.is_open));
+                }
+            }
+        } catch(e) {
+            console.error("خطأ في جلب الإعدادات", e);
+        }
+    }
+
     function switchTab(tabId, btnElement) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById('screen-' + tabId).classList.add('active');
+        const el = document.getElementById('screen-' + tabId);
+        if (el) el.classList.add('active');
         
         if (btnElement) {
             document.querySelectorAll('.tabbar button').forEach(b => b.classList.remove('on'));
@@ -516,7 +540,6 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         window.scrollTo(0, 0);
     }
 
-    // عرض وإدارة الطلبات في لوحة الإدارة
     function renderAdminOrders(filter = 'all') {
         const activeChip = document.querySelector('#order-filter-chips .chip.on');
         const currentFilter = activeChip ? (
@@ -553,12 +576,15 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
             let itemsHtml = "";
 
             try {
-                if (o.items && Array.isArray(o.items)) {
-                    itemsHtml = o.items.map(i => {
+                let itemsList = o.items;
+                if (typeof itemsList === 'string') itemsList = JSON.parse(itemsList);
+                if (Array.isArray(itemsList)) {
+                    itemsHtml = itemsList.map(i => {
                         if (i.customer_name) customerName = i.customer_name;
                         if (i.customer_phone) customerPhone = i.customer_phone;
                         const itemName = i.bakery || i.name || "خبز طازج";
-                        return `<div class="row text-sm"><span class="mu">${i.qty || 1}x</span> <span style="margin-right:8px">${itemName}</span></div>`;
+                        const paymentNote = i.payment ? ` (${i.payment === 'cash' ? 'نقدي' : 'أجل'})` : '';
+                        return `<div class="row text-sm"><span class="mu">${i.qty || 1}x</span> <span style="margin-right:8px">${itemName}${paymentNote}</span></div>`;
                     }).join('');
                 }
             } catch(e) {
@@ -592,13 +618,55 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         }).join('');
     }
 
+    function renderAdminProducts() {
+        const container = document.getElementById("admin-products-container");
+        if (!container) return;
+
+        if (globalProducts.length === 0) {
+            container.innerHTML = `<div class="mu text-center">لا توجد مخبوزات مسجلة</div>`;
+            return;
+        }
+
+        container.innerHTML = globalProducts.map(p => `
+            <div class="row mb-2" style="padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05)">
+                <div>
+                    <b>${p.bakery || 'خبز'}</b>
+                    <div class="mu text-xs">${DS.money(p.unit_price)}</div>
+                </div>
+                <div class="sp"></div>
+                <button class="btn sm ${p.is_available ? 'soft' : 'danger'}" onclick="toggleProductAvailability(${p.id}, ${!p.is_available})">
+                    ${p.is_available ? 'متوفر' : 'غير متوفر'}
+                </button>
+            </div>
+        `).join('');
+    }
+
+    async function toggleProductAvailability(productId, newStatus) {
+        try {
+            const res = await fetch(`${SUPABASE_URL}/rest/v1/sfj6qx_products?id=eq.${productId}`, {
+                method: "PATCH",
+                headers: Object.assign({}, headers, { "Prefer": "return=representation" }),
+                body: JSON.stringify({ is_available: newStatus })
+            });
+
+            if (res.ok) {
+                DS.toast("تم تحديث حالة الصنف في السحابة");
+                DS.vib();
+                fetchAdminProducts();
+            } else {
+                DS.toast("تعذر تحديث الصنف");
+            }
+        } catch (e) {
+            DS.toast("خطأ في الاتصال");
+        }
+    }
+
     function filterAdminOrders(status, btn) {
         document.querySelectorAll('#order-filter-chips .chip').forEach(c => c.classList.remove('on'));
         btn.classList.add('on');
         renderAdminOrders(status);
     }
 
-    // تحديث حالة الطلب وإرسالها إلى سحابة Supabase
     async function updateOrderStatus(orderId, newStatus) {
         try {
             const res = await fetch(`${SUPABASE_URL}/rest/v1/sfj6qx_orders?id=eq.${orderId}`, {
@@ -619,19 +687,24 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         }
     }
 
-    // تحديث الإحصائيات العلوية والتقارير
     function updateAdminStats() {
         const pendingCount = globalOrders.filter(o => o.status === 'pending').length;
         const pendingEl = document.getElementById("admin-pending-count");
         if (pendingEl) pendingEl.innerText = pendingCount;
         
-        const todaySales = globalOrders.filter(o => o.status !== 'pending' && o.status !== 'cancelled').reduce((sum, o) => sum + (o.total_amount || 0), 0);
+        const validOrders = globalOrders.filter(o => o.status !== 'pending' && o.status !== 'cancelled');
+        const todaySales = validOrders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
         const salesEl = document.getElementById("admin-today-sales");
         if (salesEl) salesEl.innerText = DS.money(todaySales);
         
-        // تحديث تقارير المبيعات الشاملة
         const totalOrdersEl = document.getElementById("report-total-orders-count");
         if (totalOrdersEl) totalOrdersEl.innerText = globalOrders.length + " طلب";
+
+        const avgEl = document.getElementById("report-avg-order");
+        if (avgEl) {
+            const avg = validOrders.length > 0 ? (todaySales / validOrders.length) : 0;
+            avgEl.innerText = DS.money(avg);
+        }
         
         const weeklySalesEl = document.getElementById("report-weekly-sales");
         if (weeklySalesEl) weeklySalesEl.innerText = DS.money(todaySales);
@@ -640,23 +713,28 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         if (monthlySalesEl) monthlySalesEl.innerText = DS.money(todaySales);
         
         const totalRevEl = document.getElementById("report-total-revenue");
-        if (totalRevEl) totalRevEl.innerText = DS.money(todaySales) + " سوداني";
+        if (totalRevEl) totalRevEl.innerText = DS.money(todaySales);
         
         const completedCountEl = document.getElementById("report-completed-count");
         if (completedCountEl) completedCountEl.innerText = globalOrders.filter(o => o.status === 'delivered').length + " طلب";
     }
 
-    // إدارة شاشة إعدادات الحجز
     function initSettingsScreen() {
-        // إجمالي عدد المسجلين المحليين والعملاء النشطين
-        let uniqueCustomers = [...new Set(globalOrders.map(o => o.customer_id))].length;
+        let uniqueCustomers = [...new Set(globalOrders.map(o => o.customer_id).filter(Boolean))].length;
         if (uniqueCustomers === 0) uniqueCustomers = 1;
         const regCountEl = document.getElementById("registered-users-count");
         if (regCountEl) regCountEl.innerText = uniqueCustomers + " مسجل نشط";
     }
 
-    function toggleBookingStatus(isOpen) {
+    async function toggleBookingStatus(isOpen) {
         updateBookingStatusUI(isOpen);
+        try {
+            await fetch(`${SUPABASE_URL}/rest/v1/sfj6qx_settings?key=eq.booking_status`, {
+                method: "PATCH",
+                headers: Object.assign({}, headers, { "Prefer": "return=representation" }),
+                body: JSON.stringify({ value: { is_open: isOpen } })
+            });
+        } catch(e) {}
         DS.toast(isOpen ? "تم فتح الحجز واستقبال الطلبات بنجاح" : "تم قفل الحجز وإيقاف استقبال الطلبات");
         DS.vib();
     }
@@ -674,7 +752,7 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
     }
 </script>
 <script id="apk-upd">(function(){
-var CUR=1,U="https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/breadadmin0e27/update.json";
+var CUR=2,U="https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/breadadmin0e27/update.json";
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){}return null}
 function show(j){
   var force=!!j.force;
