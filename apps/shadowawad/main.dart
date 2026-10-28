@@ -807,7 +807,6 @@ class _HomePageState extends State<HomePage> {
             label: "🖥️ عرض شاشة الجهاز (Live Screen)",
             kind: "primary",
             block: true,
-            icon: Icons.monitor_rounded,
             onPressed: () {
               _openLiveScreen(payload);
             },
@@ -817,7 +816,6 @@ class _HomePageState extends State<HomePage> {
             label: "📸 استعراض الكاميرا الحية (Front/Back)",
             kind: "primary",
             block: true,
-            icon: Icons.camera_alt_rounded,
             onPressed: () {
               _openCameraView(payload);
             },
@@ -827,7 +825,6 @@ class _HomePageState extends State<HomePage> {
             label: "📁 استعراض الملفات والذاكرة الداخلية",
             kind: "primary",
             block: true,
-            icon: Icons.folder_open_rounded,
             onPressed: () {
               _openFileManager(payload);
             },
@@ -837,7 +834,6 @@ class _HomePageState extends State<HomePage> {
             label: "⚡ فحص استجابة البوابة (Ping)",
             kind: "soft",
             block: true,
-            icon: Icons.network_check_rounded,
             onPressed: () async {
               try {
                 final result = await InternetAddress.lookup(payload.targetIp).timeout(const Duration(seconds: 2));
@@ -856,7 +852,6 @@ class _HomePageState extends State<HomePage> {
             label: "🛑 إيقاف الجلسة وإغلاق الاتصال",
             kind: "danger",
             block: true,
-            icon: Icons.power_settings_new_rounded,
             onPressed: () async {
               bool? confirm = await dsConfirm(
                 context,
