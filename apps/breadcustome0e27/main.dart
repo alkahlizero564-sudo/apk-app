@@ -102,7 +102,6 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
           setState(() {
             _currentIndex = i;
           });
-          DS.vib();
         },
         items: [
           const DsNavItem("الماسح (Nmap)", Icons.search_rounded),
@@ -150,10 +149,10 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: Colors.white12),
                 ),
-                child: Center(
+                child: const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
+                    children: [
                       Icon(Icons.radar, size: 48, color: Colors.blueAccent),
                       SizedBox(height: 8),
                       Text("الشبكة جاهزة للهجوم الفعلي", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -168,7 +167,6 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                 block: true,
                 onPressed: () {
                   dsToast(context, "جاري فحص النطاق الفعلي عبر Nmap...");
-                  DS.vib();
                   Future.delayed(const Duration(seconds: 1500), () {
                     dsToast(context, "تم تحديث قائمة الأجهزة المستهدفة بنجاح");
                     setState(() {});
@@ -183,11 +181,10 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                   setState(() {
                     currentFilter = _getIndexFilterName(i);
                   });
-                  DS.vib();
                 },
               ),
               const SizedBox(height: 16),
-              DsSection(title: "الأجهزة المكتشفة", action: "فوري"),
+              const DsSection(title: "الأجهزة المكتشفة", action: "فوري"),
               const SizedBox(height: 8),
               filteredDevices.isEmpty
                   ? const DsEmpty(
@@ -321,7 +318,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
           ),
         ),
         const SizedBox(height: 20),
-        DsSection(title: "أدوات السيطرة الحية"),
+        const DsSection(title: "أدوات السيطرة الحية"),
         const SizedBox(height: 10),
         Row(
           children: [
@@ -355,7 +352,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
         ),
         const SizedBox(height: 20),
         activeSession
-            ? DsCard(
+            ? const DsCard(
                 child: DsItem(
                   emoji: "🟢",
                   title: "الهدف تم اختراقه وهو متصل الآن",
@@ -409,7 +406,6 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
             onPressed: () {
               Navigator.pop(context);
               dsToast(context, "جاري تنفيذ حقن البايلاود الهجومي الفعلي...");
-              DS.vib();
               Future.delayed(const Duration(seconds: 2000), () {
                 setState(() {
                   activeSession = true;
