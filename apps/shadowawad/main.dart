@@ -19,7 +19,7 @@ class DeviceModel {
   final String id;
   final String name;
   final String ip;
-  final String type; // iphone, android, wifi, windows, linux
+  final String type;
   final String status;
   final String mac;
   final String osVersion;
@@ -270,43 +270,46 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        child: IndexedStack(
-          key: ValueKey<int>(_currentIndex),
-          index: _currentIndex,
-          children: [
-            _buildNmapTab(),
-            _buildMetasploitTab(),
-            _buildControlTab(),
-          ],
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        body: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: IndexedStack(
+            key: ValueKey<int>(_currentIndex),
+            index: _currentIndex,
+            children: [
+              _buildNmapTab(),
+              _buildMetasploitTab(),
+              _buildControlTab(),
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: _currentIndex == 0
-          ? DsFab(
-              icon: Icons.radar_rounded,
-              onPressed: _startRealNetworkScan,
-            )
-          : (_currentIndex == 1
-              ? DsFab(
-                  icon: Icons.bug_report_rounded,
-                  onPressed: _generatePayloadDialog,
-                )
-              : null),
-      bottomNavigationBar: DsNav(
-        items: const [
-          DsNavItem("مسح الشبكة", Icons.wifi_find_rounded),
-          DsNavItem("إنتاج الباي لود", Icons.bug_report_rounded),
-          DsNavItem("التحكم الفعلي", Icons.security_rounded),
-        ],
-        index: _currentIndex,
-        onChanged: (i) {
-          HapticFeedback.lightImpact();
-          setState(() {
-            _currentIndex = i;
-          });
-        },
+        floatingActionButton: _currentIndex == 0
+            ? DsFab(
+                icon: Icons.radar_rounded,
+                onPressed: _startRealNetworkScan,
+              )
+            : (_currentIndex == 1
+                ? DsFab(
+                    icon: Icons.bug_report_rounded,
+                    onPressed: _generatePayloadDialog,
+                  )
+                : null),
+        bottomNavigationBar: DsNav(
+          items: const [
+            DsNavItem("مسح الشبكة", Icons.wifi_find_rounded),
+            DsNavItem("إنتاج الباي لود", Icons.bug_report_rounded),
+            DsNavItem("التحكم الفعلي", Icons.security_rounded),
+          ],
+          index: _currentIndex,
+          onChanged: (i) {
+            HapticFeedback.lightImpact();
+            setState(() {
+              _currentIndex = i;
+            });
+          },
+        ),
       ),
     );
   }
