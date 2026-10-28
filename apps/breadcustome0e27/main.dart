@@ -83,7 +83,6 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
   String targetIpDisplay = "لم يتم اختيار هدف";
   bool activeSession = false;
   String payloadType = "meterpreter/reverse_tcp (صلاحيات كاملة)";
-  String controlMode = "";
 
   @override
   Widget build(BuildContext context) {
@@ -103,10 +102,10 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
             _currentIndex = i;
           });
         },
-        items: [
-          const DsNavItem("الماسح (Nmap)", Icons.search_rounded),
-          const DsNavItem("الاختراق (Metasploit)", Icons.send_rounded),
-          const DsNavItem("السجل والتحكم", Icons.list_alt_rounded),
+        items: const [
+          DsNavItem("الماسح (Nmap)", Icons.search_rounded),
+          DsNavItem("الاختراق (Metasploit)", Icons.send_rounded),
+          DsNavItem("السجل والتحكم", Icons.list_alt_rounded),
         ],
       ),
     );
@@ -167,7 +166,8 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                 block: true,
                 onPressed: () {
                   dsToast(context, "جاري فحص النطاق الفعلي عبر Nmap...");
-                  Future.delayed(const Duration(seconds: 1500), () {
+                  Future.delayed(const Duration(seconds: 2), () {
+                    if (!mounted) return;
                     dsToast(context, "تم تحديث قائمة الأجهزة المستهدفة بنجاح");
                     setState(() {});
                   });
@@ -406,7 +406,8 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
             onPressed: () {
               Navigator.pop(context);
               dsToast(context, "جاري تنفيذ حقن البايلاود الهجومي الفعلي...");
-              Future.delayed(const Duration(seconds: 2000), () {
+              Future.delayed(const Duration(seconds: 2), () {
+                if (!mounted) return;
                 setState(() {
                   activeSession = true;
                 });
