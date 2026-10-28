@@ -5418,6 +5418,404 @@ render=function(){
     +'</div>');
 };
 })();
+render();/* ===== إضافة: فحص بصري آلي للتصميم قبل الاعتماد ===== */
+(function(){
+const W=390,H=844;
+
+function jparse(t){
+  const s=String(t),a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a<0||b<a)throw new Error('رد غير صالح');
+  return JSON.parse(s.slice(a,b+1));
+}
+function sleep2(ms){return new Promise(function(r){setTimeout(r,ms)})}
+function rounds(){const v=parseInt(S.keys.qaRounds,10);return (v>=0&&v<=4)?v:2}
+
+/* ---------- وكيل الفحص داخل صفحة التصميم ---------- */
+const AGENT_JS=`(function(){
+var errs=[];
+var st0=document.createElement('style');
+st0.textContent='*,*::before,*::after{animation:none!important;transition:none!important}';
+(document.head||document.documentElement).appendChild(st0);
+window.addEventListener('error',function(e){errs.push(String(e.message||e))});
+window.addEventListener('unhandledrejection',function(e){errs.push(String(e.reason))});
+var oe=console.error;
+console.error=function(){try{errs.push([].slice.call(arguments).join(' '))}catch(x){}try{oe.apply(console,arguments)}catch(x){}};
+function vis(e){
+  var r=e.getBoundingClientRect();
+  if(r.width<2||r.height<2)return null;
+  var cs=getComputedStyle(e);
+  if(cs.visibility==='hidden'||cs.display==='none'||+cs.opacity===0)return null;
+  if(e.closest&&e.closest('.sheet')&&!e.closest('.sheet.on'))return null;
+  return r;
+}
+function lbl(e){return String(e.innerText||e.getAttribute('aria-label')||e.value||e.placeholder||e.tagName).replace(/\\s+/g,' ').trim().slice(0,26)}
+function rgb(s){
+  var m=/rgba?\\(([^)]+)\\)/.exec(s);if(!m)return null;
+  var p=m[1].split(/[ ,\\/]+/).filter(Boolean).map(parseFloat);
+  if(p.length<3||isNaN(p[0]))return null;
+  return {r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1};
+}
+function lum(c){
+  function f(v){v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4)}
+  return 0.2126*f(c.r)+0.7152*f(c.g)+0.0722*f(c.b);
+}
+function bgOf(e){
+  var p=e;
+  while(p&&p.nodeType===1){
+    var cs=getComputedStyle(p);
+    if(cs.backgroundImage&&cs.backgroundImage!=='none')return null;
+    var c=rgb(cs.backgroundColor);
+    if(c&&c.a>=0.9)return c;
+    p=p.parentElement;
+  }
+  return {r:255,g:255,b:255,a:1};
+}
+function audit(){
+  var o={overflow:false,small:[],tiny:[],contrast:[],errors:errs.slice(0,5),empty:false,sw:0};
+  var de=document.documentElement;
+  o.sw=de.scrollWidth;
+  o.overflow=de.scrollWidth>window.innerWidth+2;
+  o.empty=(document.body.innerText||'').trim().length<15;
+  var tg=document.querySelectorAll('button,a,[onclick],select,.chip,.fab,.icb,.tabbar>*');
+  for(var i=0;i<tg.length&&o.small.length<8;i++){
+    var e=tg[i],r=vis(e);
+    if(!r)continue;
+    if(r.height<36||r.width<36)o.small.push(lbl(e)+' '+Math.round(r.width)+'x'+Math.round(r.height));
+  }
+  var all=document.body.querySelectorAll('*');
+  for(var j=0;j<all.length&&(o.tiny.length<8||o.contrast.length<8);j++){
+    var el=all[j];
+    if(['SCRIPT','STYLE','SVG','PATH'].indexOf(el.tagName.toUpperCase())>-1)continue;
+    var has=false;
+    for(var k=0;k<el.childNodes.length;k++){var n=el.childNodes[k];if(n.nodeType===3&&n.nodeValue.trim().length>1){has=true;break}}
+    if(!has)continue;
+    var rr=vis(el);if(!rr)continue;
+    var cs=getComputedStyle(el);
+    var fs=parseFloat(cs.fontSize);
+    if(fs<12&&o.tiny.length<8)o.tiny.push(lbl(el)+' '+fs+'px');
+    if(o.contrast.length<8){
+      var fg=rgb(cs.color),bg=bgOf(el);
+      if(fg&&bg){
+        var a=fg.a<1?{r:fg.r*fg.a+bg.r*(1-fg.a),g:fg.g*fg.a+bg.g*(1-fg.a),b:fg.b*fg.a+bg.b*(1-fg.a)}:fg;
+        var l1=lum(a),l2=lum(bg),hi=Math.max(l1,l2),lo=Math.min(l1,l2);
+        var ratio=(hi+0.05)/(lo+0.05);
+        if(ratio<3.6)o.contrast.push(lbl(el)+' '+ratio.toFixed(1)+':1');
+      }
+    }
+  }
+  return o;
+}
+function navs(){
+  var a=[].slice.call(document.querySelectorAll('.tabbar>button,nav button,[role=tab],.seg>*')),r=[];
+  a.forEach(function(e){if(vis(e)&&r.indexOf(e)<0)r.push(e)});
+  return r;
+}
+function snap(){
+  var st='';
+  [].forEach.call(document.querySelectorAll('style'),function(s){st+=new XMLSerializer().serializeToString(s)});
+  var b=document.body.cloneNode(true);
+  [].forEach.call(b.querySelectorAll('script,iframe,video,audio,canvas'),function(x){if(x.parentNode)x.parentNode.removeChild(x)});
+  var de=document.documentElement;
+  return {st:st,body:new XMLSerializer().serializeToString(b),theme:de.getAttribute('data-theme')||'',vh:window.innerHeight,sh:Math.max(de.scrollHeight,document.body.scrollHeight)};
+}
+function run(c,a){
+  if(c==='audit')return audit();
+  if(c==='nav')return navs().map(lbl);
+  if(c==='click'){var n=navs();if(n[a]){n[a].click();return true}return false}
+  if(c==='fab'){var f=document.querySelector('.fab');if(f&&vis(f)){f.click();return true}return false}
+  if(c==='close'){try{if(window.DS&&DS.close)DS.close()}catch(x){}return true}
+  if(c==='snap')return snap();
+  if(c==='top'){window.scrollTo(0,0);return true}
+  return null;
+}
+window.addEventListener('message',function(e){
+  var d=e.data;
+  if(!d||!d.qa)return;
+  var r;
+  try{r=run(d.cmd,d.arg)}catch(x){r={err:String(x)}}
+  try{e.source.postMessage({qaR:d.qa,data:r},'*')}catch(x){}
+});
+})();`;
+
+function inject(html){
+  const tag='<scr'+'ipt>'+AGENT_JS+'<\/scr'+'ipt>';
+  if(/<head[^>]*>/i.test(html))return html.replace(/<head[^>]*>/i,function(m){return m+tag});
+  return tag+html;
+}
+function qa(f,cmd,arg){
+  return new Promise(function(res,rej){
+    const id=Math.random().toString(36).slice(2);
+    const to=setTimeout(function(){window.removeEventListener('message',h);rej(new Error('انتهت مهلة الفحص'))},9000);
+    function h(e){
+      if(e.source!==f.contentWindow||!e.data||e.data.qaR!==id)return;
+      clearTimeout(to);window.removeEventListener('message',h);res(e.data.data);
+    }
+    window.addEventListener('message',h);
+    f.contentWindow.postMessage({qa:id,cmd:cmd,arg:arg},'*');
+  });
+}
+
+/* ---------- التقاط لقطة من الصفحة (تحويل DOM إلى صورة) ---------- */
+function raster(sn,w,h){
+  return new Promise(function(res,rej){
+    const X='http://www.w3.org/1999/xhtml';
+    const inner='<div xmlns="'+X+'" style="width:'+w+'px;height:'+h+'px;overflow:hidden;position:relative">'+sn.st+sn.body+'</div>';
+    const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+w+'" height="'+h+'"'+(sn.theme?' data-theme="'+sn.theme+'"':'')+'><foreignObject x="0" y="0" width="'+w+'" height="'+h+'">'+inner+'</foreignObject></svg>';
+    const img=new Image();
+    img.onload=function(){
+      try{
+        const c=document.createElement('canvas');c.width=w;c.height=h;
+        const x=c.getContext('2d');
+        x.fillStyle='#ffffff';x.fillRect(0,0,w,h);
+        x.drawImage(img,0,0);
+        res(c.toDataURL('image/jpeg',0.72).split(',')[1]);
+      }catch(e){rej(e)}
+    };
+    img.onerror=function(){rej(new Error('تعذّر رسم الصفحة'))};
+    img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+  });
+}
+
+async function runQA(html){
+  const f=document.createElement('iframe');
+  f.setAttribute('sandbox','allow-scripts');
+  f.style.cssText='position:fixed;left:-10000px;top:0;width:'+W+'px;height:'+H+'px;border:0;visibility:hidden';
+  document.body.appendChild(f);
+  const out={audit:null,names:[],shots:[],note:''};
+  try{
+    await new Promise(function(res){f.onload=res;f.srcdoc=inject(html)});
+    await sleep2(1000);
+    out.audit=await qa(f,'audit');
+    let navN=[];
+    try{navN=(await qa(f,'nav'))||[]}catch(e){}
+    try{
+      let sn=await qa(f,'snap');
+      out.shots.push(await raster(sn,W,H));out.names.push('الشاشة الأولى');
+      if(sn.sh>H*1.35){out.shots.push(await raster(sn,W,Math.min(sn.sh,2200)));out.names.push('الصفحة الأولى كاملة (تمرير)')}
+      for(let i=1;i<navN.length&&i<=3;i++){
+        await qa(f,'click',i);await sleep2(550);
+        sn=await qa(f,'snap');
+        out.shots.push(await raster(sn,W,H));out.names.push('قسم: '+navN[i]);
+      }
+      await qa(f,'top');
+      if(await qa(f,'fab')){
+        await sleep2(600);
+        sn=await qa(f,'snap');
+        out.shots.push(await raster(sn,W,H));out.names.push('نافذة الإضافة (الزر العائم)');
+        await qa(f,'close');
+      }
+    }catch(e){
+      out.note='تعذّر التقاط اللقطات على هذا الجهاز ('+String((e&&e.message)||e)+')، تم الفحص الآلي للكود فقط';
+      out.shots=[];out.names=[];
+    }
+    out.shots=out.shots.slice(0,6);out.names=out.names.slice(0,6);
+  }finally{
+    if(f.parentNode)f.parentNode.removeChild(f);
+  }
+  return out;
+}
+
+/* ---------- نموذج يشوف الصور ---------- */
+async function aiVision(prompt,imgs){
+  const k=S.keys,prov=k.provider||'gemini';
+  if(prov==='groq')throw new Error('VISION_UNSUPPORTED');
+  if(prov==='claude'){
+    if(!k.claude)throw new Error('أدخل مفتاح Claude');
+    const content=imgs.map(function(b){return {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b}}});
+    content.push({type:'text',text:prompt});
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':k.claude,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:MODELS.claude,max_tokens:3000,messages:[{role:'user',content:content}]})});
+    const j=await r.json().catch(function(){return {}});
+    if(!r.ok)throw new Error((j.error&&j.error.message)||('خطأ '+r.status));
+    return (j.content||[]).map(function(c){return c.text||''}).join('');
+  }
+  if(prov==='openrouter'){
+    if(!k.orKey||!k.orModel)throw new Error('أدخل مفتاح OpenRouter واسم نموذج يدعم الصور');
+    const content=[{type:'text',text:prompt}].concat(imgs.map(function(b){return {type:'image_url',image_url:{url:'data:image/jpeg;base64,'+b}}}));
+    const r=await fetch('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'content-type':'application/json',Authorization:'Bearer '+k.orKey},body:JSON.stringify({model:k.orModel,messages:[{role:'user',content:content}],max_tokens:3000})});
+    const j=await r.json().catch(function(){return {}});
+    if(!r.ok)throw new Error((j.error&&(j.error.message||j.error))||('خطأ '+r.status));
+    const t=j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content;
+    if(!t)throw new Error('رد فارغ');
+    return t;
+  }
+  const gk=[k.gemini,k.gemini2,k.gemini3].filter(Boolean);
+  if(!gk.length)throw new Error('أدخل مفتاح Gemini');
+  const model=k.geminiModel||MODELS.gemini;
+  const parts=imgs.map(function(b){return {inline_data:{mime_type:'image/jpeg',data:b}}});
+  parts.push({text:prompt});
+  let last;
+  for(let n=0;n<gk.length;n++){
+    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(gk[n]),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contents:[{parts:parts}]})});
+    const j=await r.json().catch(function(){return {}});
+    if(r.ok){
+      const c=j.candidates&&j.candidates[0]&&j.candidates[0].content;
+      if(!c)throw new Error('رد فارغ من Gemini');
+      return (c.parts||[]).map(function(p){return p.text||''}).join('');
+    }
+    const msg=(j.error&&j.error.message)||'فشل الاتصال بـ Gemini';
+    last=new Error(msg);
+    if(!(r.status===429||/quota|exhaust/i.test(msg)))throw last;
+  }
+  throw last;
+}
+
+function critiquePrompt(names,al){
+  let p='أنت مصمم UI/UX محترف ومراجع جودة صارم. هذه لقطات شاشة لتصميم تطبيق جوال (عربي RTL) بمقاس 390×844، مرتبة كالتالي:\n'+names.map(function(n,i){return (i+1)+') '+n}).join('\n')
+   +'\n\nقيّمها كأنها لتطبيق مدفوع من شركة عالمية، وأعد JSON فقط بدون شرح وبدون markdown:\n{"score":رقم من 1 إلى 10,"issues":[{"sev":"high أو med أو low","where":"اسم الشاشة أو اللقطة","problem":"وصف المشكلة بدقة","fix":"التعديل المطلوب بدقة (مثلاً: زد الحشو إلى 16px)"}]}'
+   +'\n\nمعايير الحكم: تسلسل بصري واضح (عنصر رئيسي واحد في كل شاشة)، ومسافات منتظمة ومحاذاة، وتباين النصوص، وأحجام الأزرار (لا تقل عن 44px)، واتساق الألوان والزوايا والظلال، وهوية مميزة وليست شكلاً افتراضياً، وتعامل صحيح مع RTL، وعدم وجود نص مقطوع أو متداخل أو عناصر خارج الشاشة، وجمال الحالات الفارغة والنوافذ. اذكر أهم 8 مشاكل فقط من الأخطر للأخف، ولا تذكر مشاكل غير مرئية في اللقطات. وإن كانت اللقطات بيضاء أو مشوهة بشكل لا يعكس تصميماً حقيقياً فأعد {"score":0,"issues":[]}.';
+  if(al.length)p+='\n\nملاحظات آلية من فحص الكود:\n- '+al.join('\n- ');
+  return p;
+}
+function audLines(a){
+  const L=[];
+  if(!a)return L;
+  if(a.empty)L.push('الشاشة الأولى تبدو فارغة تقريباً');
+  if(a.overflow)L.push('تجاوز أفقي: الصفحة أعرض من الشاشة (عرض المحتوى '+a.sw+'px من 390)');
+  if(a.errors&&a.errors.length)L.push('أخطاء جافاسكربت: '+a.errors.join(' | '));
+  if(a.small&&a.small.length)L.push('عناصر لمس أصغر من 36px: '+a.small.join('، '));
+  if(a.tiny&&a.tiny.length)L.push('نصوص أصغر من 12px: '+a.tiny.join('، '));
+  if(a.contrast&&a.contrast.length)L.push('تباين ضعيف بين النص والخلفية: '+a.contrast.join('، '));
+  return L;
+}
+async function evaluate(html){
+  const rep=await runQA(html);
+  const aud=rep.audit,al=audLines(aud);
+  let v=null,note=rep.note||'';
+  if(rep.shots.length){
+    try{
+      const t=await aiVision(critiquePrompt(rep.names,al),rep.shots);
+      v=jparse(t);
+      v.issues=Array.isArray(v.issues)?v.issues:[];
+      v.score=+v.score||0;
+      if(v.score===0&&!v.issues.length){v=null;note='اللقطات غير صالحة للتقييم البصري'}
+    }catch(e){
+      const m=String((e&&e.message)||e);
+      note=m==='VISION_UNSUPPORTED'?'الفحص البصري غير مدعوم مع Groq، تم الفحص الآلي للكود فقط':'تعذّر الفحص البصري: '+m;
+    }
+  }
+  const sev=!!(aud&&(aud.empty||aud.overflow||(aud.errors&&aud.errors.length)));
+  const minor=!!(aud&&(aud.small.length>2||aud.tiny.length>2||aud.contrast.length>2));
+  const high=v?v.issues.some(function(x){return x.sev==='high'}):false;
+  const pass=!sev&&!minor&&(v?(v.score>=8&&!high):true);
+  return {pass:pass,score:v?v.score:null,vision:v,audit:al,note:note};
+}
+function fixText(res){
+  const p=[];
+  if(res.vision){
+    res.vision.issues.filter(function(x){return x.sev==='high'||x.sev==='med'}).slice(0,8).forEach(function(x){
+      p.push('['+(x.where||'')+'] '+(x.problem||'')+' ← '+(x.fix||''));
+    });
+  }
+  res.audit.forEach(function(x){p.push('(فحص آلي) '+x)});
+  if(!p.length)return '';
+  return 'أصلح الملاحظات التالية في التصميم فقط، بدون تغيير الشاشات أو الهوية أو نظام التصميم الجاهز أو ترتيب الأقسام، وحافظ على بيانات DEMO وتعليق UI-SPEC:\n- '+p.join('\n- ');
+}
+
+/* ---------- التكامل مع نافذة الاعتماد ---------- */
+function curIdx(){const b=$('#gt1');return (b&&b.className==='acc')?1:0}
+function designNow(){const f=$('#gtf');return f?f.srcdoc:''}
+function alive(){return !!$('#gtf')}
+function qaStatus(t){const e=$('#qa-st');if(e)e.textContent=t}
+function lockUI(on){
+  document.querySelectorAll('#sheet .sheetbox button').forEach(function(b){
+    const oc=b.getAttribute('onclick')||'';
+    if(oc.indexOf('cxGateCancel')>-1||oc.indexOf('_qaStop')>-1)return;
+    b.disabled=!!on;
+  });
+}
+async function qaApp(idx,rs){
+  let last=null;
+  for(let r=0;r<=rs;r++){
+    if(!alive()||window._qaStop)return last;
+    qaStatus('🔍 فحص جودة التطبيق '+(idx+1)+' (فحص '+(r+1)+' من '+(rs+1)+')...');
+    let res;
+    try{res=await evaluate(designNow())}
+    catch(e){qaStatus('تعذّر الفحص: '+String((e&&e.message)||e));return last}
+    last=res;
+    if(res.pass||r===rs)break;
+    const ft=fixText(res);
+    if(!ft)break;
+    if(!alive()||window._qaStop)break;
+    qaStatus('🛠 إصلاح ملاحظات التطبيق '+(idx+1)+' (جولة '+(r+1)+')...');
+    const before=designNow();
+    const tx=$('#gtn');
+    if(!tx||typeof window.cxGateEdit!=='function'){qaStatus('كتلة «التصميم أولاً» غير مركّبة');break}
+    tx.value=ft;
+    const w=$('#gtw');if(w)w.value='cur';
+    await window.cxGateEdit();
+    if(designNow()===before){qaStatus('ما تغيّر التصميم بعد محاولة الإصلاح');break}
+  }
+  return last;
+}
+function showReport(reps){
+  const el=$('#qa-rep');if(!el)return;
+  let h='';
+  reps.forEach(function(r,i){
+    if(!r)return;
+    const iss=[];
+    if(r.vision)r.vision.issues.forEach(function(x){
+      iss.push((x.sev==='high'?'🔴 ':x.sev==='med'?'🟠 ':'🟡 ')+esc(x.where||'')+': '+esc(x.problem||''));
+    });
+    r.audit.forEach(function(x){iss.push('⚙️ '+esc(x))});
+    h+='<details style="margin-top:8px"><summary style="color:var(--tx)">'+(r.pass?'✅':'⚠️')+' التطبيق '+(i+1)+(r.score!=null?' — الدرجة '+r.score+'/10':'')+' — '+(iss.length?iss.length+' ملاحظة':'لا ملاحظات')+'</summary><div class="note" style="line-height:1.9">'+(iss.join('<br>')||'—')+(r.note?'<br><i>'+esc(r.note)+'</i>':'')+'</div></details>';
+  });
+  el.innerHTML=h;
+}
+async function autoQA(only){
+  if(window._qaBusy)return;
+  window._qaBusy=true;window._qaStop=false;
+  const rs=rounds();
+  const st=$('#qa-st');
+  if(st&&!$('#qa-skip'))st.insertAdjacentHTML('afterend','<button id="qa-skip" class="ghost" style="width:100%;margin-top:6px" onclick="window._qaStop=true;toast(\'سيتوقف بعد انتهاء الخطوة الحالية\')">⏭ تخطَّ الفحص</button>');
+  lockUI(true);
+  const reps=[];
+  try{
+    const n=$('#gt1')?2:1;
+    const list=(only!==undefined)?[only]:(n===2?[0,1]:[0]);
+    for(const idx of list){
+      if(!alive()||window._qaStop)break;
+      if(n===2&&typeof window.cxGateTab==='function'){window.cxGateTab(idx);await sleep2(500)}
+      reps[idx]=await qaApp(idx,rs);
+    }
+    if(alive()&&n===2&&typeof window.cxGateTab==='function')window.cxGateTab(0);
+    if(alive())showReport(reps);
+    qaStatus(alive()?(window._qaStop?'⏭ تم تخطي الفحص':'✔ انتهى الفحص'):'');
+  }catch(e){qaStatus('تعذّر الفحص: '+String((e&&e.message)||e))}
+  finally{
+    window._qaBusy=false;
+    const sk=$('#qa-skip');if(sk&&sk.parentNode)sk.parentNode.removeChild(sk);
+    if(alive())lockUI(false);
+  }
+}
+window.cxQaRun=function(){
+  if(window._qaBusy)return toast('الفحص شغّال، انتظر...');
+  autoQA(curIdx());
+};
+function check(){
+  const g=$('#gtf');if(!g)return;
+  const box=g.closest('.sheetbox');
+  if(!box||box.dataset.qa)return;
+  box.dataset.qa='1';
+  const st=box.querySelector('#gtst');
+  if(st&&!$('#qa-st'))st.insertAdjacentHTML('afterend','<div id="qa-st" class="note" style="margin-top:6px"></div><div id="qa-rep"></div>');
+  const ok=box.querySelector('button[onclick^="cxGateOk"]');
+  if(ok&&!$('#qa-btn'))ok.insertAdjacentHTML('beforebegin','<button id="qa-btn" class="sec" style="width:100%;margin-top:8px" onclick="cxQaRun()">🔍 افحص جودة هذا التصميم وأصلحه</button>');
+  if(!S.keys.qaOff)setTimeout(function(){autoQA()},800);
+}
+const shEl=document.getElementById('sheet');
+if(shEl)new MutationObserver(check).observe(shEl,{childList:true,subtree:true});
+
+/* ---------- الخيارات في بطاقة النظام المتكامل ---------- */
+const _render25=render;
+render=function(){
+  _render25();
+  if(tab!=='code')return;
+  const g=$('#cx-stg');
+  if(!g||g.querySelector('#cx-qa'))return;
+  g.insertAdjacentHTML('beforeend','<div id="cx-qa"><label style="display:flex;gap:10px;align-items:center;color:var(--tx);margin-top:8px"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.qaOff?'':'checked')+' onchange="S.keys.qaOff=!this.checked;save()"> 🔍 فحص بصري آلي قبل الاعتماد</label>'
+    +'<label>عدد جولات الإصلاح التلقائي للتصميم (من 0 إلى 4)</label><input type="number" inputmode="numeric" min="0" max="4" value="'+rounds()+'" onchange="S.keys.qaRounds=Math.max(0,Math.min(4,parseInt(this.value)||0));this.value=S.keys.qaRounds;save()"></div>');
+};
+})();
 render();
 </script>
 </body>
