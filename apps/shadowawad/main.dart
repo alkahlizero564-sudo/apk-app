@@ -861,7 +861,7 @@ class _HomePageState extends State<HomePage> {
                 "تأكيد الإغلاق",
                 "هل أنت متأكد من رغبتك في إغلاق هذه الجلسة كلياً؟",
               );
-              if (confirm == true) {
+              if (confirm == true && mounted) {
                 Navigator.pop(context);
                 setState(() {
                   payload.isConnected = false;
