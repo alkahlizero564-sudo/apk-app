@@ -322,7 +322,6 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         fetchProducts();
         fetchOrders();
         
-        // التحديث المباشر كل 5 ثوانٍ
         setInterval(() => {
             fetchProducts();
             fetchOrders();
@@ -452,7 +451,6 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
             return;
         }
 
-        const user = JSON.parse(localStorage.getItem("sfj6qx_user") || "{}");
         const totalAmt = globalCart.reduce((sum, i) => sum + (i.price * i.qty), 0);
         const paymentMethod = document.getElementById("cart-payment-method").value;
 
