@@ -1,0 +1,16 @@
+{
+  "name": "breadadmin0e27",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  },
+  "scripts": {
+    "capacitor:update:after": "node apk-settings.js",
+    "capacitor:sync:after": "node apk-settings.js"
+  }
+}
