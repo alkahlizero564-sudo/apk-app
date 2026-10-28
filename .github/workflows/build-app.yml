@@ -84,17 +84,20 @@ jobs:
           PR=keys/$APPN.properties
           if [ ! -f "$KS" ] || [ ! -f "$PR" ]; then
             PASS=$(openssl rand -hex 12)
-            rm -f "$KS"
+            rm -f "$KS" "$PR"
             keytool -genkeypair -keystore "$KS" -storetype PKCS12 -storepass "$PASS" -keypass "$PASS" -alias appkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=$APPN, O=MyApps, C=SD"
             echo "pass=$PASS" > "$PR"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add "$KS" "$PR"
+            git add -f "$KS" "$PR"
             git commit -m "add signing key for $APPN"
             PUSHED=0
-            for n in 1 2 3; do
-              if git pull --rebase origin "$GITHUB_REF_NAME" && git push origin "HEAD:$GITHUB_REF_NAME"; then PUSHED=1; break; fi
-              sleep 4
+            for n in 1 2 3 4 5; do
+              git fetch origin "$GITHUB_REF_NAME"
+              git rebase --autostash "origin/$GITHUB_REF_NAME" || git rebase --abort
+              if git push origin "HEAD:$GITHUB_REF_NAME"; then PUSHED=1; break; fi
+              echo "push attempt $n failed"
+              sleep 5
             done
             if [ "$PUSHED" != "1" ]; then echo "failed to save the signing key to the repo"; exit 1; fi
             echo "NEW signing key created for $APPN"
@@ -120,6 +123,7 @@ jobs:
           done
           echo "--- permissions ---"
           grep "uses-permission" "$M"
+          sed -i "s/versionCode [0-9][0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle
           if [ -f settings.json ]; then
             echo "--- applying settings ---"
             G=android/app/build.gradle
@@ -226,4 +230,4 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.find.outputs.name }}-build-${{ github.run_number }}
-          files: ${{ steps.find.outputs.dir }}/${{ steps.build.outputs.apk || steps.type.outputs.apk }}
+          files: ${{ steps.find.outputs.dir }}/${{ steps.build.outputs.apk || steps.type.outputs.apk }} 
