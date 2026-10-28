@@ -131,7 +131,7 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
 </head>
 <body>
 
-    <!-- الترويعة الرئيسية -->
+    <!-- الترويسة الرئيسية -->
     <div class="hero">
         <div class="row">
             <div>
@@ -188,7 +188,7 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                 <div class="row mb-3" style="gap:8px">
                     <label class="fld" style="flex:1">
                         <span>المبلغ (بالجنيه السوداني)</span>
-                        <input type="number" class="in" id="quick-bread-amount" placeholder="مثال: 2000">
+                        <input type="number" class="in" id="quick-bread-amount" placeholder="مثال: 2000" min="1">
                     </label>
                 </div>
                 <div class="row" style="gap:10px">
@@ -278,7 +278,7 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         <div class="row mb-3">
             <h3>سلة المشتريات</h3>
             <div class="sp"></div>
-            <button class="icb ghost" onclick="DS.close()"><i data-i="x"></i></button>
+            <button class="icb ghost" onclick="safeClose()"><i data-i="x"></i></button>
         </div>
         <div id="cart-items-container" class="mb-3">
             <!-- عناصر السلة -->
@@ -304,6 +304,75 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
     </div>
 
 <script>
+    const safeStorage = {
+        mem: {},
+        getItem(key) {
+            try {
+                if (typeof DS !== 'undefined' && typeof DS.get === 'function') {
+                    const val = DS.get(key);
+                    if (val !== undefined && val !== null) {
+                        return typeof val === 'string' ? val : JSON.stringify(val);
+                    }
+                }
+            } catch(e) {}
+            try {
+                return window.localStorage.getItem(key);
+            } catch(e) {
+                return this.mem[key] !== undefined ? this.mem[key] : null;
+            }
+        },
+        setItem(key, val) {
+            try {
+                if (typeof DS !== 'undefined' && typeof DS.set === 'function') {
+                    DS.set(key, val);
+                }
+            } catch(e) {}
+            try {
+                window.localStorage.setItem(key, String(val));
+            } catch(e) {
+                this.mem[key] = String(val);
+            }
+        }
+    };
+
+    function safeToast(msg) {
+        if (typeof DS !== 'undefined' && typeof DS.toast === 'function') {
+            DS.toast(msg);
+        } else {
+            console.log(msg);
+        }
+    }
+
+    function safeVib() {
+        if (typeof DS !== 'undefined' && typeof DS.vib === 'function') {
+            DS.vib();
+        }
+    }
+
+    function safeOpen(id) {
+        if (typeof DS !== 'undefined' && typeof DS.open === 'function') {
+            DS.open(id);
+        } else {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('open');
+        }
+    }
+
+    function safeClose() {
+        if (typeof DS !== 'undefined' && typeof DS.close === 'function') {
+            DS.close();
+        } else {
+            document.querySelectorAll('.sheet.open').forEach(s => s.classList.remove('open'));
+        }
+    }
+
+    function safeMoney(amount) {
+        if (typeof DS !== 'undefined' && typeof DS.money === 'function') {
+            return DS.money(amount);
+        }
+        return Number(amount || 0).toLocaleString('ar-SD') + ' ج.س';
+    }
+
     const SUPABASE_URL = "https://qlvmxnoewxzykgbneadv.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsdm14bm9ld3h6eWtnYm5lYWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDAwMjIsImV4cCI6MjEwNzIxNjAyMn0.WtsiO0PrUrwxKjpcyB3949kXSZeijtlJYySSbh0ieRk";
     
@@ -329,10 +398,10 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
     });
 
     function getCustomerId() {
-        let cid = localStorage.getItem("sfj6qx_customer_id");
+        let cid = safeStorage.getItem("sfj6qx_customer_id");
         if (!cid) {
             cid = "cust_" + Math.random().toString(36).substr(2, 9);
-            localStorage.setItem("sfj6qx_customer_id", cid);
+            safeStorage.setItem("sfj6qx_customer_id", cid);
         }
         return cid;
     }
@@ -364,7 +433,8 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
 
     function switchTab(tabId, btnElement) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-        document.getElementById('screen-' + tabId).classList.add('active');
+        const targetScreen = document.getElementById('screen-' + tabId);
+        if (targetScreen) targetScreen.classList.add('active');
         
         if (btnElement) {
             document.querySelectorAll('.tabbar button').forEach(b => b.classList.remove('on'));
@@ -372,9 +442,9 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         } else {
             const tabs = ['home', 'orders', 'account'];
             const idx = tabs.indexOf(tabId);
-            if(idx !== -1) {
+            if (idx !== -1) {
                 document.querySelectorAll('.tabbar button').forEach((b, i) => {
-                    if(i === idx) b.classList.add('on');
+                    if (i === idx) b.classList.add('on');
                     else b.classList.remove('on');
                 });
             }
@@ -395,10 +465,10 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                     <div class="product-img">🥖</div>
                     <div style="flex:1; margin-right: 12px;">
                         <b>${p.bakery || 'خبز طازج'}</b>
-                        <div class="mu text-xs">السعر: ${DS.money(p.unit_price)}</div>
+                        <div class="mu text-xs">السعر: ${safeMoney(p.unit_price)}</div>
                     </div>
                     <div>
-                        ${p.is_available ? `<button class="btn sm" onclick="addToCart('${p.id}', '${p.bakery || 'خبز طازج'}', ${p.unit_price})">أضف للسلة</button>` : `<span class="badge warn">غير متوفر</span>`}
+                        ${p.is_available ? `<button class="btn sm" onclick="addToCart('${p.id}', '${(p.bakery || 'خبز طازج').replace(/'/g, "\\'")}', ${Number(p.unit_price) || 0})">أضف للسلة</button>` : `<span class="badge warn">غير متوفر</span>`}
                     </div>
                 </div>
             </div>
@@ -412,22 +482,22 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         } else {
             globalCart.push({ id, name, price, qty: 1 });
         }
-        DS.toast("تمت الإضافة إلى السلة");
-        DS.vib();
+        safeToast("تمت الإضافة إلى السلة");
+        safeVib();
         renderCart();
     }
 
     function openCartSheet() {
         renderCart();
-        DS.open('cart-sheet');
+        safeOpen('cart-sheet');
     }
 
     function renderCart() {
         const container = document.getElementById("cart-items-container");
         if (globalCart.length === 0) {
             container.innerHTML = `<div class="empty"><span class="e">🛒</span><b>السلة فارغـة</b><span>أضف بعض المخبوزات الطازجة لنبدأ</span></div>`;
-            document.getElementById("cart-subtotal").innerText = "0.00 ج.س";
-            document.getElementById("cart-total").innerText = "0.00 ج.س";
+            document.getElementById("cart-subtotal").innerText = safeMoney(0);
+            document.getElementById("cart-total").innerText = safeMoney(0);
             return;
         }
 
@@ -436,18 +506,18 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                 <span>🥖 ${item.name}</span>
                 <div class="sp"></div>
                 <span class="mu text-xs" style="margin-left:10px">${item.qty}x</span>
-                <b>${DS.money(item.price * item.qty)}</b>
+                <b>${safeMoney(item.price * item.qty)}</b>
             </div>
         `).join('');
 
         const subtotal = globalCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-        document.getElementById("cart-subtotal").innerText = DS.money(subtotal);
-        document.getElementById("cart-total").innerText = DS.money(subtotal);
+        document.getElementById("cart-subtotal").innerText = safeMoney(subtotal);
+        document.getElementById("cart-total").innerText = safeMoney(subtotal);
     }
 
     async function submitCartOrder() {
         if (globalCart.length === 0) {
-            DS.toast("السلة فارغة حالياً!");
+            safeToast("السلة فارغة حالياً!");
             return;
         }
 
@@ -470,16 +540,16 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
 
             if (res.ok) {
                 globalCart = [];
-                DS.close();
-                DS.toast("تم إرسال الطلب بنجاح إلى السحابة!");
-                DS.vib();
+                safeClose();
+                safeToast("تم إرسال الطلب بنجاح إلى السحابة!");
+                safeVib();
                 fetchOrders();
                 switchTab('orders');
             } else {
-                DS.toast("فشل في إرسال الطلب، تحقق من الاتصال");
+                safeToast("فشل في إرسال الطلب، تحقق من الاتصال");
             }
         } catch (e) {
-            DS.toast("خطأ في الاتصال بالسحابة");
+            safeToast("خطأ في الاتصال بالسحابة");
         }
     }
 
@@ -488,13 +558,13 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         const amount = parseFloat(amountInput);
 
         if (!amount || amount <= 0) {
-            DS.toast("الرجاء إدخال مبلغ صحيح لحجز العيش!");
+            safeToast("الرجاء إدخال مبلغ صحيح لحجز العيش!");
             return;
         }
 
-        const user = JSON.parse(localStorage.getItem("sfj6qx_user") || "{}");
+        const user = JSON.parse(safeStorage.getItem("sfj6qx_user") || "{}");
         if (!user.name || !user.phone) {
-            DS.toast("الرجاء إكمال الاسم ورقم الهاتف في صفحة حسابي أولاً!");
+            safeToast("الرجاء إكمال الاسم ورقم الهاتف في صفحة حسابي أولاً!");
             switchTab('account');
             return;
         }
@@ -515,15 +585,15 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
 
             if (res.ok) {
                 document.getElementById("quick-bread-amount").value = "";
-                DS.toast("تم إرسال حجز العيش السريع بنجاح!");
-                DS.vib();
+                safeToast("تم إرسال حجز العيش السريع بنجاح!");
+                safeVib();
                 fetchOrders();
                 switchTab('orders');
             } else {
-                DS.toast("فشل إرسال الحجز، حاول مرة أخرى");
+                safeToast("فشل إرسال الحجز، حاول مرة أخرى");
             }
         } catch (e) {
-            DS.toast("خطأ في الاتصال بالشبكة");
+            safeToast("خطأ في الاتصال بالشبكة");
         }
     }
 
@@ -546,10 +616,14 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         if (activeOrder) {
             document.getElementById("current-order-card").style.display = "block";
             document.getElementById("current-order-id").innerText = "طلب #" + activeOrder.id;
-            document.getElementById("current-order-status-badge").innerText = statusMap[activeOrder.status]?.text || activeOrder.status;
+            document.getElementById("current-order-status-badge").innerText = (statusMap[activeOrder.status] && statusMap[activeOrder.status].text) || activeOrder.status;
             let itemsSummary = "-";
             try {
-                itemsSummary = activeOrder.items.map(i => `${i.qty > 1 ? i.qty + 'x ' : ''}${i.name}`).join('، ');
+                let itemsList = activeOrder.items;
+                if (typeof itemsList === 'string') itemsList = JSON.parse(itemsList);
+                if (Array.isArray(itemsList)) {
+                    itemsSummary = itemsList.map(i => `${i.qty > 1 ? i.qty + 'x ' : ''}${i.name}`).join('، ');
+                }
             } catch(e) {}
             document.getElementById("current-order-summary").innerText = itemsSummary;
         } else {
@@ -564,7 +638,13 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
         container.innerHTML = globalOrders.map(o => {
             let itemsText = "";
             try {
-                itemsText = o.items.map(i => (i.qty > 1 ? i.qty + 'x ' : '') + i.name).join(', ');
+                let itemsList = o.items;
+                if (typeof itemsList === 'string') itemsList = JSON.parse(itemsList);
+                if (Array.isArray(itemsList)) {
+                    itemsText = itemsList.map(i => (i.qty > 1 ? i.qty + 'x ' : '') + i.name).join(', ');
+                } else {
+                    itemsText = "طلب خبز";
+                }
             } catch(e) { itemsText = "طلب خبز"; }
 
             const statusInfo = statusMap[o.status] || { text: o.status, cls: "warn" };
@@ -578,7 +658,7 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                     </div>
                     <div class="mu text-xs mb-2">${itemsText}</div>
                     <div class="row">
-                        <b>الإجمالي: ${DS.money(o.total_amount)}</b>
+                        <b>الإجمالي: ${safeMoney(o.total_amount)}</b>
                         <div class="sp"></div>
                         ${o.status === 'pending' ? `<button class="btn sm soft" onclick="cancelOrder(${o.id})">إلغاء الطلب</button>` : `<span class="mu text-xs">مكتمل</span>`}
                     </div>
@@ -595,74 +675,78 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
                 body: JSON.stringify({ status: "cancelled" })
             });
             if (res.ok) {
-                DS.toast("تم تغيير حالة الطلب إلى ملغي");
-                DS.vib();
+                safeToast("تم تغيير حالة الطلب إلى ملغي");
+                safeVib();
                 fetchOrders();
             } else {
-                DS.toast("تعذر إلغاء الطلب");
+                safeToast("تعذر إلغاء الطلب");
             }
         } catch(e) {
-            DS.toast("خطأ في الاتصال");
+            safeToast("خطأ في الاتصال");
         }
     }
 
     function loadAccountSettings() {
-        const user = JSON.parse(localStorage.getItem("sfj6qx_user") || "{}");
-        document.getElementById("user-name").value = user.name || "";
-        document.getElementById("user-phone").value = user.phone || "";
+        const user = JSON.parse(safeStorage.getItem("sfj6qx_user") || "{}");
+        const nameEl = document.getElementById("user-name");
+        const phoneEl = document.getElementById("user-phone");
+        if (nameEl) nameEl.value = user.name || "";
+        if (phoneEl) phoneEl.value = user.phone || "";
         
         if (user.avatar) {
-            document.getElementById("avatar-container").innerHTML = `<img src="${user.avatar}" alt="Avatar">`;
+            const container = document.getElementById("avatar-container");
+            if (container) container.innerHTML = `<img src="${user.avatar}" alt="Avatar">`;
         }
     }
 
     function handleAvatarUpload(event) {
-        const file = event.target.files[0];
+        const file = event.target.files && event.target.files[0];
         if (file) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 const base64Image = e.target.result;
-                document.getElementById("avatar-container").innerHTML = `<img src="${base64Image}" alt="Avatar">`;
-                let user = JSON.parse(localStorage.getItem("sfj6qx_user") || "{}");
+                const container = document.getElementById("avatar-container");
+                if (container) container.innerHTML = `<img src="${base64Image}" alt="Avatar">`;
+                let user = JSON.parse(safeStorage.getItem("sfj6qx_user") || "{}");
                 user.avatar = base64Image;
-                localStorage.setItem("sfj6qx_user", JSON.stringify(user));
-                DS.toast("تم تحديث صورة البروفايل");
+                safeStorage.setItem("sfj6qx_user", JSON.stringify(user));
+                safeToast("تم تحديث صورة البروفايل");
             };
             reader.readAsDataURL(file);
         }
     }
 
     function saveAccountSettings() {
-        const name = document.getElementById("user-name").value;
-        const phone = document.getElementById("user-phone").value;
+        const name = document.getElementById("user-name").value.trim();
+        const phone = document.getElementById("user-phone").value.trim();
         
         if (!name || !phone) {
-            DS.toast("الرجاء إدخال الاسم ورقم الهاتف");
+            safeToast("الرجاء إدخال الاسم ورقم الهاتف");
             return;
         }
 
-        let user = JSON.parse(localStorage.getItem("sfj6qx_user") || "{}");
+        let user = JSON.parse(safeStorage.getItem("sfj6qx_user") || "{}");
         user.name = name;
         user.phone = phone;
         
-        localStorage.setItem("sfj6qx_user", JSON.stringify(user));
-        DS.toast("تم حفظ بيانات الحساب بنجاح");
-        DS.vib();
+        safeStorage.setItem("sfj6qx_user", JSON.stringify(user));
+        safeToast("تم حفظ بيانات الحساب بنجاح");
+        safeVib();
     }
 
     function updatePhoneOnly() {
-        const phone = document.getElementById("user-phone").value;
+        const phone = document.getElementById("user-phone").value.trim();
         if (!phone) {
-            DS.toast("الرجاء إدخال رقم الهاتف الجديد");
+            safeToast("الرجاء إدخال رقم الهاتف الجديد");
             return;
         }
 
-        let user = JSON.parse(localStorage.getItem("sfj6qx_user") || "{}");
+        let user = JSON.parse(safeStorage.getItem("sfj6qx_user") || "{}");
         user.phone = phone;
         
-        localStorage.setItem("sfj6qx_user", JSON.stringify(user));
-        DS.toast("تم تحديث رقم الهاتف بنجاح");
-        DS.vib();
+        safeStorage.setItem("sfj6qx_user", JSON.stringify(user));
+        safeToast("تم تحديث رقم الهاتف بنجاح");
+        safeVib();
     }
 </script>
 <script id="apk-upd">(function(){
