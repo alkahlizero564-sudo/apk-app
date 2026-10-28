@@ -5137,6 +5137,287 @@ const _render20=render;
 render=function(){_render20();pjLabel()};
 pjLabel();
 })();
+render();/* ===== إضافة: التصميم أولاً ثم الوظائف (لكل اللغات) ===== */
+(function(){
+
+const MARK='أنشئ تطبيقاً كاملاً يعمل من الصفر';
+const PLAN_MARK='أنت مهندس منتجات خبير. صمم نظاماً من تطبيقين مترابطين';
+const SYS_MARK='هذا التطبيق أحد تطبيقين يتشاركان البيانات في السحابة';
+const OPN='<!'+'--',CLS='--'+'>';
+const SPEC_RE=new RegExp('<!'+'--UI-SPEC([\\s\\S]*?)--'+'>');
+
+/* ---------- أدوات ---------- */
+function jparse(t){
+  const s=String(t),a=s.indexOf('{'),b=s.lastIndexOf('}');
+  if(a<0||b<a)throw new Error('رد غير صالح');
+  return JSON.parse(s.slice(a,b+1));
+}
+function bal(t){return (String(t).match(/\{/g)||[]).length===(String(t).match(/\}/g)||[]).length}
+function okCode(l,c){
+  if(!c||c.length<200)return false;
+  if(l==='html')return /<\/html>/i.test(c);
+  if(l==='flutter')return /void\s+main\s*\(/.test(c)&&bal(c);
+  return /\.run\(\)/.test(c);
+}
+function fenceOf(l,c){return BT+FENCE[l]+'\n'+c+'\n'+BT}
+function specOf(c){const m=SPEC_RE.exec(String(c));return m?m[1].trim():''}
+function newG(){return {designs:[null,null],spec:['',''],approved:false}}
+function descOf(p){
+  const m=p.match(/وصف التطبيق:\n([\s\S]*?)(?=\n\n(?:مهم جداً|احفظ البيانات|هذا التطبيق مكمّل|دور التطبيق)|$)/);
+  return m?m[1].trim():'';
+}
+function headFor(l){
+  if(l==='html')return SYS;
+  if(l==='flutter')return 'أنت مبرمج Flutter محترف. اكتب ملف main.dart واحداً كاملاً يعمل مباشرة، بدون أي حزم خارجية غير flutter/material.dart، وبواجهة عربية من اليمين لليسار. أعد الكود الكامل فقط داخل كتلة '+BT+'dart بدون أي شرح.\n\n';
+  return 'أنت مبرمج Python محترف. اكتب ملف main.py واحداً كاملاً لتطبيق Kivy يعمل على أندرويد وبواجهة عربية. أعد الكود الكامل فقط داخل كتلة '+BT+'python بدون أي شرح.\n\n';
+}
+function setSub(t){
+  const e=document.getElementById('stg-s');
+  if(e){e.textContent=t;return}
+  const s=document.querySelector('#sheet .step.run small');
+  if(s)s.textContent=t;
+  else toast(t);
+}
+function statusSheet(t){
+  const sh=$('#sheet');
+  sh.innerHTML='<div class="sheetbox"><h3 style="margin:0 0 8px">🚀 جاري العمل</h3><p class="note" id="stg-s" style="font-size:14px;line-height:1.9">'+esc(t)+'</p></div>';
+  sh.classList.add('on');
+}
+
+/* ---------- تعليمات مرحلة التصميم ---------- */
+const DESIGN_RULES=[
+'تعليمات مرحلة التصميم (ركّز على الشكل وتجربة الاستخدام ولا شي غيره):',
+'- ابنِ كل شاشات التطبيق كاملة وقابلة للتنقل بينها (الشاشة الأولى وكل الشاشات الداخلية)، مع النوافذ السفلية (.sheet) للنماذج، والحالات (فارغة وتحميل وخطأ)، وشريط التنقل لو في أكثر من قسم.',
+'- لا تتصل بأي قاعدة بيانات ولا تستخدم fetch ولا تكتب منطق عمل حقيقي. ضع بيانات تجريبية واقعية بالعربي في كائن واحد بين تعليقين /*DEMO-START*/ و /*DEMO-END*/، واجعل التنقل وفتح النوافذ وتبديل الفلاتر والحركات تعمل شكلياً فقط.',
+'- اجعل كل عنصر تفاعلي (زر أو نموذج أو قائمة أو فلتر أو مفتاح) موجوداً ومرئياً في مكانه الصحيح، حتى لو كان إجراؤه مؤقتاً بـ DS.toast.',
+'- في أول head ضع تعليقاً يبدأ بـ '+OPN+'UI-SPEC وينتهي بـ '+CLS+' فيه قائمة بكل شاشة وكل عنصر تفاعلي بالشكل: [شاشة: الاسم] ثم سطر لكل عنصر: - «نص الزر أو العنصر»: ماذا يفعل فعلياً (يكتب إلى: اسم المجموعة / يقرأ من: اسم المجموعة). استخدم أسماء مجموعات البيانات من الهيكل المرفق إن وُجد.'
+].join('\n');
+
+const MAPFL='مطابقة عناصر التصميم إلى ويدجتات Flutter الجاهزة: .hero ← DsHero، و.stats وفيه .stat ← DsStats(items: [DsStat]) ، و.card ← DsCard، و.li ← DsItem، و.chips ← DsChips، و.seg ← DsChips، و.badge ← DsBadge، و.btn ← DsButton (soft أو ghost أو danger حسب الفئة)، و.fab ← DsFab، و.tabbar ← DsNav، و.sheet مع DS.open ← dsSheet، وDS.toast ← dsToast، و.empty ← DsEmpty، و.in ← DsField، و.bar ← DsProgress، وقيمة --h ← DsApp(hue: القيمة). وحافظ على ترتيب الأقسام والمسافات والنصوص كما في التصميم.';
+const MAPPY='استخدم Kivy بنفس الألوان المشتقة من --h في التصميم (حوّل hsl إلى hex)، وبطاقات مستديرة (RoundedRectangle) وأزرار كبيرة وترويسة كبيرة وشريط تنقل سفلي بنفس ترتيب شاشات التصميم ونصوصه.';
+
+/* ---------- مرحلة 1: التصميم ---------- */
+function designPrompt(i,plan,G,n){
+  const role=n>1?(i?'تطبيق الإدارة (صاحب النشاط)':'تطبيق الزبائن'):'التطبيق';
+  let p=SYS+MARK+' لهذه المرحلة فقط: مرحلة تصميم الواجهات (UI). واجهة عربية من اليمين لليسار مناسبة للهاتف.\n\nنوع التطبيق: '+role+'\nوصف التطبيق:\n'+(i?plan.d2:plan.d1)+'\n\n';
+  if(plan.data)p+='هيكل البيانات المشترك (للأسماء في UI-SPEC فقط):\n'+plan.data+'\n\n';
+  p+=DESIGN_RULES;
+  if(n>1&&i===1&&G.designs[0])p+='\n\nمهم: هذا التطبيق مكمّل للتطبيق الآخر. اجعل الهوية والأسلوب والتصميم متناسقة معه تماماً.\n\nكود التطبيق الآخر:\n'+fenceOf('html',G.designs[0]);
+  return p;
+}
+function editPrompt(i,G,fb){
+  return SYS+'عدّل تصميم الواجهة التالي حسب ملاحظات المستخدم فقط، مع الحفاظ على كل شي آخر: الشاشات والهوية ونظام التصميم الجاهز وبيانات DEMO وتعليق UI-SPEC (حدّثه إن لزم). أعد الملف كاملاً.\n\nالملاحظات: '+fb+'\n\nالتصميم الحالي:\n'+fenceOf('html',G.designs[i]);
+}
+async function getDesign(prompt,G,i){
+  let why='';
+  for(let t=0;t<2;t++){
+    const code=clean(await _ai9(prompt+(why?'\n\n'+why:'')));
+    if(okCode('html',code)){
+      G.designs[i]=code;
+      G.spec[i]=specOf(code)||G.spec[i];
+      return code;
+    }
+    why='الرد السابق كان ناقصاً (انقطع). أعد الملف كاملاً حتى </html>.';
+  }
+  throw new Error('تعذّر الحصول على تصميم كامل. جرّب نموذجاً أقوى.');
+}
+function makeDesign(i,plan,G,n){return getDesign(designPrompt(i,plan,G,n),G,i)}
+function editDesign(i,G,fb){return getDesign(editPrompt(i,G,fb),G,i)}
+
+/* ---------- بوابة الاعتماد ---------- */
+let GATE=null;
+function gateStatus(t){const e=$('#gtst');if(e)e.textContent=t}
+function gateDraw(full){
+  const g=GATE;if(!g)return;
+  if(full){
+    const sh=$('#sheet');
+    const t1=esc(g.plan.t1||'التطبيق 1'),t2=esc(g.plan.t2||'التطبيق 2');
+    sh.innerHTML='<div class="sheetbox"><h3 style="margin:0 0 4px">🎨 اعتمد التصميم</h3>'
+     +'<p class="note">هذا تصميم الواجهات فقط (ببيانات تجريبية). بعد الاعتماد يضيف الذكاء الاصطناعي الوظائف والبيانات من غير ما يغيّر الشكل.</p>'
+     +(g.n>1?'<div class="row" style="margin:8px 0"><button id="gt0" onclick="cxGateTab(0)">'+t1+'</button><button id="gt1" class="sec" onclick="cxGateTab(1)">'+t2+'</button></div>':'')
+     +'<div style="border:7px solid #1b2440;border-radius:32px;overflow:hidden;max-width:340px;margin:10px auto;background:#000"><iframe id="gtf" sandbox="allow-scripts allow-modals" style="display:block;border:0;width:100%;height:520px;background:#fff;margin:0;border-radius:0"></iframe></div>'
+     +'<details><summary style="color:var(--tx);padding:8px 0">📋 قائمة الشاشات والأزرار (UI-SPEC)</summary><div id="gts" style="white-space:pre-wrap;font-size:12px;line-height:1.8;color:var(--mut);direction:rtl"></div></details>'
+     +'<label>ملاحظاتك على التصميم</label><textarea id="gtn" placeholder="مثال: كبّر الترويسة، وغيّر اللون للأخضر، وأضف شريط بحث" style="height:80px"></textarea>'
+     +(g.n>1?'<select id="gtw"><option value="cur">على هذا التطبيق فقط</option><option value="both">على التطبيقين</option></select>':'')
+     +'<div class="row" style="margin-top:8px"><button class="sec" onclick="cxGateEdit()">✏️ نفّذ التعديل</button><button class="sec" onclick="cxGateRedo()">🔄 أعد التصميم</button></div>'
+     +'<div id="gtst" class="note" style="margin-top:8px"></div>'
+     +'<button class="acc" style="width:100%;margin-top:8px" onclick="cxGateOk()">✅ اعتمد وكمّل</button>'
+     +'<button class="ghost" onclick="cxGateCancel()">❌ إلغاء الإنشاء</button></div>';
+    sh.classList.add('on');
+  }
+  const f=$('#gtf');if(f)f.srcdoc=g.G.designs[g.cur]||'';
+  const s=$('#gts');if(s)s.textContent=g.G.spec[g.cur]||'لا توجد قائمة';
+  const a=$('#gt0'),b=$('#gt1');
+  if(a)a.className=g.cur===0?'acc':'sec';
+  if(b)b.className=g.cur===1?'acc':'sec';
+}
+function openGate(plan,G,n){
+  return new Promise(function(resolve,reject){
+    GATE={plan:plan,G:G,n:n,cur:0,busy:false,resolve:resolve,reject:reject};
+    gateDraw(true);
+  });
+}
+window.cxGateTab=function(n){
+  const g=GATE;if(!g||g.busy)return;
+  g.cur=n;gateDraw(false);
+};
+window.cxGateEdit=async function(){
+  const g=GATE;if(!g||g.busy)return;
+  const txt=String(($('#gtn')||{}).value||'').trim();
+  if(!txt)return toast('اكتب ملاحظة التعديل');
+  const w=$('#gtw'),both=g.n>1&&w&&w.value==='both';
+  g.busy=true;gateStatus('⏳ جاري تعديل التصميم...');
+  try{
+    const idx=both?[0,1]:[g.cur];
+    for(const k of idx){await editDesign(k,g.G,txt)}
+    $('#gtn').value='';
+    gateStatus('✔ تم التعديل');
+  }catch(e){gateStatus('✖ '+arErr(e))}
+  g.busy=false;gateDraw(false);
+};
+window.cxGateRedo=async function(){
+  const g=GATE;if(!g||g.busy)return;
+  g.busy=true;gateStatus('⏳ جاري إعادة التصميم...');
+  try{
+    await makeDesign(g.cur,g.plan,g.G,g.n);
+    gateStatus('✔ تمت إعادة التصميم');
+  }catch(e){gateStatus('✖ '+arErr(e))}
+  g.busy=false;gateDraw(false);
+};
+window.cxGateOk=function(){
+  const g=GATE;
+  if(!g)return;
+  if(g.busy)return toast('انتظر انتهاء العملية الجارية');
+  GATE=null;
+  statusSheet('✔ تم اعتماد التصميم. المرحلة 2: إضافة الوظائف والبيانات...');
+  g.resolve(true);
+};
+window.cxGateCancel=function(){
+  const g=GATE;
+  if(!g)return;
+  if(g.busy)return toast('انتظر انتهاء العملية الجارية');
+  if(!confirm('إلغاء الإنشاء؟'))return;
+  GATE=null;
+  g.reject(new Error('تم إلغاء الإنشاء'));
+};
+
+/* ---------- مرحلة 2: الوظائف ---------- */
+function stageBPrompt(p,l,design){
+  const hd='\n\n=== المرحلة 2: الوظائف (التصميم معتمد) ===\n';
+  if(l==='html'){
+    return p.split(MARK).join('عدّل التصميم المعتمد أدناه وأضف إليه الوظائف والبيانات بدلاً من البناء من الصفر')
+      +hd+'هذا هو التصميم المعتمد لهذا التطبيق (وفيه بيانات تجريبية داخل DEMO):\n'+fenceOf('html',design)
+      +'\n\nالمطلوب الآن: أعد الملف كاملاً بعد إضافة الوظائف والبيانات الحقيقية فقط، بدون أي تغيير في الشكل أو الهيكل أو الألوان أو الحركات أو أسماء الفئات: احذف كتلة DEMO (بين DEMO-START وDEMO-END) واستبدلها بطبقة بيانات حقيقية حسب قواعد الاتصال أعلاه (أو حسب ما ذُكر في الوصف إن لم تُذكر قواعد)، ونفّذ كل بند في UI-SPEC فعلياً (كل زر ونموذج وفلتر له وظيفة حقيقية)، وأبقِ تعليق UI-SPEC كما هو. لا تضف شاشات جديدة ولا تحذف شاشات.';
+  }
+  return p+hd+'هذا تصميم HTML معتمد لهذا التطبيق (وفيه بيانات تجريبية داخل DEMO):\n'+fenceOf('html',design)
+    +'\n\nالمطلوب الآن: حوّله إلى '+LANGN[l]+' بنفس الشاشات والتنقل والألوان والمسافات والترتيب والنصوص والنوافذ والحركات، ثم أضف الوظائف والبيانات الحقيقية حسب قواعد الاتصال أعلاه (أو حسب ما ذُكر في الوصف إن لم تُذكر قواعد)، ونفّذ كل بند في UI-SPEC فعلياً. لا تحتفظ ببيانات DEMO، ولا تغيّر الهوية البصرية، ولا تضف شاشات جديدة ولا تحذف شاشات. '+(l==='flutter'?MAPFL:MAPPY);
+}
+
+async function completeness(l,code,spec,bk){
+  for(let n=0;n<2;n++){
+    setSub('مراجعة اكتمال الوظائف'+(n?' (جولة '+(n+1)+')':'')+'...');
+    let r;
+    try{
+      r=jparse(await _ai9('أنت مراجع جودة. قارن قائمة UI-SPEC التالية بالكود، وأعد JSON فقط بدون شرح وبدون markdown: {"ok":true أو false,"missing":["وصف مختصر لكل بند ناقص"]}. يعتبر البند ناقصاً لو كان زراً أو نموذجاً أو فلتراً بدون وظيفة فعلية، أو يعرض بيانات وهمية بدل البيانات الحقيقية، أو غير موجود في الكود.\n\nUI-SPEC:\n'+spec+'\n\nالكود:\n'+fenceOf(l,code)));
+    }catch(e){return code}
+    const miss=Array.isArray(r.missing)?r.missing.map(String).filter(Boolean):[];
+    if(r.ok===true||!miss.length)return code;
+    setSub('إكمال '+miss.length+' بنود ناقصة...');
+    let fixed;
+    try{
+      fixed=clean(await _ai9(headFor(l)+'أكمل الوظائف الناقصة التالية فقط في الكود، وأبقِ الشكل والهيكل وكل شي آخر كما هو. البنود الناقصة:\n- '+miss.join('\n- ')+'\n\nUI-SPEC:\n'+spec+(bk?'\n\nقواعد البيانات والاتصال المعتمدة:\n'+bk:'')+'\n\nالكود:\n'+fenceOf(l,code)+'\n\nأعد الكود كاملاً.'));
+    }catch(e){return code}
+    if(!okCode(l,fixed))return code;
+    code=fixed;
+  }
+  return code;
+}
+
+async function stagedCreate(p,mode){
+  const sys=mode==='sys',n=sys?2:1;
+  const i=(sys&&p.indexOf('دور التطبيق: تطبيق الإدارة')>-1)?1:0;
+  const l=p.indexOf(BT+'dart بدون')>-1?'flutter':(p.indexOf(BT+'python بدون')>-1?'python':'html');
+  let plan,G;
+  if(sys){
+    plan=window._planX;
+    if(!plan||!plan.d1||!plan.d2)return _ai9(p);
+    G=window._stg=window._stg||newG();
+  }else{
+    const d=descOf(p);
+    if(!d)return _ai9(p);
+    plan={d1:d,d2:'',data:'',t1:'',t2:''};
+    G=newG();
+  }
+  let bk='';
+  const bi=p.indexOf(SYS_MARK);
+  if(bi>-1)bk=p.slice(bi).split('\n\nمهم: هذا التطبيق مكمّل')[0];
+  let wl=null;
+  try{
+    try{if(navigator.wakeLock)wl=await navigator.wakeLock.request('screen')}catch(e){}
+    if(!G.approved){
+      setSub('المرحلة 1: تصميم الواجهات'+(sys?' (التطبيق الأول)':'')+'...');
+      await makeDesign(0,plan,G,n);
+      if(sys){
+        setSub('المرحلة 1: تصميم الواجهات (التطبيق الثاني)...');
+        await makeDesign(1,plan,G,n);
+      }
+      if(!S.keys.gateOff)await openGate(plan,G,n);
+      G.approved=true;
+    }
+    setSub('المرحلة 2: إضافة الوظائف والبيانات'+(sys?(i?' (التطبيق الثاني)':' (التطبيق الأول)'):'')+'...');
+    const design=G.designs[i],spec=G.spec[i];
+    const q=stageBPrompt(p,l,design);
+    let code=null;
+    for(let t=0;t<2&&!code;t++){
+      const c=clean(await _ai9(q+(t?'\n\nالرد السابق كان ناقصاً (انقطع). أعد الملف كاملاً حتى آخره.':'')));
+      if(okCode(l,c))code=c;
+    }
+    if(!code)throw new Error('رد الذكاء الاصطناعي انقطع قبل نهاية الكود. جرّب نموذجاً أقوى.');
+    if(!S.keys.cmpOff&&spec)code=await completeness(l,code,spec,bk);
+    if(l==='html')window._dsNext=true;
+    return fenceOf(l,code);
+  }finally{
+    try{if(wl)await wl.release()}catch(e){}
+    if(!sys)closeSheet();
+  }
+}
+
+/* ---------- اعتراض أوامر الذكاء الاصطناعي ---------- */
+const _ai9=ai;
+ai=function(p){
+  if(typeof p!=='string'||S.keys.stgOff)return _ai9(p);
+  if(p.indexOf(PLAN_MARK)>-1){
+    window._stg=null;
+    const r=_ai9(p);
+    r.then(function(t){try{window._planX=jparse(t)}catch(e){}},function(){});
+    return r;
+  }
+  if(p.indexOf(MARK)>-1&&p.indexOf('وصف التطبيق:\n')>-1){
+    const sys=p.indexOf('دور التطبيق: ')>-1&&p.indexOf(SYS_MARK)>-1;
+    return stagedCreate(p,sys?'sys':'one');
+  }
+  return _ai9(p);
+};
+
+/* ---------- خيارات في بطاقة النظام المتكامل ---------- */
+const _render22=render;
+render=function(){
+  _render22();
+  if(tab!=='code')return;
+  const s=$('#cx-sys');
+  if(!s||s.querySelector('#cx-stg'))return;
+  const btn=s.querySelector('button[onclick^="cxSysGo"]');
+  if(!btn)return;
+  const cb=function(k,txt){
+    return '<label style="display:flex;gap:10px;align-items:center;color:var(--tx);margin-top:8px"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys[k]?'':'checked')+' onchange="S.keys.'+k+'=!this.checked;save()"> '+txt+'</label>';
+  };
+  btn.insertAdjacentHTML('beforebegin','<div id="cx-stg" style="margin-top:6px">'
+    +cb('stgOff','🎨 التصميم أولاً ثم الوظائف (موصى به)')
+    +cb('gateOff','⏸ أوقف بعد التصميم لأعاينه وأعتمده')
+    +cb('cmpOff','✅ مراجعة اكتمال الوظائف بعد الكتابة')
+    +'</div>');
+};
+})();
 render();
 </script>
 </body>
