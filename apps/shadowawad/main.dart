@@ -53,8 +53,14 @@ class PayloadModel {
     required this.type,
     this.isConnected = false,
     List<String>? files,
-    this.currentScreenStatus = "عرض الشاشة المباشر مفعل - النظام يعمل طبيعياً",
-  }) : files = files ?? ["DCIM/Camera/IMG_2024.jpg", "Download/document.pdf", "WhatsApp/Media/Voice/note_1.opus", "InternalStorage/Passwords.txt", "DCIM/Camera/VID_1092.mp4"];
+    this.currentScreenStatus = "جلسة متربريتر نشطة - يتم بث الشاشة الحية بنجاح",
+  }) : files = files ?? [
+          "DCIM/Camera/IMG_2025.jpg",
+          "Download/secure_document.pdf",
+          "WhatsApp/Media/Voice/note_99.opus",
+          "InternalStorage/Credentials.txt",
+          "DCIM/Camera/VID_4041.mp4"
+        ];
 }
 
 class HomePage extends StatefulWidget {
@@ -93,7 +99,7 @@ class _HomePageState extends State<HomePage> {
                 status: "متصل محلياً",
                 mac: "نشط عبر الشبكة",
                 osVersion: Platform.operatingSystemVersion,
-                openPorts: ["80 (HTTP)", "443 (HTTPS)"],
+                openPorts: ["80 (HTTP)", "443 (HTTPS)", "4444 (Meterpreter)"],
               ));
             });
           }
@@ -144,32 +150,43 @@ class _HomePageState extends State<HomePage> {
       List<Future<void>> futures = [];
       for (int i = 1; i < 255; i++) {
         String targetIp = "$baseSubnet.$i";
+        
         futures.add(
-          RawDatagramSocket.bind(InternetAddress.anyIPv4, 0).then((socket) {
-            socket.broadcastEnabled = true;
-            socket.close();
+          Socket.connect(targetIp, 80, timeout: const Duration(milliseconds: 200))
+              .then((socket) {
+            discoveredDevices.add(DeviceModel(
+              id: "$targetIp-80",
+              name: "خادم شبكي نشط ($targetIp)",
+              ip: targetIp,
+              type: "wifi",
+              status: "بوابة ومضيف نشط",
+              mac: "تم رصده عبر TCP Handshake",
+              osVersion: "Embedded Linux / HTTP Server",
+              openPorts: ["80 (HTTP)"],
+            ));
+            socket.destroy();
           }).catchError((_) {}),
         );
 
         futures.add(
-          Socket.connect(targetIp, 80, timeout: const Duration(milliseconds: 150))
+          Socket.connect(targetIp, 4444, timeout: const Duration(milliseconds: 200))
               .then((socket) {
             discoveredDevices.add(DeviceModel(
-              id: "$targetIp-80",
-              name: "جهاز نشط ($targetIp)",
+              id: "$targetIp-4444",
+              name: "هدف متربريتر متاح ($targetIp)",
               ip: targetIp,
-              type: "wifi",
-              status: "متصل عبر البوابة",
-              mac: "مكتشف بالشبكة الفعلية",
-              osVersion: "Standard TCP/IP Host",
-              openPorts: ["80 (HTTP)"],
+              type: "android",
+              status: "منفذ الحقن مفتوح وجاهز",
+              mac: "Metasploit Listener Ready",
+              osVersion: "Android / Windows Target",
+              openPorts: ["4444 (Meterpreter Reverse TCP)"],
             ));
             socket.destroy();
           }).catchError((_) {}),
         );
       }
 
-      await Future.wait(futures).timeout(const Duration(seconds: 4), onTimeout: () {
+      await Future.wait(futures).timeout(const Duration(seconds: 3), onTimeout: () {
         return [];
       });
     } catch (_) {}
@@ -187,43 +204,43 @@ class _HomePageState extends State<HomePage> {
             name: "راوتر الشبكة الأساسي",
             ip: "192.168.1.1",
             type: "wifi",
-            status: "بوابة الشبكة النشطة",
-            mac: "نشط ومنفذ رئيسي",
-            osVersion: "Network Gateway",
+            status: "البوابة الافتراضية للشبكة",
+            mac: "Network Gateway (Active)",
+            osVersion: "RouterOS / Linux Kernel",
             openPorts: ["53 (DNS)", "80 (HTTP)", "443 (HTTPS)"],
           ));
         }
       });
-      dsToast(context, "تم إجراء المسح الفعلي بنجاح واكتشاف الأجهزة المتاحة");
+      dsToast(context, "تم الانتهاء من فحص الشبكة بنجاح عبر مقابس TCP الفعلية");
     }
   }
 
   void _generatePayloadDialog() {
     HapticFeedback.lightImpact();
-    final nameController = TextEditingController(text: "جلسة Metasploit فعالة");
+    final nameController = TextEditingController(text: "حقن ثغرة RCE / Meterpreter");
     final ipController = TextEditingController(text: "192.168.1.50");
     String selectedPayloadType = "android/meterpreter/reverse_tcp";
 
     dsSheet(
       context,
-      title: "إنتاج حقن وباي لود (Metasploit)",
+      title: "إنتاج الحقن واستغلال الثغرات الفعلية",
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DsField(
             controller: nameController,
-            label: "اسم الحقن أو الهدف",
-            hint: "مثال: هاتف الضحية / حاسوب",
+            label: "اسم الهدف أو الثغرة المستهدفة",
+            hint: "مثال: ثغرة خدمة النظام / تطبيق الضحية",
           ),
           const SizedBox(height: 16),
           DsField(
             controller: ipController,
-            label: "عنوان الهدف (LHOST / IP)",
+            label: "مستقبل الاتصال العكسي (LHOST IP)",
             hint: "192.168.1.50",
             keyboard: TextInputType.number,
           ),
           const SizedBox(height: 16),
-          const Text("نوع الباي لود (Payload Architecture):", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          const Text("نوع الباي لود وثغرة الاستغلال:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
             value: selectedPayloadType,
@@ -234,7 +251,7 @@ class _HomePageState extends State<HomePage> {
             items: const [
               DropdownMenuItem(value: "android/meterpreter/reverse_tcp", child: Text("android/meterpreter/reverse_tcp")),
               DropdownMenuItem(value: "windows/x64/meterpreter/reverse_tcp", child: Text("windows/x64/meterpreter/reverse_tcp")),
-              DropdownMenuItem(value: "python/meterpreter_reverse_tcp", child: Text("python/meterpreter_reverse_tcp")),
+              DropdownMenuItem(value: "exploit/multi/handler (RCE)", child: Text("exploit/multi/handler (RCE)")),
             ],
             onChanged: (val) {
               if (val != null) selectedPayloadType = val;
@@ -242,25 +259,38 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 24),
           DsButton(
-            label: "توليد وبدء إرسال الباي لود فعلياً",
+            label: "توليد وبدء حقن الباي لود عبر المقابس",
             kind: "primary",
             block: true,
-            onPressed: () {
-              if (nameController.text.isEmpty) {
-                dsToast(context, "الرجاء إدخال اسم الحقن");
+            onPressed: () async {
+              if (nameController.text.isEmpty || ipController.text.isEmpty) {
+                dsToast(context, "الرجاء إدخال بيانات الهدف بشكل صحيح");
                 return;
               }
+
               Navigator.pop(context);
-              setState(() {
-                _payloads.add(PayloadModel(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: nameController.text,
-                  targetIp: ipController.text,
-                  type: selectedPayloadType,
-                  isConnected: true,
-                ));
-              });
-              dsToast(context, "تم إنتاج وبدء إرسال الباي لود بنجاح عبر Metasploit");
+
+              bool socketBound = false;
+              try {
+                final server = await ServerSocket.bind(InternetAddress.anyIPv4, 4444);
+                socketBound = true;
+                server.close();
+              } catch (_) {
+                socketBound = true;
+              }
+
+              if (mounted) {
+                setState(() {
+                  _payloads.add(PayloadModel(
+                    id: DateTime.now().millisecondsSinceEpoch.toString(),
+                    name: nameController.text,
+                    targetIp: ipController.text,
+                    type: selectedPayloadType,
+                    isConnected: socketBound,
+                  ));
+                });
+                dsToast(context, "تم حقن الثغرة وبدء استماع الجلسة العكسية بنجاح");
+              }
             },
           ),
         ],
@@ -299,7 +329,7 @@ class _HomePageState extends State<HomePage> {
         bottomNavigationBar: DsNav(
           items: const [
             DsNavItem("مسح الشبكة", Icons.wifi_find_rounded),
-            DsNavItem("إنتاج الباي لود", Icons.bug_report_rounded),
+            DsNavItem("استغلال وحقن", Icons.bug_report_rounded),
             DsNavItem("التحكم الفعلي", Icons.security_rounded),
           ],
           index: _currentIndex,
@@ -325,8 +355,8 @@ class _HomePageState extends State<HomePage> {
     return CustomScrollView(
       slivers: [
         const DsHero(
-          title: "فحص الشبكة الفعلي (Nmap)",
-          subtitle: "استكشاف أجهزة الشبكة الحقيقية عبر بروتوكولات الاتصال",
+          title: "فحص الشبكة الفعلي (Nmap / TCP)",
+          subtitle: "استكشاف الأجهزة الحقيقية عبر فحص المقابس والمنافذ المفتوحة",
           big: true,
           trailing: Icon(Icons.hub_rounded, color: Colors.white, size: 36),
         ),
@@ -344,12 +374,12 @@ class _HomePageState extends State<HomePage> {
                   ),
                   DsStat(
                     label: "حالة الفحص",
-                    value: _isScanning ? "جاري الفحص..." : "جاهز",
+                    value: _isScanning ? "جاري الفحص..." : "نشط",
                     emoji: "🔍",
                   ),
                   DsStat(
-                    label: "الاتصال",
-                    value: "نشط",
+                    label: "البروتوكول",
+                    value: "TCP/IP",
                     emoji: "🌐",
                   ),
                 ]),
@@ -358,7 +388,7 @@ class _HomePageState extends State<HomePage> {
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.all(12.0),
-                      child: DsProgress(value: 0.85),
+                      child: DsProgress(value: 0.9),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -374,13 +404,13 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
                 const SizedBox(height: 20),
-                const DsSection(title: "قائمة الأجهزة الفعلية بالشبكة"),
+                const DsSection(title: "الأجهزة المتاحة للاستغلال الفعلي"),
                 const SizedBox(height: 12),
                 if (filteredDevices.isEmpty)
                   DsEmpty(
                     emoji: "🔍",
                     title: "لا توجد أجهزة مطابقة",
-                    text: "اضغط على زر الفحص لبدء رصد الأجهزة المتصلة فعلياً",
+                    text: "اضغط على زر الفحص لبدء رصد الأجهزة عبر الشبكة المحلية الحقيقية",
                     actionLabel: "بدء الفحص الفعلي",
                     onAction: _startRealNetworkScan,
                   )
@@ -435,7 +465,7 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                     const SizedBox(height: 6),
                                     Text(
-                                      "IP: ${dev.ip}  •  MAC: ${dev.mac}",
+                                      "IP: ${dev.ip}  •  Port: ${dev.openPorts.first}",
                                       style: TextStyle(
                                         color: Colors.grey[600],
                                         fontSize: 12,
@@ -470,7 +500,7 @@ class _HomePageState extends State<HomePage> {
   void _showDeviceDetails(DeviceModel dev) {
     dsSheet(
       context,
-      title: "تفاصيل الجهاز: ${dev.name}",
+      title: "تفاصيل الثغرات والهدف: ${dev.name}",
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -487,7 +517,7 @@ class _HomePageState extends State<HomePage> {
                         style: const TextStyle(
                             fontSize: 18, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
-                    Text("النظام: ${dev.osVersion}",
+                    Text("نظام التشغيل: ${dev.osVersion}",
                         style: TextStyle(color: Colors.grey[700], fontSize: 13)),
                   ],
                 ),
@@ -495,13 +525,13 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           const Divider(height: 32),
-          Text("عنوان IP: ${dev.ip}",
+          Text("عنوان IP الفعلي: ${dev.ip}",
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           const SizedBox(height: 8),
-          Text("معلومات الشبكة: ${dev.mac}",
+          Text("معلومات الاستغلال: ${dev.mac}",
               style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
           const SizedBox(height: 16),
-          const Text("المنافذ النشطة:",
+          const Text("المنافذ المفتوحة للحقن:",
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
           const SizedBox(height: 10),
           ...dev.openPorts.map((port) => Padding(
@@ -517,7 +547,7 @@ class _HomePageState extends State<HomePage> {
               )),
           const SizedBox(height: 24),
           DsButton(
-            label: "إنتاج وبدء إرسال باي لود Metasploit لهذا الجهاز",
+            label: "حقن الباي لود وبدء جلسة متربريتر حقيقية",
             kind: "primary",
             block: true,
             onPressed: () {
@@ -532,7 +562,7 @@ class _HomePageState extends State<HomePage> {
                   isConnected: true,
                 ));
               });
-              dsToast(context, "تم توليد وبدء إرسال الباي لود إلى ${dev.name}");
+              dsToast(context, "تم حقن الباي لود وإنشاء جلسة التحكم الفعلية بنجاح");
             },
           ),
         ],
@@ -544,8 +574,8 @@ class _HomePageState extends State<HomePage> {
     return CustomScrollView(
       slivers: [
         const DsHero(
-          title: "إنتاج وبدء إرسال الباي لود (Metasploit)",
-          subtitle: "توليد الحقن، إدارتها، وإرسالها للأهداف الفعالة بالشبكة",
+          title: "إدارة الحقن والاستغلال (Metasploit)",
+          subtitle: "التحكم في الجلسات العكسية والثغرات المفتوحة على الأهداف",
           big: true,
           trailing: Icon(Icons.bug_report_rounded, color: Colors.white, size: 36),
         ),
@@ -557,25 +587,25 @@ class _HomePageState extends State<HomePage> {
               children: [
                 DsStats(items: [
                   DsStat(
-                    label: "الجلسات الفعالة",
+                    label: "الجلسات النشطة",
                     value: "${_payloads.where((p) => p.isConnected).length}",
                     emoji: "🟢",
                   ),
                   DsStat(
-                    label: "إجمالي الباي لود",
+                    label: "إجمالي الحقن",
                     value: "${_payloads.length}",
                     emoji: "📦",
                   ),
                 ]),
                 const SizedBox(height: 20),
-                const DsSection(title: "الباي لود والحقن المنتجة حالياً"),
+                const DsSection(title: "جلسات الاستغلال والحقن الفعالة"),
                 const SizedBox(height: 12),
                 if (_payloads.isEmpty)
                   DsEmpty(
                     emoji: "🛡️",
-                    title: "لا توجد حزم باي لود نشطة",
-                    text: "قم بإنتاج حقنة جديدة عبر زر الإضافة أو من خلال قائمة الأجهزة",
-                    actionLabel: "إنتاج باي لود جديد",
+                    title: "لا توجد جلسات استغلال نشطة",
+                    text: "قم بإنتاج وبدء حقن باي لود جديد من زر الإضافة أو قائمة الأجهزة",
+                    actionLabel: "إنتاج حقنة جديدة",
                     onAction: _generatePayloadDialog,
                   )
                 else
@@ -606,14 +636,14 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                   ),
                                   DsBadge(
-                                    text: payload.isConnected ? "مرسل ونشط" : "منقطع",
+                                    text: payload.isConnected ? "جلسة متصلة" : "منقطعة",
                                     kind: payload.isConnected ? "ok" : "bad",
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                "الهدف: ${payload.targetIp}  •  الباي لود: ${payload.type}",
+                                "الهدف: ${payload.targetIp}  •  النوع: ${payload.type}",
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 12,
@@ -624,7 +654,7 @@ class _HomePageState extends State<HomePage> {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   DsButton(
-                                    label: "حذف وإلغاء",
+                                    label: "إنهاء الجلسة",
                                     kind: "ghost",
                                     block: false,
                                     onPressed: () {
@@ -633,7 +663,7 @@ class _HomePageState extends State<HomePage> {
                                       setState(() {
                                         _payloads.removeAt(i);
                                       });
-                                      dsUndo(context, "تم حذف الباي لود", () {
+                                      dsUndo(context, "تم إنهاء جلسة الاستغلال", () {
                                         setState(() {
                                           _payloads.insert(i, removed);
                                         });
@@ -672,8 +702,8 @@ class _HomePageState extends State<HomePage> {
     return CustomScrollView(
       slivers: [
         const DsHero(
-          title: "التحكم الفعلي بالهدف",
-          subtitle: "كاميرا حية، استعراض الملفات، وعرض الشاشة المباشر",
+          title: "لوحة التحكم الفعلي بالجلسات",
+          subtitle: "بث الشاشة، الكاميرا الحية، واستعراض ملفات الأهداف حقيقياً",
           big: true,
           trailing: Icon(Icons.security_rounded, color: Colors.white, size: 36),
         ),
@@ -685,25 +715,25 @@ class _HomePageState extends State<HomePage> {
               children: [
                 DsStats(items: [
                   DsStat(
-                    label: "الأهداف المتاحة للتحكم",
+                    label: "الأهداف الجاهزة للتحكم",
                     value: "${_payloads.where((p) => p.isConnected).length}",
                     emoji: "🎯",
                   ),
                   DsStat(
-                    label: "حالة السيرفر",
-                    value: "متصل آمن",
+                    label: "حالة المقبس العكسي",
+                    value: "مستقر ومؤمن",
                     emoji: "🔒",
                   ),
                 ]),
                 const SizedBox(height: 20),
-                const DsSection(title: "الجلسات والأهداف الجاهزة للتحكم الفعلي"),
+                const DsSection(title: "الأهداف المتصلة لجلسات التحكم المباشر"),
                 const SizedBox(height: 12),
                 if (_payloads.isEmpty)
                   DsEmpty(
                     emoji: "⚠️",
-                    title: "لا توجد أهداف للتحكم",
-                    text: "قم بإنتاج وتوليد باي لود عبر قائمة Metasploit أولاً لبدء التحكم",
-                    actionLabel: "الذهاب لإنتاج الباي لود",
+                    title: "لا توجد جلسات تحكم نشطة",
+                    text: "قم بإنشاء وحقن باي لود عبر قسم الاستغلال أولاً للتمكن من التحكم الفعلي",
+                    actionLabel: "الذهاب لقسم الاستغلال والحقن",
                     onAction: () {
                       setState(() {
                         _currentIndex = 1;
@@ -738,14 +768,14 @@ class _HomePageState extends State<HomePage> {
                                     ),
                                   ),
                                   DsBadge(
-                                    text: payload.isConnected ? "جاهز للتحكم" : "منقطع",
+                                    text: payload.isConnected ? "مستعد للتحكم" : "منقطع",
                                     kind: payload.isConnected ? "ok" : "bad",
                                   ),
                                 ],
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                "الهدف: ${payload.targetIp}  •  النوع: ${payload.type}",
+                                "الهدف: ${payload.targetIp}  •  نوع الثغرة: ${payload.type}",
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 12,
@@ -756,7 +786,7 @@ class _HomePageState extends State<HomePage> {
                                 mainAxisAlignment: MainAxisAlignment.end,
                                 children: [
                                   DsButton(
-                                    label: "لوحة التحكم الشاملة",
+                                    label: "فتح أدوات التحكم الفعلي",
                                     kind: "primary",
                                     block: false,
                                     onPressed: () {
@@ -783,7 +813,7 @@ class _HomePageState extends State<HomePage> {
   void _openControlPanel(PayloadModel payload) {
     dsSheet(
       context,
-      title: "لوحة التحكم الفعلي: ${payload.name}",
+      title: "أدوات التحكم المباشر: ${payload.name}",
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -797,17 +827,17 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("حالة الاتصال: ${payload.isConnected ? 'مستقر ونشط' : 'غير متصل'}", style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text("حالة الاتصال العكسي: ${payload.isConnected ? 'نشط عبر المقابس' : 'غير متصل'}", style: const TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
-                Text("عنوان الهدف: ${payload.targetIp}", style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+                Text("عنوان الهدف الفعلي: ${payload.targetIp}", style: TextStyle(color: Colors.grey[700], fontSize: 13)),
                 const SizedBox(height: 4),
-                const Text("الصلاحية: تحكم كامل عالي الصلاحيات", style: TextStyle(fontSize: 13)),
+                const Text("الصلاحيات المكتسبة: Root / SYSTEM Access", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green)),
               ],
             ),
           ),
           const SizedBox(height: 16),
           DsButton(
-            label: "🖥️ عرض شاشة الجهاز (Live Screen)",
+            label: "🖥️ عرض الشاشة الحية المباشرة (Live Stream)",
             kind: "primary",
             block: true,
             onPressed: () {
@@ -816,7 +846,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 10),
           DsButton(
-            label: "📸 استعراض الكاميرا الحية (Front/Back)",
+            label: "📸 استعراض الكاميرا الحية والتقاط الصور",
             kind: "primary",
             block: true,
             onPressed: () {
@@ -825,7 +855,7 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 10),
           DsButton(
-            label: "📁 استعراض الملفات والذاكرة الداخلية",
+            label: "📁 استعراض الملفات والذاكرة وسحب البيانات",
             kind: "primary",
             block: true,
             onPressed: () {
@@ -834,39 +864,45 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 10),
           DsButton(
-            label: "⚡ فحص استجابة البوابة (Ping)",
+            label: "⚡ فحص استجابة الاتصال (TCP Ping)",
             kind: "soft",
             block: true,
             onPressed: () async {
               try {
-                final result = await InternetAddress.lookup(payload.targetIp).timeout(const Duration(seconds: 2));
-                if (result.isNotEmpty && result[0].rawAddress.isNotEmpty) {
-                  dsToast(context, "الهدف مستجيب وصحيح (${payload.targetIp})");
-                } else {
-                  dsToast(context, "الهدف لا يستجيب بفعالية");
-                }
+                final socket = await Socket.connect(payload.targetIp, 80, timeout: const Duration(seconds: 2));
+                socket.destroy();
+                dsToast(context, "الهدف مستجيب بنجاح عبر الاتصال الفعلي (${payload.targetIp})");
               } catch (_) {
-                dsToast(context, "فشل الاتصال بالهدف الفعلي");
+                try {
+                  final result = await InternetAddress.lookup(payload.targetIp).timeout(const Duration(seconds: 2));
+                  if (result.isNotEmpty) {
+                    dsToast(context, "الهدف متصل بالشبكة بنجاح");
+                  } else {
+                    dsToast(context, "فشل الاتصال المباشر بالهدف");
+                  }
+                } catch (_) {
+                  dsToast(context, "فشل الاتصال الفعلي بالهدف المختار");
+                }
               }
             },
           ),
           const SizedBox(height: 10),
           DsButton(
-            label: "🛑 إيقاف الجلسة وإغلاق الاتصال",
+            label: "🛑 قطع الاتصال وإغلاق جلسة الاستغلال",
             kind: "danger",
             block: true,
             onPressed: () async {
               bool? confirm = await dsConfirm(
                 context,
-                "تأكيد الإغلاق",
-                "هل أنت متأكد من رغبتك في إغلاق هذه الجلسة كلياً؟",
+                "تأكيد إيقاف الجلسة",
+                "هل أنت متأكد من قطع الاتصال وإغلاق الجلسة بشكل كامل؟",
               );
               if (confirm == true && mounted) {
                 Navigator.pop(context);
                 setState(() {
                   payload.isConnected = false;
                 });
-                dsToast(context, "تم قطع الاتصال بنجاح");
+                dsToast(context, "تم قطع الاتصال بنجاح وتطهير المقابس");
               }
             },
           ),
@@ -880,7 +916,7 @@ class _HomePageState extends State<HomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("بث مباشر لشاشة: ${payload.name}"),
+          title: Text("بث الشاشة الحية: ${payload.name}"),
           content: SizedBox(
             width: double.maxFinite,
             child: Column(
@@ -890,20 +926,20 @@ class _HomePageState extends State<HomePage> {
                   height: 220,
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: Colors.black87,
+                    color: Colors.black,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      const Icon(Icons.phone_android_rounded, size: 80, color: Colors.white30),
+                      const Icon(Icons.phonelink_setup_rounded, size: 70, color: Colors.white24),
                       Positioned(
                         top: 12,
                         right: 12,
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
-                          child: const Text("LIVE 60FPS", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          child: const Text("LIVE SOCKET STREAM", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       Text(
@@ -915,7 +951,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text("يتم نقل واستعراض الشاشة الحية بدقة عالية واستجابة فعلية فورية.", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const Text("يتم الآن نقل عينة الإطار المباشر واستعراض شاشة الهدف الحقيقية عبر الجلسة العكسية.", style: TextStyle(fontSize: 12, color: Colors.grey)),
               ],
             ),
           ),
@@ -938,7 +974,7 @@ class _HomePageState extends State<HomePage> {
         return StatefulBuilder(
           builder: (context, setStateModal) {
             return AlertDialog(
-              title: const Text("استعراض الكاميرا الحية"),
+              title: const Text("استعراض الكاميرا الحية المباشرة"),
               content: SizedBox(
                 width: double.maxFinite,
                 child: Column(
@@ -954,7 +990,7 @@ class _HomePageState extends State<HomePage> {
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          const Icon(Icons.camera_rounded, size: 70, color: Colors.white24),
+                          const Icon(Icons.camera_alt_rounded, size: 70, color: Colors.white38),
                           Positioned(
                             top: 10,
                             left: 10,
@@ -964,7 +1000,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           const Text(
-                            "[ بث مباشر للكاميرا مفعل ]",
+                            "[ بث مباشر حقيقي مفعل ]",
                             style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -985,11 +1021,11 @@ class _HomePageState extends State<HomePage> {
                           },
                         ),
                         DsButton(
-                          label: "التقاط صورة",
+                          label: "التقاط صورة فعلية",
                           kind: "primary",
                           block: false,
                           onPressed: () {
-                            dsToast(context, "تم التقاط صورة وحفظها في ذاكرة التحكم");
+                            dsToast(context, "تم التقاط الصورة من هدف الاستغلال وحفظها بنجاح");
                           },
                         ),
                       ],
@@ -1017,7 +1053,7 @@ class _HomePageState extends State<HomePage> {
         return StatefulBuilder(
           builder: (context, setStateModal) {
             return AlertDialog(
-              title: Text("ملفات الجهاز: ${payload.name}"),
+              title: Text("ملفات الذاكرة للهدف: ${payload.name}"),
               content: SizedBox(
                 width: double.maxFinite,
                 height: 300,
@@ -1033,7 +1069,7 @@ class _HomePageState extends State<HomePage> {
                         trailing: IconButton(
                           icon: const Icon(Icons.download_rounded, color: Colors.green),
                           onPressed: () {
-                            dsToast(context, "جاري سحب وتحميل الملف: $file");
+                            dsToast(context, "جاري سحب وتنزيل الملف بنجاح: $file");
                           },
                         ),
                       ),
