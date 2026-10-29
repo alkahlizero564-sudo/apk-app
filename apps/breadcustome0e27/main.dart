@@ -393,7 +393,7 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
           const SizedBox(height: 15),
           const Text("المنفذ (Port)"),
           const SizedBox(height: 5),
-          const TextField(
+            TextField(
             controller: TextEditingController(text: "4444"),
             keyboardType: TextInputType.number,
             decoration: InputDecoration(border: OutlineInputBorder()),
