@@ -5816,6 +5816,187 @@ render=function(){
     +'<label>عدد جولات الإصلاح التلقائي للتصميم (من 0 إلى 4)</label><input type="number" inputmode="numeric" min="0" max="4" value="'+rounds()+'" onchange="S.keys.qaRounds=Math.max(0,Math.min(4,parseInt(this.value)||0));this.value=S.keys.qaRounds;save()"></div>');
 };
 })();
+render();/* ===== إضافة: إصلاح آلي لأخطاء Flutter الشائعة قبل الرفع (const والاستيرادات) ===== */
+(function(){
+
+/* يستبدل محتوى النصوص والتعليقات بمسافات (يحافظ على الأطوال) */
+function maskDart(s){
+  const n=s.length,out=[];
+  let i=0;
+  while(i<n){
+    const c=s[i],d=s[i+1];
+    if(c==='/'&&d==='/'){
+      let j=i;while(j<n&&s[j]!=='\n')j++;
+      out.push(' '.repeat(j-i));i=j;continue;
+    }
+    if(c==='/'&&d==='*'){
+      let j=s.indexOf('*/',i+2);j=j<0?n:j+2;
+      out.push(s.slice(i,j).replace(/[^\n]/g,' '));i=j;continue;
+    }
+    if(c==="'"||c==='"'){
+      const raw=i>0&&s[i-1]==='r'&&(i<2||!/[A-Za-z0-9_$]/.test(s[i-2]));
+      const tri=s.substr(i,3)===c+c+c;
+      let j=i+(tri?3:1);
+      while(j<n){
+        if(!raw&&s[j]==='\\'){j+=2;continue}
+        if(tri){if(s.substr(j,3)===c+c+c){j+=3;break}}
+        else{
+          if(s[j]===c){j++;break}
+          if(s[j]==='\n')break;
+        }
+        j++;
+      }
+      if(j>n)j=n;
+      out.push(s.slice(i,j).replace(/[^\n]/g,' '));i=j;continue;
+    }
+    out.push(c);i++;
+  }
+  return out.join('');
+}
+
+/* حذف const من أماكن الاستدعاء (مع إبقائها في التعريفات) */
+function stripConst(s){
+  const m=maskDart(s),cuts=[];
+  const re=/\bconst\b/g;
+  let x;
+  while((x=re.exec(m))!==null){
+    const st=x.index;
+    let p=st+5;
+    while(p<m.length&&/\s/.test(m[p]))p++;
+    let b=-1;
+    if(m[p]==='['||m[p]==='{'){
+      b=p;
+    }else if(m[p]==='<'){
+      let d=0,q=p;
+      for(;q<m.length;q++){
+        if(m[q]==='<')d++;
+        else if(m[q]==='>'){d--;if(d===0){q++;break}}
+      }
+      while(q<m.length&&/\s/.test(m[q]))q++;
+      if(m[q]==='['||m[q]==='{')b=q;
+    }else{
+      const idm=/^[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*/.exec(m.slice(p,p+160));
+      if(idm){
+        let q=p+idm[0].length;
+        while(q<m.length&&/\s/.test(m[q]))q++;
+        if(m[q]==='<'){
+          let d=0;
+          for(;q<m.length;q++){
+            if(m[q]==='<')d++;
+            else if(m[q]==='>'){d--;if(d===0){q++;break}}
+          }
+          while(q<m.length&&/\s/.test(m[q]))q++;
+        }
+        if(m[q]==='(')b=q;
+      }
+    }
+    if(b<0)continue;
+    let k=st-1;
+    while(k>=0&&/\s/.test(m[k]))k--;
+    const pc=k>=0?m[k]:'';
+    if(pc===''||pc===';'||pc==='{'||pc==='}')continue;
+    if(/\bcase\s*$/.test(m.slice(Math.max(0,st-12),st)))continue;
+    let depth=0,e=-1;
+    for(let q=b;q<m.length;q++){
+      const c=m[q];
+      if(c==='('||c==='['||c==='{')depth++;
+      else if(c===')'||c===']'||c==='}'){depth--;if(depth===0){e=q;break}}
+    }
+    if(e<0)continue;
+    if(/\b(this|super)\s*\./.test(m.slice(b,e)))continue;
+    let r=st+5;
+    while(r<m.length&&/\s/.test(m[r]))r++;
+    cuts.push([st,r]);
+  }
+  for(let i=cuts.length-1;i>=0;i--)s=s.slice(0,cuts[i][0])+s.slice(cuts[i][1]);
+  return s;
+}
+
+/* إضافة الاستيرادات الناقصة */
+const IMPS=[
+  [['jsonDecode','jsonEncode','utf8','base64Encode','base64Decode','LineSplitter'],"import 'dart:convert';",'dart:convert'],
+  [['Timer','Completer','StreamController','StreamSubscription'],"import 'dart:async';",'dart:async'],
+  [['HttpClient','File','Directory','Platform','InternetAddress','SocketException'],"import 'dart:io';",'dart:io'],
+  [['HapticFeedback','SystemChrome','SystemNavigator','Clipboard','ClipboardData','FilteringTextInputFormatter','LengthLimitingTextInputFormatter','TextInputFormatter','SystemUiOverlayStyle','DeviceOrientation'],"import 'package:flutter/services.dart';",'flutter/services.dart'],
+  [['ImageFilter'],"import 'dart:ui' show ImageFilter;",'dart:ui'],
+  [['Random'],"import 'dart:math';",'dart:math']
+];
+function addImports(s){
+  const m=maskDart(s);
+  const add=[];
+  IMPS.forEach(function(r){
+    if(s.indexOf(r[2])>-1)return;
+    const used=r[0].some(function(nm){
+      if(new RegExp('\\b(class|enum|mixin|typedef)\\s+'+nm+'\\b').test(m))return false;
+      return new RegExp('(^|[^.\\w$])'+nm+'\\b').test(m);
+    });
+    if(used)add.push(r[1]);
+  });
+  if(s.indexOf('package:flutter/material.dart')<0&&/\b(StatelessWidget|StatefulWidget|MaterialApp|Scaffold|DsApp)\b/.test(m))add.push("import 'package:flutter/material.dart';");
+  if(!add.length)return s;
+  const re=/^import\s+[^;]+;[ \t]*$/gm;
+  let last=-1,x;
+  while((x=re.exec(s))!==null)last=x.index+x[0].length;
+  if(last<0)return add.join('\n')+'\n'+s;
+  return s.slice(0,last)+'\n'+add.join('\n')+s.slice(last);
+}
+
+function cnt(s){return (String(s).match(/[(){}\[\]]/g)||[]).length}
+function fixDart(code){
+  const orig=String(code);
+  let s=orig;
+  try{
+    s=s.replace(/\b(cardTheme|dialogTheme|tabBarTheme)\s*:\s*(CardTheme|DialogTheme|TabBarTheme)\s*\(/g,function(m,a,b){return a+': '+b+'Data('});
+    s=stripConst(s);
+    s=addImports(s);
+    if(cnt(s)!==cnt(orig))return orig;
+    return s;
+  }catch(e){return orig}
+}
+
+/* تطبيق الإصلاح عند كل رفع لملف main.dart (للفحص وللبناء) */
+const _put7=put;
+put=async function(repo,branch,path,content){
+  if(!S.keys.noFix7&&/^apps\/[^/]+\/main\.dart$/.test(String(path))){
+    content=fixDart(content);
+  }
+  return _put7(repo,branch,path,content);
+};
+
+/* قواعد صارمة تُضاف لكل طلب Flutter */
+const RULES='\n\nقواعد صارمة لتجنب أخطاء التجميع (مهمة جداً): 1) لا تكتب الكلمة const أمام أي ويدجت أو قائمة أو كائن إطلاقاً، إلا في تعريف المتغيرات الثابتة (static const وconst name = ...) وتعريف المُنشئ نفسه؛ فالأداة تتولى الباقي. 2) أنشئ كل TextEditingController وFocusNode وScrollController وAnimationController كحقل داخل State (في initState) ولا تنشئه داخل build، وتخلص منه في dispose. 3) اكتب كل الاستيرادات المطلوبة في أعلى الملف (مثل dart:convert وdart:async وdart:io وpackage:flutter/services.dart عند الحاجة). 4) استخدم CardThemeData وDialogThemeData وTabBarThemeData بدل CardTheme وDialogTheme وTabBarTheme. 5) تأكد أن كل متغير ودالة معرّفة قبل استخدامها، وأن الأقواس متوازنة، وأن الملف ينتهي كاملاً.';
+const _ai10=ai;
+ai=function(p){
+  if(typeof p==='string'&&!S.keys.noFix7&&p.indexOf(BT+'dart بدون')>-1&&p.indexOf('قواعد صارمة لتجنب أخطاء التجميع')<0)p+=RULES;
+  return _ai10(p);
+};
+
+/* اختبار على كود التطبيق */
+window.cxFixTest=function(i){
+  const a=S.apps[i];
+  if(!a||!a.code.trim())return toast('لا يوجد كود في هذا التطبيق');
+  if(langOf(i)!=='flutter')return toast('هذا التطبيق ليس Flutter');
+  const before=a.code,after=fixDart(before);
+  const c0=(before.match(/\bconst\b/g)||[]).length,c1=(after.match(/\bconst\b/g)||[]).length;
+  const imp=(after.match(/^import .*$/gm)||[]).filter(function(x){return before.indexOf(x)<0});
+  alert('حُذفت '+(c0-c1)+' كلمة const من أماكن الاستدعاء (المتبقي '+c1+' في التعريفات).'+(imp.length?'\n\nاستيرادات أُضيفت:\n'+imp.join('\n'):'\n\nلا استيرادات جديدة.'));
+};
+
+/* بطاقة في قائمة المفاتيح */
+const _render26=render;
+render=function(){
+  _render26();
+  if(tab!=='keys')return;
+  const m=$('#main');
+  if(!m||$('#cx-fix7'))return;
+  const c=document.createElement('div');c.className='card';c.id='cx-fix7';
+  c.innerHTML='<h2>🛠 إصلاح آلي لأخطاء Flutter</h2>'
+   +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noFix7?'':'checked')+' onchange="S.keys.noFix7=!this.checked;save()"> إصلاح أخطاء const والاستيرادات تلقائياً قبل كل فحص وبناء</label>'
+   +'<div class="row" style="margin-top:8px"><button class="sec" onclick="cxFixTest(0)">🔬 جرّب على التطبيق 1</button><button class="sec" onclick="cxFixTest(1)">🔬 جرّب على التطبيق 2</button></div>'
+   +'<p class="note">الإصلاح بيتم وقت الرفع فقط، وكودك المحفوظ في الأداة ما بيتغيّر. بيحذف const من أماكن الاستدعاء (اختيارية ولا تغيّر سلوك التطبيق)، ويضيف الاستيرادات الناقصة، ويصلح أسماء ThemeData الجديدة.</p>';
+  m.appendChild(c);
+};
+})();
 render();
 </script>
 </body>
