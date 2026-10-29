@@ -1,4 +1,5 @@
 // DESIGN: أداة فحص شبكات واختراق ثغرات متقدمة | تقنية حماية ذكية | قيمة --h 250
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'dart:async' as apkas;
@@ -14,7 +15,7 @@ void main() => runApp(DsApp(
     ));
 
 class NetGuardHomePage extends StatefulWidget {
-  const NetGuardHomePage({Key? key}) : super(key: key);
+  NetGuardHomePage({Key? key}) : super(key: key);
 
   @override
   State<NetGuardHomePage> createState() => _NetGuardHomePageState();
@@ -82,6 +83,10 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
   String targetIpDisplay = "لم يتم اختيار هدف";
   bool activeSession = false;
   String payloadType = "meterpreter/reverse_tcp (صلاحيات كاملة)";
+  
+  bool isScanning = false;
+  String scanningStatusText = "الشبكة جاهزة للهجوم الفعلي";
+  Timer? scanTimer;
 
   late TextEditingController targetIpController;
   late TextEditingController portController;
@@ -95,9 +100,56 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
 
   @override
   void dispose() {
+    scanTimer?.cancel();
     targetIpController.dispose();
     portController.dispose();
     super.dispose();
+  }
+
+  void _startContinuousScan() {
+    if (isScanning) return;
+    setState(() {
+      isScanning = true;
+      scanningStatusText = "جاري البحث المستمر في النطاق 192.168.1.0/24...";
+    });
+    dsToast(context, "بدء الفحص المستمر والبحث عن أجهزة جديدة...");
+
+    int step = 0;
+    scanTimer = Timer.periodic(Duration(seconds: 3), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      step++;
+      setState(() {
+        scanningStatusText = "جاري فحص المنافذ والبروتوكولات (المحاولة رقم $step)...";
+      });
+
+      // بعد عدة محاولات، نعثر على جهاز ونضيفه إذا لم يكن موجوداً
+      if (step >= 3) {
+        timer.cancel();
+        setState(() {
+          isScanning = false;
+          scanningStatusText = "تم العثور على جهاز جديد وإضافته بنجاح!";
+          int newId = devices.length + 1;
+          devices.add({
+            "id": newId,
+            "name": "Router / Gateway $newId",
+            "ip": "192.168.1.${10 + newId * 5}",
+            "type": "wifi",
+            "icon": "🌐",
+            "status": "ثغرة حرجة",
+            "vulns": ["Router Firmware RCE", "WPS Weak PIN"]
+          });
+          logs.insert(0, {
+            "time": "الآن",
+            "text": "تم العثور على جهاز جديد عبر الفحص المستمر: 192.168.1.${10 + newId * 5}",
+            "type": "ok"
+          });
+        });
+        dsToast(context, "تم العثور على جهاز جديد على الشبكة!");
+      }
+    });
   }
 
   @override
@@ -190,16 +242,17 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
                             child: child,
                           );
                         },
-                        child: Icon(Icons.radar, size: 56, color: Colors.blueAccent),
+                        child: Icon(Icons.radar, size: 56, color: isScanning ? Colors.redAccent : Colors.blueAccent),
                       ),
                       SizedBox(height: 12),
                       Text(
-                        "الشبكة جاهزة للهجوم الفعلي",
+                        scanningStatusText,
                         style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        textAlign: TextAlign.center,
                       ),
                       SizedBox(height: 4),
                       Text(
-                        "التشفير النشط مؤمن بالكامل",
+                        isScanning ? "الرجاء الانتظار حتى العثور على جهاز جديد..." : "التشفير النشط مؤمن بالكامل",
                         style: TextStyle(color: Colors.grey[500], fontSize: 12),
                       ),
                     ],
@@ -208,17 +261,10 @@ class _NetGuardHomePageState extends State<NetGuardHomePage> {
               ),
               SizedBox(height: 20),
               DsButton(
-                label: "بدء الفحص الشامل (Nmap)",
+                label: isScanning ? "جاري البحث المستمر..." : "بدء الفحص الشامل المستمر (Nmap)",
                 icon: Icons.search_rounded,
                 block: true,
-                onPressed: () {
-                  dsToast(context, "جاري فحص النطاق الفعلي عبر Nmap...");
-                  Future.delayed(Duration(seconds: 2), () {
-                    if (!mounted) return;
-                    dsToast(context, "تم تحديث قائمة الأجهزة المستهدفة بنجاح");
-                    setState(() {});
-                  });
-                },
+                onPressed: isScanning ? null : () => _startContinuousScan(),
               ),
               SizedBox(height: 20),
               DsChips(
@@ -1465,7 +1511,7 @@ Future<bool> dsConfirm(BuildContext context, String title, String text) async {
 
 
 // ===== تحديث التطبيق (يُضاف تلقائياً) =====
-const int _apkCur = 3;
+const int _apkCur = 4;
 const String _apkUrl = 'https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/hackedalkahli1/update.json';
 
 void runApp(apkw.Widget app) => apkw.runApp(ApkUpdateGate(child: app));
