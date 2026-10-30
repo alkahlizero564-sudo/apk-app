@@ -1697,7 +1697,7 @@ Future<bool> dsConfirm(BuildContext context, String title, String text) async {
 
 
 // ===== تحديث التطبيق (يُضاف تلقائياً) =====
-const int _apkCur = 8;
+const int _apkCur = 9;
 const String _apkUrl = 'https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/tadaooolalkahli1/update.json';
 
 void runApp(apkw.Widget app) => apkw.runApp(ApkUpdateGate(child: app));
