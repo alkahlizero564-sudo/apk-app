@@ -6631,6 +6631,141 @@ render=function(){
 };
 })();
 render();
+/* ===== إضافة: مدقق أقواس ورموز Dart + إصلاح فوري بدون ذكاء اصطناعي ===== */
+(function(){
+const PAIR={')':'(',']':'[','}':'{'},CLOSE={'(':')','[':']','{':'}'};
+
+/* يمسح كود Dart ويرجع: الأخطاء، الأقواس المفتوحة، ومواضع الرموز العربية خارج النصوص */
+function scan(s){
+  const n=s.length,st=[],errs=[],fixes=[];
+  const ctx=[{t:'c'}];
+  let i=0;
+  while(i<n){
+    const top=ctx[ctx.length-1],ch=s[i];
+    if(top.t==='s'){
+      if(!top.raw&&ch==='\\'){i+=2;continue}
+      if(s.startsWith(top.q,i)){ctx.pop();i+=top.q.length;continue}
+      if(!top.raw&&ch==='$'&&s[i+1]==='{'){ctx.push({t:'c',interp:true});st.push({c:'{',p:i+1,I:true});i+=2;continue}
+      if(top.q.length===1&&ch==='\n'){ctx.pop();i++;continue}
+      i++;continue;
+    }
+    if(ch==='/'&&s[i+1]==='/'){const j=s.indexOf('\n',i);i=j<0?n:j;continue}
+    if(ch==='/'&&s[i+1]==='*'){const j=s.indexOf('*/',i+2);i=j<0?n:j+2;continue}
+    let raw=false,k=i;
+    if(ch==='r'&&(s[i+1]==="'"||s[i+1]==='"')&&!/[A-Za-z0-9_$]/.test(s[i-1]||'')){raw=true;k=i+1}
+    const c2=s[k];
+    if(c2==="'"||c2==='"'){
+      const q=s.substr(k,3)===c2+c2+c2?c2+c2+c2:c2;
+      ctx.push({t:'s',q:q,raw:raw});i=k+q.length;continue;
+    }
+    if(ch==='؛'){fixes.push({p:i,to:';'})}
+    else if(ch==='،'){fixes.push({p:i,to:','})}
+    else if(ch==='“'||ch==='”'){fixes.push({p:i,to:'"'})}
+    else if(ch==='‘'||ch==='’'){fixes.push({p:i,to:"'"})}
+    else if(ch===' '){fixes.push({p:i,to:' '})}
+    if(ch==='('||ch==='['||ch==='{'){st.push({c:ch,p:i})}
+    else if(ch===')'||ch===']'||ch==='}'){
+      const t=st[st.length-1];
+      if(ch==='}'&&t&&t.I){st.pop();ctx.pop();i++;continue}
+      if(!t||t.c!==PAIR[ch]){errs.push({p:i,got:ch,want:t?CLOSE[t.c]:null,open:t?t.p:-1})}
+      if(t&&!t.I)st.pop();
+    }
+    i++;
+  }
+  return {errs:errs,open:st,fixes:fixes,unclosedStr:ctx.length>1};
+}
+function bad(r){return r.errs.length+r.open.length+(r.unclosedStr?1:0)}
+function lineOf(s,p){return s.slice(0,p).split('\n').length}
+
+/* إصلاح: رموز عربية خارج النصوص + أقواس غلط/زايدة/ناقصة */
+function repair(code){
+  let s=String(code);const log=[];
+  let r=scan(s);
+  if(r.fixes.length){
+    for(let j=r.fixes.length-1;j>=0;j--){const f=r.fixes[j];s=s.slice(0,f.p)+f.to+s.slice(f.p+1)}
+    log.push('تصحيح '+r.fixes.length+' رمز عربي أو علامة تنصيص خارج النصوص');
+    r=scan(s);
+  }
+  for(let round=0;round<40&&r.errs.length;round++){
+    const e=r.errs[0],cur=bad(r),cands=[];
+    if(e.want)cands.push({k:'بدّل '+e.got+' بـ '+e.want,s:s.slice(0,e.p)+e.want+s.slice(e.p+1)});
+    if(e.want)cands.push({k:'أضف '+e.want+' قبل '+e.got,s:s.slice(0,e.p)+e.want+s.slice(e.p)});
+    cands.push({k:'احذف '+e.got+' الزايد',s:s.slice(0,e.p)+s.slice(e.p+1)});
+    let best=null,bs=cur;
+    cands.forEach(function(c){const rr=scan(c.s),b=bad(rr);if(b<bs){bs=b;best={c:c,r:rr}}});
+    if(!best)break;
+    log.push(best.c.k+' (سطر '+lineOf(s,e.p)+')');
+    s=best.c.s;r=best.r;
+  }
+  return {code:s,log:log,ok:bad(r)===0,trunc:!r.errs.length&&(r.open.length>0||r.unclosedStr),r:r};
+}
+window.cxDartRepair=repair;
+
+function appIndexByPath(path){
+  const m=/^apps\/([^/]+)\/main\.dart$/.exec(String(path));if(!m)return -1;
+  return S.apps.findIndex(function(a){return a&&slugOf(a.name)===m[1]});
+}
+
+/* يشتغل قبل كل رفع لملف main.dart (فحص وبناء) */
+const _put30=put;
+put=async function(repo,branch,path,content){
+  if(!S.keys.noBr30&&/^apps\/[^/]+\/main\.dart$/.test(String(path))&&typeof content==='string'){
+    const r=repair(content);
+    if(r.code!==content&&bad(scan(r.code))<bad(scan(content))){
+      const k=appIndexByPath(path);
+      if(k>-1&&S.apps[k].code.trim()===content.trim()){
+        pushVersion(k);S.apps[k].code=r.code;save();
+        const t=$('#code'+k);if(t)t.value=r.code;
+      }
+      toast('🧷 اتصلح '+r.log.length+' خطأ أقواس/رموز تلقائياً بدون ذكاء اصطناعي');
+      content=r.code;
+    }
+    if(r.trunc)toast('⚠ الكود ناقص في آخره (غالباً الذكاء الاصطناعي اتقطع)');
+  }
+  return _put30(repo,branch,path,content);
+};
+
+/* قاعدة إضافية للذكاء الاصطناعي: تقسيم الواجهة لتقليل أخطاء الأقواس */
+const RULE30='\n\nقاعدة إضافية لمنع أخطاء الأقواس: لا تكتب شجرة ويدجت عميقة في دالة build واحدة؛ قسّم كل قسم من الشاشة إلى دالة صغيرة مستقلة (مثل Widget _buildHeader() و Widget _buildList()) بحيث لا يزيد التداخل داخل أي دالة عن 6 مستويات، واكتب فاصلة بعد كل قوس إغلاق في قوائم children. استخدم الرموز الإنجليزية فقط في الكود (; و , و \' و ") وليس العربية (؛ ،).';
+const _ai30=ai;
+ai=function(p){
+  if(typeof p==='string'&&!S.keys.noBr30&&p.indexOf(BT+'dart')>-1&&p.indexOf('قاعدة إضافية لمنع أخطاء الأقواس')<0)p+=RULE30;
+  return _ai30(p);
+};
+
+/* زر الفحص اليدوي */
+window.cxBrTest=function(i){
+  const a=S.apps[i];
+  if(!a||!a.code.trim())return toast('لا يوجد كود في هذا التطبيق');
+  if(langOf(i)!=='flutter')return toast('هذا التطبيق ليس Flutter');
+  const r0=scan(a.code);
+  if(!bad(r0)&&!r0.fixes.length)return alert('✔ الأقواس والرموز سليمة في التطبيق '+(i+1));
+  const r=repair(a.code);
+  let msg='التطبيق '+(i+1)+':\n';
+  if(r.log.length)msg+='الإصلاحات المقترحة:\n• '+r.log.join('\n• ')+'\n';
+  if(r.trunc)msg+='\n⚠ الكود ناقص في آخره (أقواس ما اتقفلت). غالباً الذكاء الاصطناعي اتقطع، فاطلب منه يكمّل أو أعد الإنشاء.\n';
+  else if(!r.ok)msg+='\n⚠ في أخطاء ما قدرت أصلحها براي، الفحص على GitHub حيتعامل معاها.\n';
+  if(r.code===a.code)return alert(msg);
+  if(confirm(msg+'\nأطبّق الإصلاح على الكود هسه؟ (النسخة القديمة بتتحفظ)')){
+    pushVersion(i);a.code=r.code;save();render();toast('✔ تم الإصلاح');
+  }
+};
+
+const _render30=render;
+render=function(){
+  _render30();
+  if(tab!=='keys')return;
+  const m=$('#main');
+  if(!m||$('#cx-br30'))return;
+  const c=document.createElement('div');c.className='card';c.id='cx-br30';
+  c.innerHTML='<h2>🧷 مدقق الأقواس والرموز (Flutter)</h2>'
+   +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noBr30?'':'checked')+' onchange="S.keys.noBr30=!this.checked;save()"> صلّح أخطاء الأقواس والرموز تلقائياً قبل كل فحص وبناء</label>'
+   +'<div class="row" style="margin-top:8px"><button class="sec" onclick="cxBrTest(0)">🔬 افحص التطبيق 1</button><button class="sec" onclick="cxBrTest(1)">🔬 افحص التطبيق 2</button></div>'
+   +'<p class="note">بيلقى القوس الغلط أو الزايد أو الناقص، والرموز العربية مثل ؛ و، خارج النصوص، ويصلحها فوراً من غير ذكاء اصطناعي ومن غير ما تنتظر GitHub. ما بيقبل أي إصلاح إلا لو قلّل الأخطاء، والنسخة القديمة بتتحفظ.</p>';
+  m.appendChild(c);
+};
+})();
+render();
 </script>
 </body>
 </html>
