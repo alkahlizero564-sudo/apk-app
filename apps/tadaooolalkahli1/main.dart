@@ -1,5 +1,3 @@
-// DESIGN: تطبيق تحليل السوق المالي بالذكاء الاصطناعي | ذكي، دقيق، احترافي | قيمة 250
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
@@ -18,7 +16,7 @@ void main() => runApp(DsApp(
     ));
 
 class MarketMainScreen extends StatefulWidget {
-  const MarketMainScreen({super.key});
+  MarketMainScreen({super.key});
 
   @override
   State<MarketMainScreen> createState() => _MarketMainScreenState();
@@ -68,7 +66,7 @@ class _MarketMainScreenState extends State<MarketMainScreen> {
 }
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -89,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'time': 'منذ 15 دقيقة',
       'confidence': '97%',
       'status': 'active',
-      'note': 'بناءً على النماذج السعرية المرفقة والبورصة العالمية، هناك ارتداد قوي من دعم رئيسي مع زخم شرائي واضح في سوق الذهب.'
+      'note': 'بناء على النماذج السعرية المرفقة والبورصة العالمية، هناك ارتداد قوي من دعم رئيسي مع زخم شرائي واضح في سوق الذهب.'
     },
     {
       'id': 2,
@@ -101,7 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'time': 'منذ ساعة',
       'confidence': '92%',
       'status': 'active',
-      'note': 'تشخيص النماذج الحية يظهر تشبعاً شرائياً واختبار منطقة مقاومة تاريخية قوية لأونصة الذهب.'
+      'note': 'تشخيص النماذج الحية يظهر تشبعا شرائيا واختبار منطقة مقاومة تاريخية قوية لأونصة الذهب.'
     },
     {
       'id': 3,
@@ -139,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       setState(() {
         _goldPrice = '${basePrice.toStringAsFixed(2)}\$';
-        _marketStatus = 'متصل بالبورصة العالمية • سعر حي يتغير مع السوق لحظياً';
+        _marketStatus = 'متصل بالبورصة العالمية • سعر حي يتغير مع السوق لحظيا';
         if (recommendations.isNotEmpty) {
           recommendations[0]['entry'] = _goldPrice;
         }
@@ -152,226 +150,270 @@ class _HomeScreenState extends State<HomeScreen> {
     return ListView(
       padding: EdgeInsets.zero,
       children: [
-        DsHero(
-          title: 'محلل أسواق الذهب الذكي',
-          subtitle: 'ارفق صور الرسوم البيانية واستخرج أدق توصيات البيع والشراء فوراً من السوق الفعلي',
-          big: _goldPrice,
-          trailing: Text(
-            _marketStatus,
-            style: TextStyle(fontSize: 12, color: Colors.white70),
-            textAlign: TextAlign.center,
-          ),
-        ),
+        _buildHeroSection(),
         Padding(
           padding: EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              DsSection(
-                title: 'تحليل رسم بياني للذهب',
-                action: 'دليل الاستخدام',
-                onAction: () {
-                  dsToast(context, 'اختر صورة الشارت للبدء عبر زر الإضافة أسفل الشاشة');
-                },
+              _buildUploadSection(context),
+              SizedBox(height: 24),
+              _buildAiReportSection(context),
+              SizedBox(height: 24),
+              _buildTechnicalAnalysisSection(context),
+              SizedBox(height: 24),
+              _buildStatsSection(),
+              SizedBox(height: 24),
+              _buildRecommendationsSection(context),
+              SizedBox(height: 80),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeroSection() {
+    return DsHero(
+      title: 'محلل أسواق الذهب الذكي',
+      subtitle: 'ارفق صور الرسوم البيانية واستخرج أدق توصيات البيع والشراء فوراً من السوق الفعلي',
+      big: _goldPrice,
+      trailing: Text(
+        _marketStatus,
+        style: TextStyle(fontSize: 12, color: Colors.white70),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildUploadSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DsSection(
+          title: 'تحليل رسم بياني للذهب',
+          action: 'دليل الاستخدام',
+          onAction: () {
+            dsToast(context, 'اختر صورة الشارت للبدء عبر زر الإضافة أسفل الشاشة');
+          },
+        ),
+        SizedBox(height: 8),
+        GestureDetector(
+          onTap: () {
+            dsSheet(
+              context,
+              title: 'رفع وتشخيص شارت الذهب',
+              child: UploadSheetContent(),
+            );
+          },
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.blueAccent.withOpacity(0.3), width: 2, style: BorderStyle.solid),
+            ),
+            child: Column(
+              children: [
+                Text('📊', style: TextStyle(fontSize: 36)),
+                SizedBox(height: 8),
+                Text('اضغط هنا لاختيار صورة الشارت', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                SizedBox(height: 4),
+                Text('يدعم إرفاق الشارتات واللقطات الفنية لتحليلات الذهب (XAU/USD)', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAiReportSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DsSection(
+          title: 'تحليل الشارت الشامل وحالة الاتجاه',
+          action: 'محدث',
+          onAction: () {},
+        ),
+        SizedBox(height: 8),
+        Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text('🤖', style: TextStyle(fontSize: 18)),
+                  SizedBox(width: 8),
+                  Text('تقرير الذكاء الاصطناعي لاتجاه الشارت:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                ],
               ),
-              SizedBox(height: 8),
-              GestureDetector(
-                onTap: () {
-                  dsSheet(
-                    context,
-                    title: 'رفع وتشخيص شارت الذهب',
-                    child: UploadSheetContent(),
-                  );
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.blueAccent.withOpacity(0.3), width: 2, style: BorderStyle.solid),
-                  ),
-                  child: Column(
+              SizedBox(height: 10),
+              Text(
+                'الحالة المتوقعة للشارت: الشارت سوف يرتفع (صاعد) بقوة نحو مستويات 4,020.00\$ و 4,030.00\$. مؤشرات الزخم الإيجابي واختبار الدعم الحرج تدعم استمرار الصعود الحالي للذهب.',
+                style: TextStyle(fontSize: 13, height: 1.5),
+              ),
+              SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  DsBadge(text: 'اتجاه متوقع: صعود (Bullish) 📈', kind: 'ok'),
+                  DsBadge(text: 'معدل الثقة: 96.5%', kind: 'info'),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTechnicalAnalysisSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DsSection(
+          title: 'التحليل الفني العميق للرسم البياني',
+          action: 'مباشر',
+          onAction: () {},
+        ),
+        SizedBox(height: 8),
+        Container(
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.withOpacity(0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('📊', style: TextStyle(fontSize: 36)),
-                      SizedBox(height: 8),
-                      Text('اضغط هنا لاختيار صورة الشارت', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                      SizedBox(height: 4),
-                      Text('يدعم إرفاق الشارتات واللقطات الفنية لتحليلات الذهب (XAU/USD)', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                      Text('شارت الذهب الحي (XAU/USD) - فريم 4 ساعات', style: TextStyle(fontWeight: FontWeight.bold)),
+                      SizedBox(height: 2),
+                      Text('نموذج القناة الصاعدة واختبار الدعم الرئيسي', style: TextStyle(fontSize: 12, color: Colors.grey)),
                     ],
                   ),
-                ),
+                  DsBadge(text: 'زخم شرائي', kind: 'warn'),
+                ],
               ),
-              SizedBox(height: 24),
-              DsSection(
-                title: 'تحليل الشارت الشامل وحالة الاتجاه',
-                action: 'محدث',
-                onAction: () {},
+              SizedBox(height: 14),
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 2.2,
+                children: [
+                  _buildMetricCard('مؤشر القوة النسبية RSI', _rsiValue, Colors.green),
+                  _buildMetricCard('مؤشر MACD (العزم)', 'إيجابي متصاعد', Colors.green),
+                  _buildMetricCard('مستويات البولنجر', 'اختراق الحد العلوي', Colors.blue),
+                  _buildMetricCard('حجم السيولة (Volume)', '+34.2% مرتفع', Colors.green),
+                ],
               ),
-              SizedBox(height: 8),
+              SizedBox(height: 16),
+              Text('قوة الاتجاه العام (Trend Strength)', style: TextStyle(fontSize: 12)),
+              SizedBox(height: 4),
+              DsProgress(value: 0.88),
+              SizedBox(height: 10),
+              Text('احتمالية ارتداد المقاومة (Resistance Test)', style: TextStyle(fontSize: 12)),
+              SizedBox(height: 4),
+              DsProgress(value: 0.42),
+              SizedBox(height: 14),
               Container(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                  color: Colors.blueAccent.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border(right: BorderSide(color: Colors.blueAccent, width: 3)),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text('🤖', style: TextStyle(fontSize: 18)),
-                        SizedBox(width: 8),
-                        Text('تقرير الذكاء الاصطناعي لاتجاه الشارت:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                      ],
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      'الحالة المتوقعة للشارت: الشارت سوف يرتفع (صاعد) بقوة نحو مستويات 4,020.00\$ و 4,030.00\$. مؤشرات الزخم الإيجابي واختبار الدعم الحرج تدعم استمرار الصعود الحالي للذهب.',
-                      style: TextStyle(fontSize: 13, height: 1.5),
-                    ),
-                    SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        DsBadge(text: 'اتجاه متوقع: صعود (Bullish) 📈', kind: 'ok'),
-                        DsBadge(text: 'معدل الثقة: 96.5%', kind: 'info'),
-                      ],
-                    ),
-                  ],
+                child: Text(
+                  'قراءة نموذج الذكاء الاصطناعي للرسم البياني:\nيظهر الشارت الحالي تكون نموذج صاعد مع ارتداد مؤكد من مستوى الدعم الحرج. مؤشرات البورصة العالمية تدعم استمرار الصعود نحو الأهداف المحددة.',
+                  style: TextStyle(fontSize: 12, height: 1.5),
                 ),
               ),
-              SizedBox(height: 24),
-              DsSection(
-                title: 'التحليل الفني العميق للرسم البياني',
-                action: 'مباشر',
-                onAction: () {},
-              ),
-              SizedBox(height: 8),
-              Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsSection() {
+    return DsStats(items: [
+      DsStat(label: 'التوصيات النشطة', value: '8', emoji: '📈'),
+      DsStat(label: 'نسبة النجاح', value: '95.2%', emoji: '🎯'),
+      DsStat(label: 'إجمالي الأرباح', value: '+6,450\$', emoji: '💰'),
+    ]);
+  }
+
+  Widget _buildRecommendationsSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DsSection(
+          title: 'آخر توصيات الذهب المستخرجة',
+          action: 'عرض الكل',
+          onAction: () {},
+        ),
+        SizedBox(height: 8),
+        ...recommendations.map((item) => Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: DsCard(
+                onTap: () {
+                  _showDetailSheet(context, item);
+                },
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('شارت الذهب الحي (XAU/USD) - فريم 4 ساعات', style: TextStyle(fontWeight: FontWeight.bold)),
-                            SizedBox(height: 2),
-                            Text('نموذج القناة الصاعدة واختبار الدعم الرئيسي', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          ],
+                        Text(item['pair'], style: TextStyle(fontWeight: FontWeight.bold)),
+                        DsBadge(
+                          text: item['type'] == 'BUY' ? 'شراء الذهب عند: ${item['entry']}' : 'بيع الذهب عند: ${item['entry']}',
+                          kind: item['type'] == 'BUY' ? 'ok' : 'bad',
                         ),
-                        DsBadge(text: 'زخم شرائي', kind: 'warn'),
                       ],
                     ),
-                    SizedBox(height: 14),
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      crossAxisSpacing: 10,
-                      mainAxisSpacing: 10,
-                      childAspectRatio: 2.2,
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildMetricCard('مؤشر القوة النسبية RSI', _rsiValue, Colors.green),
-                        _buildMetricCard('مؤشر MACD (العزم)', 'إيجابي متصاعد', Colors.green),
-                        _buildMetricCard('مستويات البولنجر', 'اختراق الحد العلوي', Colors.blue),
-                        _buildMetricCard('حجم السيولة (Volume)', '+34.2% مرتفع', Colors.green),
+                        Text('جني الأرباح: ${item['target']}', style: TextStyle(fontSize: 13, color: Colors.green, fontWeight: FontWeight.bold)),
+                        Text('وقف الخسارة: ${item['stopLoss']}', style: TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.bold)),
                       ],
                     ),
-                    SizedBox(height: 16),
-                    Text('قوة الاتجاه العام (Trend Strength)', style: TextStyle(fontSize: 12)),
-                    SizedBox(height: 4),
-                    DsProgress(value: 0.88),
-                    SizedBox(height: 10),
-                    Text('احتمالية ارتداد المقاومة (Resistance Test)', style: TextStyle(fontSize: 12)),
-                    SizedBox(height: 4),
-                    DsProgress(value: 0.42),
-                    SizedBox(height: 14),
-                    Container(
-                      padding: EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.blueAccent.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border(right: BorderSide(color: Colors.blueAccent, width: 3)),
-                      ),
-                      child: Text(
-                        'قراءة نموذج الذكاء الاصطناعي للرسم البياني:\nيظهر الشارت الحالي تكون نموذج صاعد مع ارتداد مؤكد من مستوى الدعم الحرج. مؤشرات البورصة العالمية تدعم استمرار الصعود نحو الأهداف المحددة.',
-                        style: TextStyle(fontSize: 12, height: 1.5),
-                      ),
+                    SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('الثقة: ${item['confidence']} • ${item['time']}', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        DsBadge(
+                          text: item['status'] == 'active' ? 'نشطة' : 'محققة',
+                          kind: item['status'] == 'active' ? 'ok' : 'warn',
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              SizedBox(height: 24),
-              DsStats(items: [
-                DsStat(label: 'التوصيات النشطة', value: '8', emoji: '📈'),
-                DsStat(label: 'نسبة النجاح', value: '95.2%', emoji: '🎯'),
-                DsStat(label: 'إجمالي الأرباح', value: '+6,450\$', emoji: '💰'),
-              ]),
-              SizedBox(height: 24),
-              DsSection(
-                title: 'آخر توصيات الذهب المستخرجة',
-                action: 'عرض الكل',
-                onAction: () {},
-              ),
-              SizedBox(height: 8),
-              ...recommendations.map((item) => Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: DsCard(
-                      onTap: () {
-                        _showDetailSheet(context, item);
-                      },
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(item['pair'], style: TextStyle(fontWeight: FontWeight.bold)),
-                              DsBadge(
-                                text: item['type'] == 'BUY' ? 'شراء الذهب عند: ${item['entry']}' : 'بيع الذهب عند: ${item['entry']}',
-                                kind: item['type'] == 'BUY' ? 'ok' : 'bad',
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('جني الأرباح: ${item['target']}', style: TextStyle(fontSize: 13, color: Colors.green, fontWeight: FontWeight.bold)),
-                              Text('وقف الخسارة: ${item['stopLoss']}', style: TextStyle(fontSize: 13, color: Colors.red, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                          SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('الثقة: ${item['confidence']} • ${item['time']}', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                              DsBadge(
-                                text: item['status'] == 'active' ? 'نشطة' : 'محققة',
-                                kind: item['status'] == 'active' ? 'ok' : 'warn',
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  )),
-              SizedBox(height: 80),
-            ],
-          ),
-        ),
+            )),
       ],
     );
   }
@@ -438,7 +480,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class AnalysisScreen extends StatefulWidget {
-  const AnalysisScreen({super.key});
+  AnalysisScreen({super.key});
 
   @override
   State<AnalysisScreen> createState() => _AnalysisScreenState();
@@ -582,7 +624,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 }
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key});
+  SettingsScreen({super.key});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -615,6 +657,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return ListView(
       padding: EdgeInsets.all(16),
+      children: [
+        _buildApiSettingsCard(context),
+        SizedBox(height: 20),
+        _buildExtraOptionsCard(context),
+        SizedBox(height: 80),
+      ],
+    );
+  }
+
+  Widget _buildApiSettingsCard(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DsSection(title: 'إعدادات Gemini API', action: '', onAction: null),
         SizedBox(height: 4),
@@ -650,7 +704,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   DropdownMenuItem(value: 'gemini-1.5-flash', child: Text('Gemini 1.5 Flash (مستقر وسريع)')),
                   DropdownMenuItem(value: 'gemini-1.5-pro', child: Text('Gemini 1.5 Pro')),
                   DropdownMenuItem(value: 'gemini-2.0-flash', child: Text('Gemini 2.0 Flash')),
-                  DropdownMenuItem(value: 'gemini-2.5-pro', child: Text('Gemini 2.5 Pro (الأحدث والأكثر ذكاءً)')),
+                  DropdownMenuItem(value: 'gemini-2.5-pro', child: Text('Gemini 2.5 Pro (الأحدث والأكثر ذكاء)')),
                 ],
                 onChanged: (val) {
                   if (val != null) {
@@ -701,7 +755,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-        SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _buildExtraOptionsCard(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         DsSection(title: 'خيارات إضافية لتحليل الذهب', action: '', onAction: null),
         SizedBox(height: 8),
         DsCard(
@@ -748,14 +809,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
         ),
-        SizedBox(height: 80),
       ],
     );
   }
 }
 
 class UploadSheetContent extends StatefulWidget {
-  const UploadSheetContent({super.key});
+  UploadSheetContent({super.key});
 
   @override
   State<UploadSheetContent> createState() => _UploadSheetContentState();
