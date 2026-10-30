@@ -132,6 +132,20 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _deleteTransaction(TransactionItem item) {
+    setState(() {
+      _expenses.removeWhere((element) => element.id == item.id);
+      if (item.isIncome) {
+        _balance -= item.rawAmount;
+        _budget -= item.rawAmount;
+      } else {
+        _expense -= item.rawAmount;
+        _balance += item.rawAmount;
+      }
+    });
+    dsToast(context, 'تم حذف الحركة بنجاح');
+  }
+
   void _openAddExpenseSheet() {
     dsSheet(
       context,
@@ -343,16 +357,55 @@ class _HomeScreenState extends State<HomeScreen> {
                 final item = catExpenses[index];
                 return Padding(
                   padding: EdgeInsets.only(bottom: 8.0),
-                  child: DsItem(
-                    emoji: item.icon,
-                    title: item.title,
-                    subtitle: item.date,
-                    trailing: Text(
-                      '${item.rawAmount.toStringAsFixed(0)} جنيه سوداني',
-                      style: TextStyle(
-                        color: Color(0xFFFF5252),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                  child: Dismissible(
+                    key: Key(item.id.toString()),
+                    direction: DismissDirection.endToStart,
+                    background: Container(
+                      alignment: Alignment.centerLeft,
+                      padding: EdgeInsets.symmetric(horizontal: 20),
+                      color: Colors.red,
+                      child: Icon(Icons.delete, color: Colors.white),
+                    ),
+                    confirmDismiss: (direction) async {
+                      return await dsConfirm(
+                        context,
+                        'تأكيد الحذف',
+                        'هل تريد حذف هذه الحركة فعلاً؟',
+                      );
+                    },
+                    onDismissed: (direction) {
+                      _deleteTransaction(item);
+                    },
+                    child: DsItem(
+                      emoji: item.icon,
+                      title: item.title,
+                      subtitle: item.date,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            '${item.rawAmount.toStringAsFixed(0)} جنيه سوداني',
+                            style: TextStyle(
+                              color: Color(0xFFFF5252),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                            onPressed: () async {
+                              bool? confirm = await dsConfirm(
+                                context,
+                                'تأكيد الحذف',
+                                'هل تريد حذف هذه الحركة فعلاً؟',
+                              );
+                              if (confirm == true) {
+                                _deleteTransaction(item);
+                              }
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -637,16 +690,55 @@ class _HomeScreenState extends State<HomeScreen> {
                                 index: index,
                                 child: Padding(
                                   padding: EdgeInsets.only(bottom: 8.0),
-                                  child: DsItem(
-                                    emoji: item.icon,
-                                    title: item.title,
-                                    subtitle: '${item.category} • ${item.date}',
-                                    trailing: Text(
-                                      '${item.isIncome ? '+' : '-'}${item.rawAmount.toStringAsFixed(0)} جنيه سوداني',
-                                      style: TextStyle(
-                                        color: item.isIncome ? Color(0xFF10B981) : Color(0xFFFF5252),
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
+                                  child: Dismissible(
+                                    key: Key(item.id.toString()),
+                                    direction: DismissDirection.endToStart,
+                                    background: Container(
+                                      alignment: Alignment.centerLeft,
+                                      padding: EdgeInsets.symmetric(horizontal: 20),
+                                      color: Colors.red,
+                                      child: Icon(Icons.delete, color: Colors.white),
+                                    ),
+                                    confirmDismiss: (direction) async {
+                                      return await dsConfirm(
+                                        context,
+                                        'تأكيد الحذف',
+                                        'هل تريد حذف هذه الحركة فعلاً؟',
+                                      );
+                                    },
+                                    onDismissed: (direction) {
+                                      _deleteTransaction(item);
+                                    },
+                                    child: DsItem(
+                                      emoji: item.icon,
+                                      title: item.title,
+                                      subtitle: '${item.category} • ${item.date}',
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            '${item.isIncome ? '+' : '-'}${item.rawAmount.toStringAsFixed(0)} جنيه سوداني',
+                                            style: TextStyle(
+                                              color: item.isIncome ? Color(0xFF10B981) : Color(0xFFFF5252),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          IconButton(
+                                            icon: Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
+                                            onPressed: () async {
+                                              bool? confirm = await dsConfirm(
+                                                context,
+                                                'تأكيد الحذف',
+                                                'هل تريد حذف هذه الحركة فعلاً؟',
+                                              );
+                                              if (confirm == true) {
+                                                _deleteTransaction(item);
+                                              }
+                                            },
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
