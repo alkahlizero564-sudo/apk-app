@@ -6743,6 +6743,233 @@ render=function(){
 };
 })();
 render();
+/* ===== إضافة: محرر كود احترافي (أرقام أسطر + ألوان + ثيمات) ===== */
+(function(){
+const THEMES={
+  dark:{n:'داكن',bg:'#0b1220',gut:'#0f1a2e',gn:'#4b5a78',tx:'#d6deeb',cm:'#637777',st:'#ecc48d',kw:'#c792ea',ty:'#82aaff',fn:'#7fdbca',nu:'#f78c6c',an:'#ffcb6b',tg:'#7fdbca',at:'#addb67',pu:'#89ddff',cur:'#ffffff',sel:'rgba(130,170,255,.28)'},
+  purple:{n:'بنفسجي',bg:'#1a1033',gut:'#211443',gn:'#6d5a9e',tx:'#e9e2ff',cm:'#7b6fa3',st:'#ffd479',kw:'#ff79c6',ty:'#bd93f9',fn:'#8be9fd',nu:'#ffb86c',an:'#f1fa8c',tg:'#ff79c6',at:'#50fa7b',pu:'#c4b5fd',cur:'#ffffff',sel:'rgba(189,147,249,.3)'},
+  vivid:{n:'ملوّن',bg:'#0d0d0d',gut:'#151515',gn:'#5c5c5c',tx:'#f8f8f2',cm:'#75715e',st:'#e6db74',kw:'#f92672',ty:'#66d9ef',fn:'#a6e22e',nu:'#ae81ff',an:'#fd971f',tg:'#f92672',at:'#a6e22e',pu:'#f8f8f2',cur:'#ffffff',sel:'rgba(255,255,255,.18)'},
+  light:{n:'فاتح',bg:'#ffffff',gut:'#f3f4f8',gn:'#9aa3b5',tx:'#1f2328',cm:'#8b949e',st:'#0a7d32',kw:'#cf222e',ty:'#8250df',fn:'#0550ae',nu:'#0a3069',an:'#953800',tg:'#116329',at:'#0550ae',pu:'#57606a',cur:'#000000',sel:'rgba(84,174,255,.3)'}
+};
+const ORDER=['dark','purple','vivid','light'];
+const KW={
+  flutter:'abstract as assert async await break case catch class const continue covariant default deferred do dynamic else enum export extends extension external factory false final finally for get hide if implements import in interface is late library mixin new null on operator part required rethrow return sealed set show static super switch sync this throw true try typedef var void when while with yield base',
+  python:'False None True and as assert async await break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield self print len range',
+  js:'break case catch class const continue debugger default delete do else export extends false finally for function if import in instanceof let new null return super switch this throw true try typeof undefined var void while with yield async await of'
+};
+const KWS={};Object.keys(KW).forEach(function(k){KWS[k]=new Set(KW[k].split(' '))});
+
+function esc2(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function sp(c,t){return '<span class="h-'+c+'">'+esc2(t)+'</span>'}
+
+/* تلوين Dart / Python / JS */
+function hlCode(src,lang){
+  const kw=KWS[lang]||KWS.js;
+  const re=lang==='python'
+    ?/(#[^\n]*)|("""[\s\S]*?(?:"""|$)|'''[\s\S]*?(?:'''|$)|[rbfRBF]{0,2}"(?:\\.|[^"\\\n])*"?|[rbfRBF]{0,2}'(?:\\.|[^'\\\n])*'?)|(@[A-Za-z_][\w.]*)|(\b\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|([A-Za-z_]\w*)|([{}()\[\];,.=+\-*/<>!&|:%?^~])/g
+    :/(\/\/[^\n]*|\/\*[\s\S]*?(?:\*\/|$))|('''[\s\S]*?(?:'''|$)|"""[\s\S]*?(?:"""|$)|r?"(?:\\.|[^"\\\n])*"?|r?'(?:\\.|[^'\\\n])*'?|`(?:\\.|[^`\\])*`?)|(@[A-Za-z_]\w*)|(\b0x[\da-fA-F]+\b|\b\d[\d_]*(?:\.\d+)?(?:[eE][+-]?\d+)?\b)|([A-Za-z_$][\w$]*)|([{}()\[\];,.=+\-*/<>!&|:%?^~])/g;
+  let out='',last=0,m;
+  while((m=re.exec(src))!==null){
+    if(m.index>last)out+=esc2(src.slice(last,m.index));
+    const t=m[0];
+    if(m[1])out+=sp('cm',t);
+    else if(m[2])out+=sp('st',t);
+    else if(m[3])out+=sp('an',t);
+    else if(m[4])out+=sp('nu',t);
+    else if(m[5]){
+      if(kw.has(t))out+=sp('kw',t);
+      else if(/^[A-Z]/.test(t))out+=sp('ty',t);
+      else if(src.charAt(re.lastIndex)==='(')out+=sp('fn',t);
+      else out+=esc2(t);
+    }
+    else if(m[6])out+=sp('pu',t);
+    else out+=esc2(t);
+    last=re.lastIndex;
+    if(t==='')re.lastIndex++;
+  }
+  return out+esc2(src.slice(last));
+}
+/* تلوين HTML (مع script و style) */
+function hlHtml(src){
+  let out='',i=0;
+  const re=/(<!--[\s\S]*?(?:-->|$))|(<script\b[^>]*>)([\s\S]*?)(<\/script>|$)|(<style\b[^>]*>)([\s\S]*?)(<\/style>|$)|(<\/?[A-Za-z][^>]*>?)/g;
+  let m;
+  while((m=re.exec(src))!==null){
+    if(m.index>i)out+=esc2(src.slice(i,m.index));
+    if(m[1])out+=sp('cm',m[1]);
+    else if(m[2]){out+=tag(m[2])+hlCode(m[3],'js')+(m[4]?tag(m[4]):'')}
+    else if(m[5]){out+=tag(m[5])+hlCss(m[6])+(m[7]?tag(m[7]):'')}
+    else if(m[8])out+=tag(m[8]);
+    i=re.lastIndex;
+    if(m[0]==='')re.lastIndex++;
+  }
+  return out+esc2(src.slice(i));
+}
+function tag(t){
+  return t.replace(/^(<\/?)([A-Za-z][\w-]*)|([\w-:@]+)(=)("[^"]*"?|'[^']*'?)|("[^"]*"|'[^']*')|([<>&])/g,function(all,a,b,c,d,e,f,g){
+    if(b)return esc2(a)+'<span class="h-tg">'+b+'</span>';
+    if(c)return '<span class="h-at">'+esc2(c)+'</span>'+d+'<span class="h-st">'+esc2(e)+'</span>';
+    if(f)return '<span class="h-st">'+esc2(f)+'</span>';
+    return esc2(g);
+  }).replace(/(<span class="h-tg">)?(\/?&gt;)$/,'<span class="h-pu">$2</span>');
+}
+function hlCss(s){
+  return esc2(s).replace(/(\/\*[\s\S]*?\*\/)|([\w-]+)(\s*:)|(#[\da-fA-F]{3,8}\b|\b\d+(?:\.\d+)?(?:px|rem|em|%|vh|vw|s|ms)?\b)/g,function(a,c,p,col,n){
+    if(c)return '<span class="h-cm">'+c+'</span>';
+    if(p)return '<span class="h-at">'+p+'</span>'+col;
+    return '<span class="h-nu">'+n+'</span>';
+  });
+}
+function highlight(src,lang){
+  if(src.length>400000)return esc2(src);
+  if(lang==='html')return hlHtml(src);
+  return hlCode(src,lang==='python'?'python':lang==='flutter'?'flutter':'js');
+}
+
+/* الأنماط */
+const css=document.createElement('style');
+css.textContent=`
+.cx-ed{position:relative;margin-top:8px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--ed-bg)}
+.cx-ed textarea.code{position:relative;z-index:2;display:block;margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:transparent!important;-webkit-text-fill-color:transparent;caret-color:var(--ed-cur);box-shadow:none!important;resize:none;padding-left:calc(var(--ed-gw) + 10px)!important;font-size:var(--ed-fs)!important;line-height:1.6!important;white-space:pre;overflow:auto;font-family:ui-monospace,Menlo,Consolas,"Roboto Mono",monospace!important;tab-size:2}
+.cx-ed textarea.code::selection{background:var(--ed-sel);color:transparent;-webkit-text-fill-color:transparent}
+.cx-ed pre.cx-hl,.cx-ed .cx-gut{position:absolute;top:0;bottom:0;margin:0;overflow:hidden;pointer-events:none;font-size:var(--ed-fs);line-height:1.6;font-family:ui-monospace,Menlo,Consolas,"Roboto Mono",monospace;tab-size:2}
+.cx-ed pre.cx-hl{left:0;right:0;z-index:1;white-space:pre;color:var(--ed-tx);direction:ltr;text-align:left;padding-left:calc(var(--ed-gw) + 10px)}
+.cx-ed .cx-gut{left:0;width:var(--ed-gw);z-index:3;background:var(--ed-gut);color:var(--ed-gn);text-align:right;direction:ltr;border-right:1px solid rgba(127,127,127,.18)}
+.cx-ed .cx-gut div{padding-right:6px;white-space:pre}
+.cx-ed .cx-gut div.on{color:#fff;background:#e11d48}
+.cx-ed .cx-tb{display:flex;gap:6px;justify-content:flex-end;padding:6px 8px;background:var(--ed-gut);border-bottom:1px solid rgba(127,127,127,.18)}
+.cx-ed .cx-box{position:relative}
+.cx-ed .cx-tb button{width:auto;padding:4px 9px;font-size:12px;border-radius:9px;background:rgba(127,127,127,.22);color:var(--ed-tx);border:0;margin:0;min-height:0;box-shadow:none}
+.cx-ed .h-cm{color:var(--ed-cm);font-style:italic}.cx-ed .h-st{color:var(--ed-st)}.cx-ed .h-kw{color:var(--ed-kw)}.cx-ed .h-ty{color:var(--ed-ty)}
+.cx-ed .h-fn{color:var(--ed-fn)}.cx-ed .h-nu{color:var(--ed-nu)}.cx-ed .h-an{color:var(--ed-an)}.cx-ed .h-tg{color:var(--ed-tg)}.cx-ed .h-at{color:var(--ed-at)}.cx-ed .h-pu{color:var(--ed-pu)}
+.cx-thp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.cx-thp button{text-align:left;direction:ltr;padding:8px;border-radius:12px;font-family:ui-monospace,monospace;font-size:11px;line-height:1.5;border:2px solid transparent;white-space:pre;overflow:hidden}
+.cx-thp button.on{border-color:var(--pri,#2f80ff)}
+`;
+document.head.appendChild(css);
+
+function th(){return THEMES[S.keys.edTheme]||THEMES.dark}
+function fs(){const v=+S.keys.edFs;return v>=9&&v<=22?v:13}
+function vars(el){
+  const t=th(),f=fs();
+  el.style.setProperty('--ed-fs',f+'px');
+  ['bg','gut','gn','tx','cm','st','kw','ty','fn','nu','an','tg','at','pu','cur','sel'].forEach(function(k){el.style.setProperty('--ed-'+k,t[k])});
+}
+
+const eds=[];
+function lineCount(s){let n=1;for(let i=0;i<s.length;i++)if(s.charCodeAt(i)===10)n++;return n}
+
+function attach(ta,i){
+  if(!ta||ta.dataset.cxEd)return;
+  ta.dataset.cxEd='1';
+  ta.setAttribute('wrap','off');ta.spellcheck=false;
+  const w=document.createElement('div');w.className='cx-ed';
+  const gut=document.createElement('div');gut.className='cx-gut';
+  const pre=document.createElement('pre');pre.className='cx-hl';
+  const tb=document.createElement('div');tb.className='cx-tb';
+  tb.innerHTML='<button type="button" data-a="go">↧ سطر</button><button type="button" data-a="fs-">A-</button><button type="button" data-a="fs+">A+</button><button type="button" data-a="th">🎨</button>';
+  const box=document.createElement('div');box.className='cx-box';
+  ta.parentNode.insertBefore(w,ta);
+  w.appendChild(tb);w.appendChild(box);
+  box.appendChild(gut);box.appendChild(pre);box.appendChild(ta);
+  vars(w);
+  const E={i:i,ta:ta,w:w,gut:gut,pre:pre,last:null,lines:0,mark:0};
+  eds.push(E);
+  function sync(){
+    const pt=parseFloat(getComputedStyle(ta).paddingTop)||11;
+    pre.style.paddingTop=pt+'px';pre.style.paddingBottom=pt+'px';
+    gut.style.paddingTop=pt+'px';
+    pre.scrollTop=ta.scrollTop;pre.scrollLeft=ta.scrollLeft;gut.scrollTop=ta.scrollTop;
+  }
+  E.sync=sync;
+  ta.addEventListener('scroll',sync,{passive:true});
+  let tmr=0;
+  ta.addEventListener('input',function(){clearTimeout(tmr);tmr=setTimeout(function(){paint(E)},90)});
+  tb.addEventListener('click',function(ev){
+    const b=ev.target.closest('button');if(!b)return;
+    const a=b.dataset.a;
+    if(a==='th'){const k=ORDER[(ORDER.indexOf(S.keys.edTheme||'dark')+1)%ORDER.length];S.keys.edTheme=k;save();restyle();toast('ثيم المحرر: '+THEMES[k].n)}
+    else if(a==='fs+'||a==='fs-'){S.keys.edFs=Math.max(9,Math.min(22,fs()+(a==='fs+'?1:-1)));save();restyle()}
+    else if(a==='go'){const n=parseInt(prompt('رقم السطر:',''),10);if(n>0)goLine(i,n)}
+  });
+  const mo=new MutationObserver(function(){w.style.display=ta.style.display==='none'?'none':'block'});
+  mo.observe(ta,{attributes:true,attributeFilter:['style']});
+  w.style.display=ta.style.display==='none'?'none':'block';
+  paint(E);
+}
+
+function paint(E){
+  const v=E.ta.value;
+  if(v===E.last)return;
+  E.last=v;
+  const lang=langOf(E.i);
+  E.pre.innerHTML=highlight(v,lang)+'\n\n';
+  const n=lineCount(v);
+  if(n!==E.lines){
+    E.lines=n;
+    const gw=Math.max(2,String(n).length)*0.62*fs()+16;
+    E.w.style.setProperty('--ed-gw',Math.ceil(gw)+'px');
+    let h='';for(let k=1;k<=n;k++)h+='<div'+(k===E.mark?' class="on"':'')+'>'+k+'</div>';
+    E.gut.innerHTML=h+'<div> </div><div> </div>';
+  }
+  E.sync();
+}
+
+function restyle(){
+  eds.forEach(function(E){if(!document.body.contains(E.w))return;vars(E.w);E.lines=0;E.last=null;paint(E)});
+  const c=$('#cx-ed-card');if(c){c.remove();render()}
+}
+
+function goLine(i,n){
+  const E=eds.filter(function(e){return e.i===i&&document.body.contains(e.w)}).pop();
+  if(!E)return toast('افتح صفحة الكود أولاً');
+  const lines=E.ta.value.split('\n');
+  n=Math.min(n,lines.length);
+  let pos=0;for(let k=0;k<n-1;k++)pos+=lines[k].length+1;
+  E.mark=n;E.lines=0;E.last=null;paint(E);
+  const lh=fs()*1.6;
+  try{E.ta.focus({preventScroll:true})}catch(e){E.ta.focus()}
+  try{E.ta.setSelectionRange(pos,pos+lines[n-1].length)}catch(e){}
+  E.ta.scrollTop=Math.max(0,(n-4)*lh);E.ta.scrollLeft=0;
+  E.sync();
+  setTimeout(function(){E.ta.scrollTop=Math.max(0,(n-4)*lh);E.sync()},60);
+}
+window.cxGoLine=goLine;
+
+/* لو الكود اتغيّر من برّه (إصلاح تلقائي، ذكاء اصطناعي...) */
+setInterval(function(){
+  for(let k=eds.length-1;k>=0;k--){
+    const E=eds[k];
+    if(!document.body.contains(E.w)){eds.splice(k,1);continue}
+    if(E.w.style.display!=='none'&&E.ta.value!==E.last)paint(E);
+  }
+},700);
+
+function sample(t){
+  return '<span style="color:'+t.kw+'">class</span> <span style="color:'+t.ty+'">Home</span> {\n  <span style="color:'+t.an+'">@override</span>\n  <span style="color:'+t.fn+'">build</span>() =&gt; <span style="color:'+t.st+'">\'مرحبا\'</span>;\n  <span style="color:'+t.cm+'">// '+t.n+'</span> <span style="color:'+t.nu+'">42</span>\n}';
+}
+window.cxEdTheme=function(k){S.keys.edTheme=k;save();restyle();toast('ثيم المحرر: '+THEMES[k].n)};
+
+const _render32=render;
+render=function(){
+  _render32();
+  if(tab==='code'&&!S.keys.edOff){
+    S.apps.forEach(function(a,i){attach($('#code'+i),i)});
+  }
+  if(tab==='keys'){
+    const m=$('#main');
+    if(!m||$('#cx-ed-card'))return;
+    const cur=S.keys.edTheme||'dark';
+    const c=document.createElement('div');c.className='card';c.id='cx-ed-card';
+    c.innerHTML='<h2>🎨 محرر الكود</h2>'
+      +'<div class="cx-thp">'+ORDER.map(function(k){const t=THEMES[k];return '<button type="button" class="'+(k===cur?'on':'')+'" style="background:'+t.bg+';color:'+t.tx+'" onclick="cxEdTheme(\''+k+'\')">'+sample(t)+'</button>'}).join('')+'</div>'
+      +'<p class="note">حجم الخط: '+fs()+' — غيّره من زرّي A- و A+ فوق المحرر. زر «↧ سطر» يوديك لرقم سطر (مفيد لما الفحص يقول خطأ في سطر معيّن).</p>'
+      +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.edOff?'':'checked')+' onchange="S.keys.edOff=!this.checked;save();toast(\'افتح صفحة الكود من جديد\')"> تشغيل المحرر الملوّن</label>';
+    m.appendChild(c);
+  }
+};
+})();
+render();
 </script>
 </body>
 </html>
