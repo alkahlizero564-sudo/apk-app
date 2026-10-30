@@ -7827,6 +7827,133 @@ const _pp=window.cxProj;
 window.cxProj=function(){_pp.apply(this,arguments);document.querySelectorAll('#sheet button[onclick="cxPjAdd()"]').forEach(function(b){b.remove()})};
 })();
 render();
+/* ===== إضافة: بريد التأكيد (ربط Gmail بـ Supabase + رمز 6 أرقام + قواعد Firebase) ===== */
+(function(){
+const TPL_HTML=function(title,line){return '<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;max-width:460px;margin:auto;padding:28px;background:#f6f7fb;border-radius:18px;text-align:center"><h2 style="margin:0 0 6px;color:#111827">'+title+'</h2><p style="color:#6b7280;margin:0 0 18px">'+line+'</p><div style="font-size:34px;letter-spacing:10px;font-weight:800;background:#fff;border-radius:14px;padding:16px 10px;color:#111827;direction:ltr">{{ .Token }}</div><p style="color:#9ca3af;font-size:12px;margin-top:18px">الرمز صالح لفترة قصيرة. لو ما طلبته تجاهل الرسالة.</p></div>'};
+
+function errAr(m){
+  m=String(m||'');
+  if(/not authorized/i.test(m))return 'Supabase رفض الإيميل: البريد الخاص (SMTP) لسه ما مربوط. اربط Gmail أولاً.';
+  if(/rate limit|too many/i.test(m))return 'طلبات كتيرة في وقت قصير. أنتظر دقايق وجرّب تاني (الحد الافتراضي 30 رسالة في الساعة).';
+  if(/sending|smtp|535|auth/i.test(m))return 'Supabase ما قدر يرسل عبر خادم البريد. مع Gmail: راجع الإيميل وكلمة سر التطبيقات (16 حرف). مع Brevo: راجع Login ومفتاح SMTP، وإن إيميل المُرسِل متحقق منه في Brevo ← Senders.';
+  if(/401|unauthor|JWT/i.test(m))return 'مفتاح Supabase (Access Token) غلط أو منتهي.';
+  return m;
+}
+async function sbApi(path,opt){
+  if(!S.keys.sbToken||!S.keys.sbRef)throw new Error('أدخل مفتاح Supabase ورقم المشروع (Ref) في بطاقة Supabase أولاً');
+  opt=opt||{};
+  const r=await fetch('https://api.supabase.com/v1/projects/'+S.keys.sbRef+path,{method:opt.method||'GET',headers:{Authorization:'Bearer '+S.keys.sbToken,'Content-Type':'application/json'},body:opt.body?JSON.stringify(opt.body):undefined});
+  const t=await r.text();let j;try{j=JSON.parse(t)}catch(e){j={message:t}}
+  if(!r.ok)throw new Error(errAr(j.message||j.msg||('خطأ '+r.status)));
+  return j;
+}
+function out(h,bad){const o=$('#ml-out');if(o){o.innerHTML=h;o.style.color=bad?'#f87171':'inherit'}}
+
+window.cxMailProv=function(v){S.keys.mailProv=v;save();const c=$('#cx-mail');if(c){c.remove();render();const n=$('#cx-mail');if(n)n.scrollIntoView({block:'start'})}};
+window.cxMailCheck=function(btn){
+  busy(btn,async function(){
+    const c=await sbApi('/config/auth');
+    const smtp=!!c.smtp_host;
+    const code=/\.Token/.test(String(c.mailer_templates_magic_link_content||''))&&/\.Token/.test(String(c.mailer_templates_confirmation_content||''));
+    out('البريد الخاص (SMTP): '+(smtp?'✔ مربوط ('+esc(c.smtp_host)+' — '+esc(c.smtp_admin_email||'')+')':'✖ غير مربوط، فالرسائل ما بتوصل للزبائن')
+      +'<br>رمز 6 أرقام في الرسائل: '+(code?'✔ مفعّل':'✖ الرسائل فيها رابط بس')
+      +'<br>تأكيد البريد عند التسجيل: '+(c.mailer_autoconfirm?'مقفول (أي زول يدخل بدون تأكيد)':'مفعّل')
+      +'<br>حد الرسائل في الساعة: '+esc(c.rate_limit_email_sent==null?'-':c.rate_limit_email_sent),!smtp);
+  });
+};
+
+window.cxMailSetup=function(btn){
+  busy(btn,async function(){
+    const prov=S.keys.mailProv||'gmail';
+    const em=($('#ml-em').value||'').trim().toLowerCase();
+    const pw=($('#ml-pw').value||'').trim().replace(/\s+/g,prov==='gmail'?'':' ').trim();
+    const nm=($('#ml-nm').value||'').trim()||'تطبيقي';
+    const lg=prov==='brevo'?($('#ml-lg').value||'').trim():em;
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em))throw new Error('اكتب إيميل المُرسِل صحيح');
+    if(prov==='gmail'){
+      if(!/@gmail\.com$/.test(em))throw new Error('مع Gmail لازم الإيميل ينتهي بـ @gmail.com');
+      if(pw.length!==16)throw new Error('كلمة سر التطبيقات لازم تكون 16 حرف (من صفحة App passwords في Google)');
+    }else{
+      if(/^xkeysib-/.test(pw))throw new Error('المفتاح ده (xkeysib-) مفتاح واجهة برمجة من Brevo، وSupabase محتاج مفتاح SMTP (بيبدأ بـ xsmtpsib-). ولّده من Brevo: الإعدادات ← SMTP ← Generate a new SMTP key');
+      if(!/^xsmtpsib-/.test(pw))throw new Error('الصق مفتاح SMTP من Brevo (بيبدأ بـ xsmtpsib-)');
+      if(!/@/.test(lg))throw new Error('اكتب «Login» من صفحة SMTP في Brevo');
+    }
+    const code=$('#ml-code').checked;
+    const smtp={external_email_enabled:true,mailer_autoconfirm:false,smtp_admin_email:em,smtp_host:prov==='brevo'?'smtp-relay.brevo.com':'smtp.gmail.com',smtp_port:prov==='brevo'?587:465,smtp_user:lg,smtp_pass:pw,smtp_sender_name:nm};
+    try{await sbApi('/config/auth',{method:'PATCH',body:smtp})}
+    catch(e){smtp.smtp_port=String(smtp.smtp_port);await sbApi('/config/auth',{method:'PATCH',body:smtp})}
+    let tplOk=true;
+    if(code){
+      const t={mailer_otp_length:6,
+        mailer_subjects_confirmation:'رمز تأكيد حسابك في '+nm,
+        mailer_templates_confirmation_content:TPL_HTML('رمز تأكيد الحساب','اكتب الرمز ده في التطبيق لتأكيد بريدك'),
+        mailer_subjects_magic_link:'رمز الدخول إلى '+nm,
+        mailer_templates_magic_link_content:TPL_HTML('رمز الدخول','اكتب الرمز ده في التطبيق لتسجيل الدخول'),
+        mailer_subjects_recovery:'رمز استعادة كلمة السر - '+nm,
+        mailer_templates_recovery_content:TPL_HTML('استعادة كلمة السر','اكتب الرمز ده في التطبيق لتعيين كلمة سر جديدة')};
+      try{await sbApi('/config/auth',{method:'PATCH',body:t})}catch(e){tplOk=false}
+    }
+    S.keys.mailEm=em;S.keys.mailNm=nm;if(prov==='brevo')S.keys.mailLg=lg;save();
+    $('#ml-pw').value='';
+    out('✔ اتربط '+(prov==='brevo'?'Brevo':'Gmail')+' بـ Supabase'+(code?(tplOk?' والرسائل بقت فيها رمز 6 أرقام':'، لكن تعديل قالب الرسالة ما نجح، فالرسائل لسه فيها رابط'):'')+'. جرّب «أرسل رمز تجربة» تحت.',code&&!tplOk);
+  });
+};
+
+window.cxMailTest=function(btn){
+  busy(btn,async function(){
+    const to=($('#ml-to').value||'').trim();
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to))throw new Error('اكتب الإيميل البيوصله الرمز');
+    const ks=await sbApi('/api-keys');
+    const anon=(Array.isArray(ks)?ks:[]).find(function(k){return k.name==='anon'||k.type==='publishable'});
+    if(!anon)throw new Error('ما لقيت مفتاح anon للمشروع');
+    const r=await fetch('https://'+S.keys.sbRef+'.supabase.co/auth/v1/otp',{method:'POST',headers:{apikey:anon.api_key,'Content-Type':'application/json'},body:JSON.stringify({email:to,create_user:true})});
+    const t=await r.text();let j={};try{j=JSON.parse(t)}catch(e){}
+    if(!r.ok)throw new Error(errAr(j.msg||j.message||j.error_description||t));
+    out('📨 اترسل! افتح '+esc(to)+' (وشوف مجلد Spam كمان). لو وصلك رمز من 6 أرقام، يعني كل شي شغّال ✔');
+  });
+};
+
+/* قواعد التحقق بالبريد للذكاء الاصطناعي */
+const RULE='\n\nقواعد التحقق بالبريد (إلزامية لو التطبيق فيه تسجيل أو دخول بالبريد):\n'
+ +'- Firebase لا يرسل رموزاً بالبريد إطلاقاً. لا تعمل خانات رمز مع Firebase. استخدم createUserWithEmailAndPassword ثم sendEmailVerification، ثم شاشة «افتح بريدك واضغط رابط التأكيد» فيها: زر «تحققت ✓» ينفّذ reload للمستخدم ثم يفحص emailVerified، وزر «أعد الإرسال» يتفعّل بعد 60 ثانية، وتنبيه «لو ما لقيت الرسالة شوف مجلد Spam»، وبعد التأكيد يدخل الرئيسية.\n'
+ +'- Supabase: بعد signUp أو signInWithOtp اعرض 6 خانات رمز (أرقام فقط، انتقال تلقائي بين الخانات، لصق الرمز كامل)، وتحقق بـ verifyOtp({email, token, type: \'email\'}) (وبعد signUp جرّب type: \'signup\' لو فشل)، مع زر «أعد إرسال الرمز» بعد 60 ثانية وعداد تنازلي.\n'
+ +'- اعرض رسائل خطأ عربية واضحة: رمز غلط، انتهت صلاحية الرمز، طلبات كتيرة أنتظر شوية، البريد غير صحيح، لا يوجد اتصال.\n'
+ +'- لا تكتب أي مفاتيح سرية (service_role أو كلمات سر) داخل التطبيق.';
+const _aiM=ai;
+ai=function(p){
+  if(typeof p==='string'&&p.indexOf('قواعد التحقق بالبريد')<0&&/firebase|supabase|بريد|إيميل|ايميل|email|تسجيل|دخول|OTP|رمز التحقق|رمز تأكيد/i.test(p)&&/من الصفر|وصف التطبيق|دور التطبيق|التعديل المطلوب|بمستوى خبير|أصلح|صلّح/.test(p))p+=RULE;
+  return _aiM(p);
+};
+
+/* البطاقة */
+const _rM=render;
+render=function(){
+  _rM();
+  if(tab!=='keys')return;
+  const m=$('#main');if(!m||$('#cx-mail'))return;
+  const br=(S.keys.mailProv||'gmail')==='brevo';
+  const c=document.createElement('div');c.className='card';c.id='cx-mail';
+  c.innerHTML='<h2>📧 بريد التأكيد (رموز التحقق)</h2>'
+   +'<p class="note" style="margin-top:0"><b>Supabase:</b> بريده المجاني بيرسل بس لأعضاء فريقك، فالزبائن ما بيوصلهم رمز. هنا بتربط Gmail بتاعك عشان الرموز توصل لأي زول (حوالي 500 رسالة في اليوم).<br><b>Firebase:</b> ما بيرسل رموز أصلاً، بيرسل رابط تأكيد. الأداة بقت تخلي الذكاء الاصطناعي يعمل شاشة «افتح بريدك» وزر «تحققت» بدل خانات الرمز.</p>'
+   +'<div class="row" style="margin:6px 0 4px"><button class="'+(br?'sec':'acc')+'" onclick="cxMailProv(\'gmail\')">Gmail</button><button class="'+(br?'acc':'sec')+'" onclick="cxMailProv(\'brevo\')">Brevo</button></div>'
+   +(br
+     ?'<details><summary style="cursor:pointer;font-weight:700">🔑 كيف أجيب بيانات Brevo؟</summary><p class="note">1) في Brevo افتح Settings ← SMTP & API ← تبويب SMTP. 2) انسخ «Login» (شكله xxxx@smtp-brevo.com). 3) اضغط «Generate a new SMTP key» وانسخ المفتاح (بيبدأ بـ xsmtpsib-). ⚠ مفتاح API (xkeysib-) ما بيشتغل هنا. 4) في Senders أضف إيميلك وأكّده من الرسالة البتجيك. بدون دومين، بعض الرسائل ممكن تمشي Spam.</p></details>'
+      +'<label>Login (من صفحة SMTP في Brevo)</label><input id="ml-lg" dir="ltr" placeholder="xxxx@smtp-brevo.com" value="'+esc(S.keys.mailLg||'')+'">'
+      +'<label>إيميل المُرسِل (متحقق منه في Brevo ← Senders)</label><input id="ml-em" type="email" dir="ltr" placeholder="you@gmail.com" value="'+esc(S.keys.mailEm||'')+'">'
+      +'<label>مفتاح SMTP (xsmtpsib-...)</label><input id="ml-pw" type="password" dir="ltr" placeholder="xsmtpsib-..." autocomplete="off">'
+     :'<details><summary style="cursor:pointer;font-weight:700">🔑 كيف أجيب كلمة سر التطبيقات من Google؟</summary><p class="note">1) افتح myaccount.google.com/security وفعّل «التحقق بخطوتين». 2) افتح myaccount.google.com/apppasswords. 3) اكتب أي اسم (مثلاً Supabase) واضغط إنشاء. 4) انسخ الـ 16 حرف وألصقها هنا. ما بتتحفظ في الأداة.</p></details>'
+      +'<label>إيميل Gmail</label><input id="ml-em" type="email" dir="ltr" placeholder="you@gmail.com" value="'+esc(S.keys.mailEm||'')+'">'
+      +'<label>كلمة سر التطبيقات (16 حرف)</label><input id="ml-pw" type="password" dir="ltr" placeholder="xxxx xxxx xxxx xxxx" autocomplete="off">')
+   +'<label>اسم المُرسِل (يظهر للزبون)</label><input id="ml-nm" placeholder="مثلاً: حجز الرغيف" value="'+esc(S.keys.mailNm||'')+'">'
+   +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx);margin-top:8px"><input id="ml-code" type="checkbox" checked style="width:22px;height:22px;flex:none"> الرسالة فيها رمز من 6 أرقام (بدل الرابط)</label>'
+   +'<div class="row" style="margin-top:10px"><button class="acc" onclick="cxMailSetup(this)">⚙️ اربط البريد</button><button class="sec" onclick="cxMailCheck(this)">🔍 افحص الحالة</button></div>'
+   +'<label style="margin-top:12px">جرّب: الإيميل البيوصله الرمز</label><input id="ml-to" type="email" dir="ltr" placeholder="test@gmail.com" value="'+esc(S.keys.mailEm||'')+'">'
+   +'<button class="sec" style="width:100%;margin-top:8px" onclick="cxMailTest(this)">📨 أرسل رمز تجربة</button>'
+   +'<div id="ml-out" class="note" style="margin-top:10px;line-height:1.9"></div>';
+  m.appendChild(c);
+};
+})();
+render();
 </script>
 </body>
 </html>
