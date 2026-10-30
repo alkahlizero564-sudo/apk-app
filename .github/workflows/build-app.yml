@@ -78,32 +78,43 @@ jobs:
         if: steps.type.outputs.type == 'capacitor'
         env:
           APPN: ${{ steps.find.outputs.name }}
+          KEYS_TOKEN: ${{ secrets.KEYS_TOKEN }}
         run: |
-          mkdir -p keys
-          KS=keys/$APPN.keystore
-          PR=keys/$APPN.properties
+          if [ -z "$KEYS_TOKEN" ]; then echo "::error::KEYS_TOKEN secret is missing (Settings > Secrets and variables > Actions)"; exit 1; fi
+          OWNER="${GITHUB_REPOSITORY%%/*}"
+          KR="$RUNNER_TEMP/keysrepo"
+          rm -rf "$KR"
+          git clone --depth 1 "https://x-access-token:$KEYS_TOKEN@github.com/$OWNER/apk-app-backup.git" "$KR" || { echo "::error::cannot open private repo $OWNER/apk-app-backup"; exit 1; }
+          mkdir -p "$KR/keys" keys
+          KS="$KR/keys/$APPN.keystore"
+          PR="$KR/keys/$APPN.properties"
           if [ ! -f "$KS" ] || [ ! -f "$PR" ]; then
             PASS=$(openssl rand -hex 12)
             rm -f "$KS" "$PR"
             keytool -genkeypair -keystore "$KS" -storetype PKCS12 -storepass "$PASS" -keypass "$PASS" -alias appkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=$APPN, O=MyApps, C=SD"
             echo "pass=$PASS" > "$PR"
+            cd "$KR"
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add -f "$KS" "$PR"
+            git add -f "keys/$APPN.keystore" "keys/$APPN.properties"
             git commit -m "add signing key for $APPN"
+            BR=$(git rev-parse --abbrev-ref HEAD)
             PUSHED=0
             for n in 1 2 3 4 5; do
-              git fetch origin "$GITHUB_REF_NAME"
-              git rebase --autostash "origin/$GITHUB_REF_NAME" || git rebase --abort
-              if git push origin "HEAD:$GITHUB_REF_NAME"; then PUSHED=1; break; fi
+              git pull --rebase origin "$BR" && git push origin "HEAD:$BR" && { PUSHED=1; break; }
               echo "push attempt $n failed"
               sleep 5
             done
-            if [ "$PUSHED" != "1" ]; then echo "failed to save the signing key to the repo"; exit 1; fi
-            echo "NEW signing key created for $APPN"
+            cd "$GITHUB_WORKSPACE"
+            if [ "$PUSHED" != "1" ]; then echo "::error::failed to save the signing key to apk-app-backup"; exit 1; fi
+            echo "NEW private signing key created for $APPN"
           else
-            echo "using existing signing key for $APPN"
+            echo "using private signing key for $APPN"
           fi
+          echo "::add-mask::$(grep '^pass=' "$PR" | cut -d= -f2)"
+          rm -f "keys/$APPN.keystore" "keys/$APPN.properties"
+          cp "$KS" "keys/$APPN.keystore"
+          cp "$PR" "keys/$APPN.properties"
       - name: Build
         id: build
         if: steps.type.outputs.type == 'capacitor'
@@ -230,4 +241,4 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.find.outputs.name }}-build-${{ github.run_number }}
-          files: ${{ steps.find.outputs.dir }}/${{ steps.build.outputs.apk || steps.type.outputs.apk }} 
+          files: ${{ steps.find.outputs.dir }}/${{ steps.build.outputs.apk || steps.type.outputs.apk }}
