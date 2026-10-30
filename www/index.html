@@ -5997,6 +5997,266 @@ render=function(){
   m.appendChild(c);
 };
 })();
+render();/* ===== إضافة: فحص الأداة وتقرير التشخيص ===== */
+(function(){
+
+/* ---------- سجل الأخطاء ---------- */
+const LOGK='apkapp_diag';
+function logGet(){try{return JSON.parse(localStorage.getItem(LOGK)||'[]')}catch(e){return []}}
+function logAdd(kind,m){
+  try{
+    const a=logGet();
+    a.push({t:Date.now(),k:kind,m:String(m).slice(0,300)});
+    while(a.length>40)a.shift();
+    localStorage.setItem(LOGK,JSON.stringify(a));
+  }catch(e){}
+}
+window.addEventListener('error',function(e){logAdd('خطأ',(e.message||'')+(e.lineno?' (سطر '+e.lineno+')':''))});
+window.addEventListener('unhandledrejection',function(e){logAdd('خطأ',(e.reason&&e.reason.message)||e.reason)});
+const _toast0=toast;
+toast=function(m){
+  if(/تعذّر|فشل|خطأ|غير صحيح|ما قدرت|انقطع|غير موجود|يرفض|Error|error/.test(String(m)))logAdd('رسالة',m);
+  return _toast0(m);
+};
+
+/* ---------- أدوات ---------- */
+const IC={ok:'✔',warn:'⚠',bad:'✖',info:'ℹ'};
+function item(arr,s,t){arr.push({s:s,t:t})}
+function scriptText(){
+  let t='';
+  document.querySelectorAll('script').forEach(function(s){if(!s.src)t+=s.textContent+'\n'});
+  return t;
+}
+function blocks(){
+  const t=scriptText(),re=/\/\*\s*=====\s*إضافة:\s*([^=]+?)\s*=====\s*\*\//g,out=[];
+  let m;
+  while((m=re.exec(t))!==null)out.push(m[1].trim());
+  return out;
+}
+async function ghFile(repo,br,p){
+  try{
+    const f=await gh('/repos/'+repo+'/contents/'+p+'?ref='+br);
+    return decodeURIComponent(escape(atob(String(f.content||'').replace(/\s/g,''))));
+  }catch(e){if(e.status===404)return null;throw e}
+}
+function dt(t){try{return new Date(t).toLocaleString('ar-u-nu-latn')}catch(e){return ''}}
+
+/* الكتلة الأولى لازم تكون بعد الثانية */
+const ORDER=[
+  ['مراجعة توافق','نظام متكامل بزر واحد'],
+  ['تطبيقات مستقلة','نظام متكامل بزر واحد'],
+  ['مشاريعي','نظام متكامل بزر واحد'],
+  ['نظام تصميم احترافي لتطبيقات Flutter','نظام متكامل بزر واحد'],
+  ['التصميم أولاً','نظام تصميم احترافي جاهز'],
+  ['التصميم أولاً','مراجعة توافق'],
+  ['التصميم أولاً','نظام تصميم احترافي لتطبيقات Flutter'],
+  ['فحص بصري','التصميم أولاً'],
+  ['حتى 100 محاولة','فحص قبل البناء المتقدم'],
+  ['حتى 100 محاولة','فحص Flutter و Python قبل البناء'],
+  ['فحص قبل البناء المتقدم','فحص Flutter و Python قبل البناء'],
+  ['نظام تصميم احترافي جاهز','تصميم Pro Max']
+];
+
+/* ---------- الفحص ---------- */
+async function diagnose(){
+  const R=[],K=S.keys;
+
+  /* 1) الكتل */
+  const bl=blocks(),A=[];
+  item(A,'info','عدد الكتل المركّبة: '+bl.length);
+  const cnt={};
+  bl.forEach(function(b){cnt[b]=(cnt[b]||0)+1});
+  Object.keys(cnt).forEach(function(b){
+    if(cnt[b]>1)item(A,'bad','مكررة '+cnt[b]+' مرات: «'+b+'» (خلّي نسخة واحدة فقط، الأحدث)');
+  });
+  const pos=function(k){let p=-1;bl.forEach(function(b,i){if(b.indexOf(k)>-1)p=i});return p};
+  ORDER.forEach(function(r){
+    const a=pos(r[0]),b=pos(r[1]);
+    if(a>-1&&b>-1&&a<b)item(A,'bad','ترتيب غلط: «'+bl[a]+'» لازم تكون بعد «'+bl[b]+'»');
+  });
+  if(pos('حماية ملفات بناء')>-1)item(A,'warn','كتلة «حماية ملفات بناء Flutter و Python» تمنع الأداة من تحديث ملفات البناء تلقائياً، فلازم تحدّثها يدوياً');
+  if(pos('فصل المستودعات')>-1&&!String(K.pubRepo||'').trim())item(A,'info','كتلة «فصل المستودعات» مركّبة لكنها غير مفعّلة (ما بتأثر)');
+  if(pos('حتى 100 محاولة')>-1){
+    ['فحص Flutter و Python قبل البناء','فحص قبل البناء المتقدم'].forEach(function(k){
+      const p=pos(k);
+      if(p>-1)item(A,'info','«'+bl[p]+'» قديمة ومعطّلة تلقائياً، تقدر تمسحها لتخفيف الملف');
+    });
+  }
+  const fns=['ai','put','gh','buildAny','build','buildNative','render','clean','progress','setCode','preview'];
+  const miss=fns.filter(function(f){return typeof window[f]!=='function'});
+  item(A,miss.length?'bad':'ok',miss.length?'دوال أساسية مفقودة: '+miss.join('، '):'الدوال الأساسية موجودة');
+  item(A,'info','حجم كود الأداة: '+Math.round(scriptText().length/1024)+' كيلوبايت');
+  R.push({sec:'🧩 الكتل المركّبة',items:A,list:bl});
+
+  /* 2) المفاتيح */
+  const B=[],prov=K.provider||'gemini';
+  const aiK={gemini:!!(K.gemini||K.gemini2||K.gemini3),claude:!!K.claude,openrouter:!!(K.orKey&&K.orModel),groq:!!K.gqKey}[prov];
+  item(B,aiK?'ok':'bad','الذكاء الاصطناعي ('+prov+'): '+(aiK?'المفتاح موجود':'المفتاح ناقص'));
+  if(prov==='groq')item(B,'info','Groq ما بيشوف الصور، فالفحص البصري بيشتغل جزئياً');
+  item(B,K.ghToken?'ok':'bad','GitHub: '+(K.ghToken?'المفتاح موجود':'المفتاح ناقص'));
+  item(B,K.fbUrl?'ok':'info','Firebase: '+(K.fbUrl?'الرابط موجود':'غير مضبوط')+(K.fbUrl&&!K.fbKey?' (Web API Key ناقص، مطلوب لتسجيل الدخول)':''));
+  item(B,(K.sbToken&&K.sbRef)?'ok':'info','Supabase: '+((K.sbToken&&K.sbRef)?'مضبوط':'غير مضبوط'));
+  R.push({sec:'🔑 المفاتيح',items:B});
+
+  /* 3) التطبيقان */
+  const C=[];
+  const pk=function(i){
+    try{if(typeof pkgOf==='function'){const p=pkgOf(i);if(p)return p}}catch(e){}
+    const s=slugOf(S.apps[i].name),l=langOf(i);
+    return l==='flutter'?'com.myapps.app_'+s:l==='python'?'com.myapps.app'+s:'com.myapps.'+s;
+  };
+  const GEN=['first','second','shop','admin','app','test','my','demo','new','main'];
+  S.apps.forEach(function(a,i){
+    const code=a.code||'',has=!!code.trim(),l=langOf(i);
+    item(C,has?'ok':'info','التطبيق '+(i+1)+': '+(a.name||'—')+' — '+LANGN[l]+' — '+(has?Math.round(code.length/1024)+' كيلوبايت — الحزمة: '+pk(i):'فارغ')+(a.vc?' — الإصدار '+(a.vbase||'1.0')+'.'+a.vc:'')+((a.set&&a.set.upd)?' — 🔔 التحديث مفعّل':''));
+    if(has&&GEN.indexOf(slugOf(a.name))>-1)item(C,'warn','اسم التطبيق '+(i+1)+' «'+slugOf(a.name)+'» عام جداً، ممكن يتثبت فوق تطبيق تاني بنفس الاسم');
+  });
+  if((S.apps[0].code||'').trim()&&(S.apps[1].code||'').trim()&&pk(0)===pk(1))item(C,'bad','التطبيقان لهما نفس الحزمة '+pk(0)+'، فواحد بيتثبت فوق التاني');
+  R.push({sec:'📱 التطبيقان',items:C});
+
+  /* 4) التخزين */
+  const D=[];
+  let tot=0,sz=0;
+  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);tot+=k.length+(localStorage.getItem(k)||'').length}}catch(e){}
+  try{sz=JSON.stringify(S).length}catch(e){}
+  const mb=function(n){return (n/1048576).toFixed(2)+' ميجا'};
+  item(D,tot>4200000?'bad':tot>3000000?'warn':'ok','التخزين المستخدم: '+mb(tot)+' من حوالي 5 ميجا (بيانات الأداة '+mb(sz)+')');
+  item(D,'info','المشاريع المحفوظة: '+((S.projects||[]).length)+' — القوالب المحفوظة: '+((S.tpls||[]).length));
+  let vs=0;S.apps.forEach(function(a){vs+=(a.versions||[]).length});
+  item(D,'info','النسخ السابقة في خانتي العمل: '+vs);
+  R.push({sec:'💾 التخزين',items:D});
+
+  /* 5) GitHub */
+  const E=[];
+  if(!K.ghToken){
+    item(E,'info','تخطّيت فحص GitHub (المفتاح ناقص)');
+  }else{
+    try{
+      const repo=await repoFull();
+      const info=await gh('/repos/'+repo),br=info.default_branch||'main';
+      item(E,'ok','المستودع: '+repo+' ('+(info.private?'خاص':'عام')+')');
+      if(!info.private)item(E,'warn','المستودع عام: مفاتيح التوقيع وكلمات سرها ظاهرة لأي زول');
+      const app=await ghFile(repo,br,'.github/workflows/build-app.yml');
+      if(app===null)item(E,'bad','build-app.yml غير موجود');
+      else if(app.indexOf('App signing key')>-1)item(E,'ok','build-app.yml: مفتاح توقيع لكل تطبيق');
+      else if(app.indexOf('shared.keystore')>-1)item(E,'warn','build-app.yml: مفتاح توقيع مشترك (تطبيقات HTML ممكن تتثبت فوق بعض)');
+      else item(E,'warn','build-app.yml: طريقة توقيع غير معروفة');
+      for(const w of [['build-flutter.yml','Flutter'],['build-python.yml','Python']]){
+        const t=await ghFile(repo,br,'.github/workflows/'+w[0]);
+        if(t===null){item(E,'info',w[0]+': غير موجود (بيتنشأ عند أول بناء '+w[1]+')');continue}
+        const v=(/^#\s*v(\d+)/m.exec(t)||[])[1];
+        const own=t.indexOf('app signing key')>-1;
+        item(E,own?'ok':'warn',w[0]+': '+(v?'v'+v:'إصدار غير معروف')+' — '+(own?'مفتاح لكل تطبيق':'مفتاح عشوائي أو مشترك'));
+      }
+      const cf=await ghFile(repo,br,'.github/workflows/check-flutter.yml');
+      item(E,(cf!==null&&cf.indexOf('# ck3')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck3')>-1?'الأحدث (ck3)':'قديم، بيتحدث تلقائياً عند أول فحص')));
+      try{
+        const ks=await gh('/repos/'+repo+'/contents/keys?ref='+br);
+        const n=(Array.isArray(ks)?ks:[]).filter(function(f){return /\.keystore$/.test(f.name)});
+        item(E,'info','مفاتيح التوقيع في مجلد keys: '+n.length+(n.some(function(f){return f.name==='shared.keystore'})?' (منها shared.keystore)':''));
+        if(n.length)item(E,'info','تذكير: انسخ مجلد keys واحفظه خارج GitHub');
+      }catch(e){item(E,e.status===404?'info':'warn','مجلد keys: '+(e.status===404?'غير موجود بعد':arErr(e)))}
+      try{
+        const cu=await gh('/repos/'+repo+'/actions/cache/usage');
+        const b=+cu.active_caches_size_in_bytes||0;
+        item(E,b>8.5e9?'warn':'ok','الكاش في GitHub: '+(b/1073741824).toFixed(2)+' من 10 جيجا ('+(cu.active_caches_count||0)+' ملف)');
+      }catch(e){}
+      try{
+        const rs=await gh('/repos/'+repo+'/actions/runs?per_page=10');
+        const runs=rs.workflow_runs||[];
+        const f=runs.filter(function(r){return r.conclusion==='failure'}).length;
+        item(E,f>5?'warn':'info','آخر '+runs.length+' تشغيلات في Actions: '+f+' منها فشلت');
+        runs.slice(0,6).forEach(function(r){
+          item(E,r.conclusion==='success'?'ok':r.conclusion==='failure'?'bad':'info',r.name+' — '+(r.conclusion||r.status)+' — '+dt(r.created_at));
+        });
+      }catch(e){}
+    }catch(e){item(E,'bad','تعذّر فحص GitHub: '+arErr(e))}
+  }
+  R.push({sec:'🐙 GitHub',items:E});
+
+  /* 6) سجل الأخطاء */
+  const L=logGet().slice(-15).reverse(),F=[];
+  if(!L.length)item(F,'ok','ما في أخطاء مسجّلة بعد');
+  L.forEach(function(x){item(F,x.k==='خطأ'?'bad':'warn',dt(x.t)+' — '+x.m)});
+  R.push({sec:'🐞 آخر الأخطاء والرسائل',items:F});
+  return R;
+}
+
+/* ---------- العرض والنسخ ---------- */
+function toText(R){
+  const lines=['تقرير تشخيص APK App','التاريخ: '+dt(Date.now()),'الجهاز: '+navigator.userAgent.slice(0,120),''];
+  R.forEach(function(s){
+    lines.push('== '+s.sec+' ==');
+    s.items.forEach(function(x){lines.push(IC[x.s]+' '+x.t)});
+    if(s.list)lines.push('الترتيب: '+s.list.map(function(b,i){return (i+1)+') '+b}).join(' | '));
+    lines.push('');
+  });
+  return lines.join('\n');
+}
+window.cxDiag=async function(){
+  const sh=$('#sheet');
+  sh.innerHTML='<div class="sheetbox"><h3 style="margin:0 0 8px">🩺 فحص الأداة</h3><p class="note">⏳ جاري الفحص...</p></div>';
+  sh.classList.add('on');
+  let R;
+  try{R=await diagnose()}catch(e){R=[{sec:'خطأ في الفحص',items:[{s:'bad',t:arErr(e)}]}]}
+  window._diagTxt=toText(R);
+  let bad=0,warn=0;
+  R.forEach(function(s){s.items.forEach(function(x){if(x.s==='bad')bad++;if(x.s==='warn')warn++})});
+  const col={ok:'var(--ok)',warn:'var(--acc)',bad:'var(--bad)',info:'var(--mut)'};
+  let h='<div class="sheetbox"><h3 style="margin:0 0 4px">🩺 فحص الأداة</h3>'
+   +'<p class="note" style="font-size:14px">'+(bad?'✖ '+bad+' مشكلة':'✔ ما في مشاكل خطيرة')+(warn?' — ⚠ '+warn+' تنبيه':'')+'</p>';
+  R.forEach(function(s){
+    h+='<div class="card" style="margin-top:10px"><b>'+s.sec+'</b>'
+      +s.items.map(function(x){return '<div style="font-size:13px;line-height:1.8;color:'+col[x.s]+'">'+IC[x.s]+' '+esc(x.t)+'</div>'}).join('')
+      +(s.list&&s.list.length?'<details><summary class="note">عرض ترتيب الكتل</summary><div class="note" style="line-height:1.9">'+s.list.map(function(b,i){return (i+1)+') '+esc(b)}).join('<br>')+'</div></details>':'')
+      +'</div>';
+  });
+  h+='<button class="acc" style="width:100%;margin-top:10px" onclick="cxDiagCopy()">📋 انسخ التقرير وابعته لي</button>'
+   +'<div class="row" style="margin-top:8px"><button class="sec" onclick="cxDiag()">🔄 أعد الفحص</button><button class="sec" onclick="cxDiagClr()">🗑 امسح سجل الأخطاء</button></div>'
+   +'<p class="note">التقرير ما فيه أي مفتاح أو كلمة سر.</p>'
+   +'<button class="ghost" onclick="closeSheet()">إغلاق</button></div>';
+  sh.innerHTML=h;
+};
+window.cxDiagCopy=function(){
+  const t=String(window._diagTxt||'');
+  if(!t)return toast('شغّل الفحص أولاً');
+  const ok=function(){_toast0('تم نسخ التقرير ✔ الصقه في المحادثة')};
+  function fb(){
+    const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;left:-9999px';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');ok()}catch(e){_toast0('تعذّر النسخ')}
+    document.body.removeChild(ta);
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb();
+};
+window.cxDiagClr=function(){
+  try{localStorage.removeItem(LOGK)}catch(e){}
+  _toast0('تم مسح سجل الأخطاء');
+  cxDiag();
+};
+
+/* ---------- الأزرار ---------- */
+const hd=document.querySelector('header');
+if(hd&&!$('#diag-btn')){
+  if(getComputedStyle(hd).position==='static')hd.style.position='relative';
+  const b=document.createElement('button');
+  b.id='diag-btn';
+  b.textContent='🩺';
+  b.onclick=function(){cxDiag()};
+  b.style.cssText='position:absolute;inset-inline-end:12px;top:11px;width:auto;flex:none;padding:7px 12px;font-size:16px;background:rgba(255,255,255,.2);color:#fff;border-radius:14px';
+  hd.appendChild(b);
+}
+const _render27=render;
+render=function(){
+  _render27();
+  if(tab!=='keys')return;
+  const m=$('#main');
+  if(!m||$('#cx-diag'))return;
+  const c=document.createElement('div');c.className='card';c.id='cx-diag';
+  c.innerHTML='<h2>🩺 فحص الأداة</h2><p class="note">يفحص الكتل المركّبة وترتيبها، والمفاتيح، والتطبيقين، والتخزين، وملفات البناء في GitHub، وآخر الأخطاء.</p><button class="acc" style="width:100%" onclick="cxDiag()">🩺 افحص الأداة الآن</button>';
+  m.appendChild(c);
+};
+})();
 render();
 </script>
 </body>
