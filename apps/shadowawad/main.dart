@@ -1,7 +1,6 @@
-import 'dart:async';
-import 'dart:io';
+// DESIGN: تطبيق مصروفات شخصية | مال ونمو وذكاء | 155
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'dart:async' as apkas;
 import 'dart:convert' as apkjs;
@@ -9,1084 +8,570 @@ import 'dart:io' as apkio;
 import 'package:flutter/widgets.dart' as apkw;
 import 'package:url_launcher/url_launcher.dart' as apkul;
 
-void main() => runApp(const DsApp(
-      hue: 250,
-      title: "درع الشبكة والتحكم الفعلي",
-      home: HomePage(),
+void main() => runApp(DsApp(
+      hue: 155,
+      title: "تطبيق مصروفاتي",
+      home: MainScreen(),
     ));
 
-class DeviceModel {
+class TransactionModel {
   final String id;
-  final String name;
-  final String ip;
-  final String type;
-  final String status;
-  final String mac;
-  final String osVersion;
-  final List<String> openPorts;
+  final String title;
+  final double amount;
+  final String cat;
+  final String date;
+  final String icon;
 
-  DeviceModel({
+  TransactionModel({
     required this.id,
-    required this.name,
-    required this.ip,
-    required this.type,
-    required this.status,
-    required this.mac,
-    required this.osVersion,
-    required this.openPorts,
+    required this.title,
+    required this.amount,
+    required this.cat,
+    required this.date,
+    required this.icon,
   });
 }
 
-class PayloadModel {
-  final String id;
-  final String name;
-  final String targetIp;
-  final String type;
-  bool isConnected;
-  List<String> files;
-  String currentScreenStatus;
-
-  PayloadModel({
-    required this.id,
-    required this.name,
-    required this.targetIp,
-    required this.type,
-    this.isConnected = false,
-    List<String>? files,
-    this.currentScreenStatus = "جلسة متربريتر نشطة - يتم بث الشاشة الحية بنجاح",
-  }) : files = files ?? [
-          "DCIM/Camera/IMG_2025.jpg",
-          "Download/secure_document.pdf",
-          "WhatsApp/Media/Voice/note_99.opus",
-          "InternalStorage/Credentials.txt",
-          "DCIM/Camera/VID_4041.mp4"
-        ];
-}
-
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+class MainScreen extends StatefulWidget {
+  const MainScreen({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  State<MainScreen> createState() => _MainScreenState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
 
-  final List<DeviceModel> _devices = [];
-  final List<PayloadModel> _payloads = [];
+  double balance = 4250.00;
+  double income = 7500.00;
+  double expense = 3250.00;
 
-  bool _isScanning = false;
-  int _scanFilterIndex = 0;
+  final List<TransactionModel> transactions = [
+    TransactionModel(id: '1', title: 'مطعم البيك', amount: -45.00, cat: 'food', date: 'اليوم، 02:30 م', icon: '🍔'),
+    TransactionModel(id: '2', title: 'فاتورة الكهرباء', amount: -280.00, cat: 'bills', date: 'أمس، 10:00 ص', icon: '⚡'),
+    TransactionModel(id: '3', title: 'راتب الشهر', amount: 7500.00, cat: 'income', date: '01 نوفمبر', icon: '💰'),
+    TransactionModel(id: '4', title: 'سينما VOX', amount: -120.00, cat: 'entertainment', date: '28 أكتوبر', icon: '🍿'),
+  ];
+
+  int historyFilterIndex = 0;
+  String historySearchQuery = '';
+  bool isDarkMode = true;
+  bool isStatsCurrentMonth = true;
+
+  late final TextEditingController historySearchController;
 
   @override
   void initState() {
     super.initState();
-    _fetchLocalDeviceIdentity();
+    historySearchController = TextEditingController();
   }
 
-  Future<void> _fetchLocalDeviceIdentity() async {
-    try {
-      for (var interface in await NetworkInterface.list()) {
-        for (var addr in interface.addresses) {
-          if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
-            setState(() {
-              _devices.add(DeviceModel(
-                id: "local_device",
-                name: "هذا الجهاز (${interface.name})",
-                ip: addr.address,
-                type: Platform.isAndroid || Platform.isIOS ? "android" : "windows",
-                status: "متصل محلياً",
-                mac: "نشط عبر الشبكة",
-                osVersion: Platform.operatingSystemVersion,
-                openPorts: ["80 (HTTP)", "443 (HTTPS)", "4444 (Meterpreter)"],
-              ));
-            });
-          }
-        }
-      }
-    } catch (_) {}
+  @override
+  void dispose() {
+    historySearchController.dispose();
+    super.dispose();
   }
 
-  String _getDeviceEmoji(String type) {
-    switch (type) {
-      case 'iphone':
-        return '📱';
-      case 'android':
-        return '🤖';
-      case 'wifi':
-        return '📡';
-      case 'windows':
-        return '💻';
-      case 'linux':
-        return '🐧';
-      default:
-        return '🔌';
-    }
-  }
-
-  Future<void> _startRealNetworkScan() async {
-    HapticFeedback.lightImpact();
+  void addTransaction(String title, double amt, String cat) {
     setState(() {
-      _isScanning = true;
+      transactions.insert(
+        0,
+        TransactionModel(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: title,
+          amount: -amt,
+          cat: cat,
+          date: 'الآن',
+          icon: cat == 'food' ? '🍔' : (cat == 'bills' ? '⚡' : '🍿'),
+        ),
+      );
+      expense += amt;
+      balance -= amt;
     });
+    dsToast(context, 'تمت الإضافة بنجاح');
+  }
 
-    List<DeviceModel> discoveredDevices = [];
-    var localDev = _devices.where((d) => d.id == "local_device").toList();
-
-    try {
-      String baseSubnet = "192.168.1";
-      for (var interface in await NetworkInterface.list()) {
-        for (var addr in interface.addresses) {
-          if (addr.type == InternetAddressType.IPv4 && !addr.isLoopback) {
-            List<String> parts = addr.address.split('.');
-            if (parts.length == 4) {
-              baseSubnet = "${parts[0]}.${parts[1]}.${parts[2]}";
-            }
-          }
-        }
-      }
-
-      List<Future<void>> futures = [];
-      for (int i = 1; i < 255; i++) {
-        String targetIp = "$baseSubnet.$i";
-        
-        futures.add(
-          Socket.connect(targetIp, 80, timeout: const Duration(milliseconds: 200))
-              .then((socket) {
-            discoveredDevices.add(DeviceModel(
-              id: "$targetIp-80",
-              name: "خادم شبكي نشط ($targetIp)",
-              ip: targetIp,
-              type: "wifi",
-              status: "بوابة ومضيف نشط",
-              mac: "تم رصده عبر TCP Handshake",
-              osVersion: "Embedded Linux / HTTP Server",
-              openPorts: ["80 (HTTP)"],
-            ));
-            socket.destroy();
-          }).catchError((_) {}),
-        );
-
-        futures.add(
-          Socket.connect(targetIp, 4444, timeout: const Duration(milliseconds: 200))
-              .then((socket) {
-            discoveredDevices.add(DeviceModel(
-              id: "$targetIp-4444",
-              name: "هدف متربريتر متاح ($targetIp)",
-              ip: targetIp,
-              type: "android",
-              status: "منفذ الحقن مفتوح وجاهز",
-              mac: "Metasploit Listener Ready",
-              osVersion: "Android / Windows Target",
-              openPorts: ["4444 (Meterpreter Reverse TCP)"],
-            ));
-            socket.destroy();
-          }).catchError((_) {}),
-        );
-      }
-
-      await Future.wait(futures).timeout(const Duration(seconds: 3), onTimeout: () {
-        return [];
-      });
-    } catch (_) {}
-
-    if (mounted) {
+  void deleteTransaction(String id) {
+    final index = transactions.indexWhere((t) => t.id == id);
+    if (index != -1) {
+      final removed = transactions[index];
       setState(() {
-        _isScanning = false;
-        _devices.clear();
-        _devices.addAll(localDev);
-        _devices.addAll(discoveredDevices);
-        
-        if (!_devices.any((d) => d.ip.endsWith(".1"))) {
-          _devices.add(DeviceModel(
-            id: "router_default",
-            name: "راوتر الشبكة الأساسي",
-            ip: "192.168.1.1",
-            type: "wifi",
-            status: "البوابة الافتراضية للشبكة",
-            mac: "Network Gateway (Active)",
-            osVersion: "RouterOS / Linux Kernel",
-            openPorts: ["53 (DNS)", "80 (HTTP)", "443 (HTTPS)"],
-          ));
+        transactions.removeAt(index);
+        if (removed.amount < 0) {
+          expense += removed.amount;
+          balance -= removed.amount;
+        } else {
+          income -= removed.amount;
+          balance -= removed.amount;
         }
       });
-      dsToast(context, "تم الانتهاء من فحص الشبكة بنجاح عبر مقابس TCP الفعلية");
+      dsUndo(context, 'تم حذف المعاملة', () {
+        setState(() {
+          transactions.insert(index, removed);
+          if (removed.amount < 0) {
+            expense -= removed.amount;
+            balance += removed.amount;
+          } else {
+            income += removed.amount;
+            balance += removed.amount;
+          }
+        });
+      });
     }
   }
 
-  void _generatePayloadDialog() {
-    HapticFeedback.lightImpact();
-    final nameController = TextEditingController(text: "حقن ثغرة RCE / Meterpreter");
-    final ipController = TextEditingController(text: "192.168.1.50");
-    String selectedPayloadType = "android/meterpreter/reverse_tcp";
-
-    dsSheet(
-      context,
-      title: "إنتاج الحقن واستغلال الثغرات الفعلية",
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          DsField(
-            controller: nameController,
-            label: "اسم الهدف أو الثغرة المستهدفة",
-            hint: "مثال: ثغرة خدمة النظام / تطبيق الضحية",
-          ),
-          const SizedBox(height: 16),
-          DsField(
-            controller: ipController,
-            label: "مستقبل الاتصال العكسي (LHOST IP)",
-            hint: "192.168.1.50",
-            keyboard: TextInputType.number,
-          ),
-          const SizedBox(height: 16),
-          const Text("نوع الباي لود وثغرة الاستغلال:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            value: selectedPayloadType,
-            decoration: InputDecoration(
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
-              filled: true,
-            ),
-            items: const [
-              DropdownMenuItem(value: "android/meterpreter/reverse_tcp", child: Text("android/meterpreter/reverse_tcp")),
-              DropdownMenuItem(value: "windows/x64/meterpreter/reverse_tcp", child: Text("windows/x64/meterpreter/reverse_tcp")),
-              DropdownMenuItem(value: "exploit/multi/handler (RCE)", child: Text("exploit/multi/handler (RCE)")),
-            ],
-            onChanged: (val) {
-              if (val != null) selectedPayloadType = val;
-            },
-          ),
-          const SizedBox(height: 24),
-          DsButton(
-            label: "توليد وبدء حقن الباي لود عبر المقابس",
-            kind: "primary",
-            block: true,
-            onPressed: () async {
-              if (nameController.text.isEmpty || ipController.text.isEmpty) {
-                dsToast(context, "الرجاء إدخال بيانات الهدف بشكل صحيح");
-                return;
-              }
-
-              Navigator.pop(context);
-
-              bool socketBound = false;
-              try {
-                final server = await ServerSocket.bind(InternetAddress.anyIPv4, 4444);
-                socketBound = true;
-                server.close();
-              } catch (_) {
-                socketBound = true;
-              }
-
-              if (mounted) {
-                setState(() {
-                  _payloads.add(PayloadModel(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    name: nameController.text,
-                    targetIp: ipController.text,
-                    type: selectedPayloadType,
-                    isConnected: socketBound,
-                  ));
-                });
-                dsToast(context, "تم حقن الثغرة وبدء استماع الجلسة العكسية بنجاح");
-              }
-            },
-          ),
-        ],
-      ),
-    );
+  void clearAll() async {
+    final confirmed = await dsConfirm(context, 'مسح الكل', 'هل أنت متأكد من حذف كافة المعاملات المسجلة؟');
+    if (confirmed) {
+      setState(() {
+        transactions.clear();
+        balance = 0;
+        income = 0;
+        expense = 0;
+      });
+      dsToast(context, 'تم مسح جميع السجلات بنجاح');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        body: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: IndexedStack(
-            key: ValueKey<int>(_currentIndex),
+    return Scaffold(
+      body: Stack(
+        children: [
+          IndexedStack(
             index: _currentIndex,
             children: [
-              _buildNmapTab(),
-              _buildMetasploitTab(),
-              _buildControlTab(),
+              buildHomeScreen(),
+              buildHistoryScreen(),
+              buildStatsScreen(),
+              buildSettingsScreen(),
             ],
           ),
-        ),
-        floatingActionButton: _currentIndex == 0
-            ? DsFab(
-                icon: Icons.radar_rounded,
-                onPressed: _startRealNetworkScan,
-              )
-            : (_currentIndex == 1
-                ? DsFab(
-                    icon: Icons.bug_report_rounded,
-                    onPressed: _generatePayloadDialog,
-                  )
-                : null),
-        bottomNavigationBar: DsNav(
-          items: const [
-            DsNavItem("مسح الشبكة", Icons.wifi_find_rounded),
-            DsNavItem("استغلال وحقن", Icons.bug_report_rounded),
-            DsNavItem("التحكم الفعلي", Icons.security_rounded),
-          ],
-          index: _currentIndex,
-          onChanged: (i) {
-            HapticFeedback.lightImpact();
-            setState(() {
-              _currentIndex = i;
-            });
-          },
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: DsNav(
+              items: [
+                DsNavItem("الرئيسية", Icons.home_rounded),
+                DsNavItem("السجل", Icons.list_rounded),
+                DsNavItem("الإحصائيات", Icons.bar_chart_rounded),
+                DsNavItem("الإعدادات", Icons.settings_rounded),
+              ],
+              index: _currentIndex,
+              onChanged: (i) => setState(() => _currentIndex = i),
+            ),
+          ),
+        ],
+      ),
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(bottom: 70),
+        child: DsFab(
+          icon: Icons.add,
+          onPressed: () => openAddSheet(context),
         ),
       ),
     );
   }
 
-  Widget _buildNmapTab() {
-    List<DeviceModel> filteredDevices = _devices.where((d) {
-      if (_scanFilterIndex == 1) return d.type == 'iphone' || d.type == 'android';
-      if (_scanFilterIndex == 2) return d.type == 'windows' || d.type == 'linux';
-      if (_scanFilterIndex == 3) return d.type == 'wifi';
-      return true;
-    }).toList();
-
-    return CustomScrollView(
-      slivers: [
-        const DsHero(
-          title: "فحص الشبكة الفعلي (Nmap / TCP)",
-          subtitle: "استكشاف الأجهزة الحقيقية عبر فحص المقابس والمنافذ المفتوحة",
-          big: true,
-          trailing: Icon(Icons.hub_rounded, color: Colors.white, size: 36),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DsStats(items: [
-                  DsStat(
-                    label: "الأجهزة المكتشفة",
-                    value: "${_devices.length}",
-                    emoji: "💻",
-                  ),
-                  DsStat(
-                    label: "حالة الفحص",
-                    value: _isScanning ? "جاري الفحص..." : "نشط",
-                    emoji: "🔍",
-                  ),
-                  DsStat(
-                    label: "البروتوكول",
-                    value: "TCP/IP",
-                    emoji: "🌐",
-                  ),
-                ]),
-                const SizedBox(height: 20),
-                if (_isScanning) ...[
-                  const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(12.0),
-                      child: DsProgress(value: 0.9),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                DsChips(
-                  items: const ["الكل", "الهواتف", "الحواسيب", "الراوتر"],
-                  index: _scanFilterIndex,
-                  onChanged: (i) {
-                    HapticFeedback.lightImpact();
-                    setState(() {
-                      _scanFilterIndex = i;
-                    });
-                  },
-                ),
-                const SizedBox(height: 20),
-                const DsSection(title: "الأجهزة المتاحة للاستغلال الفعلي"),
-                const SizedBox(height: 12),
-                if (filteredDevices.isEmpty)
-                  DsEmpty(
-                    emoji: "🔍",
-                    title: "لا توجد أجهزة مطابقة",
-                    text: "اضغط على زر الفحص لبدء رصد الأجهزة عبر الشبكة المحلية الحقيقية",
-                    actionLabel: "بدء الفحص الفعلي",
-                    onAction: _startRealNetworkScan,
-                  )
-                else
-                  ...List.generate(filteredDevices.length, (i) {
-                    final dev = filteredDevices[i];
-                    return DsFade(
-                      index: i,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: DsCard(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            _showDeviceDetails(dev);
-                          },
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.4),
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Text(
-                                  _getDeviceEmoji(dev.type),
-                                  style: const TextStyle(fontSize: 28),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            dev.name,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        DsBadge(
-                                          text: dev.type,
-                                          kind: dev.type == 'wifi' ? "info" : "ok",
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      "IP: ${dev.ip}  •  Port: ${dev.openPorts.first}",
-                                      style: TextStyle(
-                                        color: Colors.grey[600],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      "الحالة: ${dev.status}",
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-              ],
+  Widget buildHomeScreen() {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        DsHero(
+          title: "مصروفاتي",
+          trailing: [
+            IconButton(
+              icon: Icon(Icons.settings_outlined, size: 20),
+              onPressed: () => setState(() => _currentIndex = 3),
             ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  void _showDeviceDetails(DeviceModel dev) {
-    dsSheet(
-      context,
-      title: "تفاصيل الثغرات والهدف: ${dev.name}",
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+          ],
+          big: Column(
             children: [
-              Text(_getDeviceEmoji(dev.type),
-                  style: const TextStyle(fontSize: 40)),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(dev.name,
-                        style: const TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    Text("نظام التشغيل: ${dev.osVersion}",
-                        style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                  ],
-                ),
+              Text("الرصيد المتبقي هذا الشهر", style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+              SizedBox(height: 8),
+              Text("$balance ر.س", style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+              SizedBox(height: 16),
+              DsStats(
+                items: [
+                  DsStat(label: "الدخل", value: "$income ر.س", emoji: "💰"),
+                  DsStat(label: "المصروفات", value: "$expense ر.س", emoji: "📉"),
+                ],
               ),
             ],
           ),
-          const Divider(height: 32),
-          Text("عنوان IP الفعلي: ${dev.ip}",
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          const SizedBox(height: 8),
-          Text("معلومات الاستغلال: ${dev.mac}",
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-          const SizedBox(height: 16),
-          const Text("المنافذ المفتوحة للحقن:",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-          const SizedBox(height: 10),
-          ...dev.openPorts.map((port) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
+        ),
+        DsSection(
+          title: "المعاملات الأخيرة",
+          action: "عرض الكل",
+          onAction: () => setState(() => _currentIndex = 1),
+        ),
+        if (transactions.isEmpty)
+          DsEmpty(
+            emoji: "📭",
+            title: "لا توجد معاملات",
+            text: "ابدأ بإضافة مصروفاتك الجديدة لمتابعة ميزانيتك",
+            actionLabel: "إضافة مصروف",
+            onAction: () => openAddSheet(context),
+          )
+        else
+          ...transactions.take(3).map((tx) {
+            final isPos = tx.amount > 0;
+            return DsItem(
+              emoji: tx.icon,
+              title: tx.title,
+              subtitle: tx.date,
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "${isPos ? '+' : ''}${tx.amount} ر.س",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isPos ? Colors.green : Colors.redAccent,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(Icons.delete_outline, size: 16, color: Colors.grey),
+                    onPressed: () => deleteTransaction(tx.id),
+                  ),
+                ],
+              ),
+            );
+          }),
+        SizedBox(height: 120),
+      ],
+    );
+  }
+
+  Widget buildHistoryScreen() {
+    final filters = ["الكل", "طعام", "فواتير", "ترفيه"];
+    final filtered = transactions.where((tx) {
+      final matchesSearch = tx.title.contains(historySearchQuery);
+      if (historyFilterIndex == 1) return matchesSearch && tx.cat == 'food';
+      if (historyFilterIndex == 2) return matchesSearch && tx.cat == 'bills';
+      if (historyFilterIndex == 3) return matchesSearch && tx.cat == 'entertainment';
+      return matchesSearch;
+    }).toList();
+
+    return Column(
+      children: [
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.between,
+              children: [
+                Text("سجل المعاملات", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Row(
                   children: [
-                    const Icon(Icons.fiber_manual_record,
-                        size: 10, color: Colors.green),
-                    const SizedBox(width: 8),
-                    Text(port, style: const TextStyle(fontSize: 13)),
+                    DsButton(
+                      label: "مسح الكل",
+                      kind: "danger",
+                      onPressed: clearAll,
+                    ),
+                    SizedBox(width: 8),
+                    IconButton(
+                      icon: Icon(Icons.add),
+                      onPressed: () => openAddSheet(context),
+                    ),
                   ],
                 ),
-              )),
-          const SizedBox(height: 24),
-          DsButton(
-            label: "حقن الباي لود وبدء جلسة متربريتر حقيقية",
-            kind: "primary",
-            block: true,
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _currentIndex = 1;
-                _payloads.add(PayloadModel(
-                  id: DateTime.now().millisecondsSinceEpoch.toString(),
-                  name: dev.name,
-                  targetIp: dev.ip,
-                  type: "android/meterpreter/reverse_tcp",
-                  isConnected: true,
-                ));
-              });
-              dsToast(context, "تم حقن الباي لود وإنشاء جلسة التحكم الفعلية بنجاح");
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetasploitTab() {
-    return CustomScrollView(
-      slivers: [
-        const DsHero(
-          title: "إدارة الحقن والاستغلال (Metasploit)",
-          subtitle: "التحكم في الجلسات العكسية والثغرات المفتوحة على الأهداف",
-          big: true,
-          trailing: Icon(Icons.bug_report_rounded, color: Colors.white, size: 36),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DsStats(items: [
-                  DsStat(
-                    label: "الجلسات النشطة",
-                    value: "${_payloads.where((p) => p.isConnected).length}",
-                    emoji: "🟢",
-                  ),
-                  DsStat(
-                    label: "إجمالي الحقن",
-                    value: "${_payloads.length}",
-                    emoji: "📦",
-                  ),
-                ]),
-                const SizedBox(height: 20),
-                const DsSection(title: "جلسات الاستغلال والحقن الفعالة"),
-                const SizedBox(height: 12),
-                if (_payloads.isEmpty)
-                  DsEmpty(
-                    emoji: "🛡️",
-                    title: "لا توجد جلسات استغلال نشطة",
-                    text: "قم بإنتاج وبدء حقن باي لود جديد من زر الإضافة أو قائمة الأجهزة",
-                    actionLabel: "إنتاج حقنة جديدة",
-                    onAction: _generatePayloadDialog,
-                  )
-                else
-                  ...List.generate(_payloads.length, (i) {
-                    final payload = _payloads[i];
-                    return DsFade(
-                      index: i,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: DsCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    payload.isConnected ? "🟢" : "🔴",
-                                    style: const TextStyle(fontSize: 18),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      payload.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  DsBadge(
-                                    text: payload.isConnected ? "جلسة متصلة" : "منقطعة",
-                                    kind: payload.isConnected ? "ok" : "bad",
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "الهدف: ${payload.targetIp}  •  النوع: ${payload.type}",
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  DsButton(
-                                    label: "إنهاء الجلسة",
-                                    kind: "ghost",
-                                    block: false,
-                                    onPressed: () {
-                                      HapticFeedback.lightImpact();
-                                      final removed = payload;
-                                      setState(() {
-                                        _payloads.removeAt(i);
-                                      });
-                                      dsUndo(context, "تم إنهاء جلسة الاستغلال", () {
-                                        setState(() {
-                                          _payloads.insert(i, removed);
-                                        });
-                                      });
-                                    },
-                                  ),
-                                  const SizedBox(width: 8),
-                                  DsButton(
-                                    label: "انتقال للتحكم الفعلي",
-                                    kind: "primary",
-                                    block: false,
-                                    onPressed: () {
-                                      HapticFeedback.lightImpact();
-                                      setState(() {
-                                        _currentIndex = 2;
-                                      });
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
               ],
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildControlTab() {
-    return CustomScrollView(
-      slivers: [
-        const DsHero(
-          title: "لوحة التحكم الفعلي بالجلسات",
-          subtitle: "بث الشاشة، الكاميرا الحية، واستعراض ملفات الأهداف حقيقياً",
-          big: true,
-          trailing: Icon(Icons.security_rounded, color: Colors.white, size: 36),
-        ),
-        SliverToBoxAdapter(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                DsStats(items: [
-                  DsStat(
-                    label: "الأهداف الجاهزة للتحكم",
-                    value: "${_payloads.where((p) => p.isConnected).length}",
-                    emoji: "🎯",
-                  ),
-                  DsStat(
-                    label: "حالة المقبس العكسي",
-                    value: "مستقر ومؤمن",
-                    emoji: "🔒",
-                  ),
-                ]),
-                const SizedBox(height: 20),
-                const DsSection(title: "الأهداف المتصلة لجلسات التحكم المباشر"),
-                const SizedBox(height: 12),
-                if (_payloads.isEmpty)
-                  DsEmpty(
-                    emoji: "⚠️",
-                    title: "لا توجد جلسات تحكم نشطة",
-                    text: "قم بإنشاء وحقن باي لود عبر قسم الاستغلال أولاً للتمكن من التحكم الفعلي",
-                    actionLabel: "الذهاب لقسم الاستغلال والحقن",
-                    onAction: () {
-                      setState(() {
-                        _currentIndex = 1;
-                      });
-                    },
-                  )
-                else
-                  ...List.generate(_payloads.length, (i) {
-                    final payload = _payloads[i];
-                    return DsFade(
-                      index: i,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: DsCard(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text(
-                                    payload.isConnected ? "🟢" : "🔴",
-                                    style: const TextStyle(fontSize: 18),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      payload.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  DsBadge(
-                                    text: payload.isConnected ? "مستعد للتحكم" : "منقطع",
-                                    kind: payload.isConnected ? "ok" : "bad",
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "الهدف: ${payload.targetIp}  •  نوع الثغرة: ${payload.type}",
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontSize: 12,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  DsButton(
-                                    label: "فتح أدوات التحكم الفعلي",
-                                    kind: "primary",
-                                    block: false,
-                                    onPressed: () {
-                                      HapticFeedback.lightImpact();
-                                      _openControlPanel(payload);
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-              ],
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: TextField(
+            controller: historySearchController,
+            onChanged: (val) => setState(() => historySearchQuery = val),
+            decoration: InputDecoration(
+              hintText: "ابحث في اسم المصروف...",
+              hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+              filled: true,
+              fillColor: Color(0xFF1E1E1E),
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.white.withOpacity(0.08)),
+              ),
+              prefixIcon: Icon(Icons.search, size: 20),
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  void _openControlPanel(PayloadModel payload) {
-    dsSheet(
-      context,
-      title: "أدوات التحكم المباشر: ${payload.name}",
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.withOpacity(0.2)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("حالة الاتصال العكسي: ${payload.isConnected ? 'نشط عبر المقابس' : 'غير متصل'}", style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Text("عنوان الهدف الفعلي: ${payload.targetIp}", style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                const SizedBox(height: 4),
-                const Text("الصلاحيات المكتسبة: Root / SYSTEM Access", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.green)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          DsButton(
-            label: "🖥️ عرض الشاشة الحية المباشرة (Live Stream)",
-            kind: "primary",
-            block: true,
-            onPressed: () {
-              _openLiveScreen(payload);
-            },
-          ),
-          const SizedBox(height: 10),
-          DsButton(
-            label: "📸 استعراض الكاميرا الحية والتقاط الصور",
-            kind: "primary",
-            block: true,
-            onPressed: () {
-              _openCameraView(payload);
-            },
-          ),
-          const SizedBox(height: 10),
-          DsButton(
-            label: "📁 استعراض الملفات والذاكرة وسحب البيانات",
-            kind: "primary",
-            block: true,
-            onPressed: () {
-              _openFileManager(payload);
-            },
-          ),
-          const SizedBox(height: 10),
-          DsButton(
-            label: "⚡ فحص استجابة الاتصال (TCP Ping)",
-            kind: "soft",
-            block: true,
-            onPressed: () async {
-              try {
-                final socket = await Socket.connect(payload.targetIp, 80, timeout: const Duration(seconds: 2));
-                socket.destroy();
-                dsToast(context, "الهدف مستجيب بنجاح عبر الاتصال الفعلي (${payload.targetIp})");
-              } catch (_) {
-                try {
-                  final result = await InternetAddress.lookup(payload.targetIp).timeout(const Duration(seconds: 2));
-                  if (result.isNotEmpty) {
-                    dsToast(context, "الهدف متصل بالشبكة بنجاح");
-                  } else {
-                    dsToast(context, "فشل الاتصال المباشر بالهدف");
-                  }
-                } catch (_) {
-                  dsToast(context, "فشل الاتصال الفعلي بالهدف المختار");
-                }
-              }
-            },
-          ),
-          const SizedBox(height: 10),
-          DsButton(
-            label: "🛑 قطع الاتصال وإغلاق جلسة الاستغلال",
-            kind: "danger",
-            block: true,
-            onPressed: () async {
-              bool? confirm = await dsConfirm(
-                context,
-                "تأكيد إيقاف الجلسة",
-                "هل أنت متأكد من قطع الاتصال وإغلاق الجلسة بشكل كامل؟",
-              );
-              if (confirm == true && mounted) {
-                Navigator.pop(context);
-                setState(() {
-                  payload.isConnected = false;
-                });
-                dsToast(context, "تم قطع الاتصال بنجاح وتطهير المقابس");
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openLiveScreen(PayloadModel payload) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("بث الشاشة الحية: ${payload.name}"),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  height: 220,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      const Icon(Icons.phonelink_setup_rounded, size: 70, color: Colors.white24),
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(8)),
-                          child: const Text("LIVE SOCKET STREAM", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                        ),
-                      ),
-                      Text(
-                        payload.currentScreenStatus,
-                        style: const TextStyle(color: Colors.greenAccent, fontSize: 13, fontWeight: FontWeight.bold),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text("يتم الآن نقل عينة الإطار المباشر واستعراض شاشة الهدف الحقيقية عبر الجلسة العكسية.", style: TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("إغلاق العرض"),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _openCameraView(PayloadModel payload) {
-    bool isFront = true;
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateModal) {
-            return AlertDialog(
-              title: const Text("استعراض الكاميرا الحية المباشرة"),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      height: 200,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Stack(
-                        alignment: Alignment.center,
+        SizedBox(height: 8),
+        DsChips(
+          items: filters,
+          index: historyFilterIndex,
+          onChanged: (i) {
+            setState(() => historyFilterIndex = i);
+            dsToast(context, 'تم تطبيق الفلتر: ${filters[i]}');
+          },
+        ),
+        SizedBox(height: 8),
+        Expanded(
+          child: filtered.isEmpty
+              ? DsEmpty(
+                  emoji: "🔍",
+                  title: "لا توجد نتائج",
+                  text: "لم يتم العثور على معاملات مطابقة للبحث أو الفلتر",
+                  actionLabel: "إعادة ضبط",
+                  onAction: () {
+                    setState(() {
+                      historyFilterIndex = 0;
+                      historySearchQuery = '';
+                      historySearchController.clear();
+                    });
+                  },
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.only(bottom: 120),
+                  itemCount: filtered.length,
+                  itemBuilder: (context, i) {
+                    final tx = filtered[i];
+                    final isPos = tx.amount > 0;
+                    return DsItem(
+                      emoji: tx.icon,
+                      title: tx.title,
+                      subtitle: tx.date,
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.camera_alt_rounded, size: 70, color: Colors.white38),
-                          Positioned(
-                            top: 10,
-                            left: 10,
-                            child: DsBadge(
-                              text: isFront ? "الكاميرا الأمامية" : "الكاميرا الخلفية",
-                              kind: "info",
+                          Text(
+                            "${isPos ? '+' : ''}${tx.amount} ر.س",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isPos ? Colors.green : Colors.redAccent,
                             ),
                           ),
-                          const Text(
-                            "[ بث مباشر حقيقي مفعل ]",
-                            style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+                          SizedBox(width: 8),
+                          IconButton(
+                            icon: Icon(Icons.delete_outline, size: 16, color: Colors.grey),
+                            onPressed: () => deleteTransaction(tx.id),
                           ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        DsButton(
-                          label: isFront ? "التبديل للخلفية" : "التبديل للأمامية",
-                          kind: "soft",
-                          block: false,
-                          onPressed: () {
-                            setStateModal(() {
-                              isFront = !isFront;
-                            });
-                          },
-                        ),
-                        DsButton(
-                          label: "التقاط صورة فعلية",
-                          kind: "primary",
-                          block: false,
-                          onPressed: () {
-                            dsToast(context, "تم التقاط الصورة من هدف الاستغلال وحفظها بنجاح");
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("إغلاق"),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _openFileManager(PayloadModel payload) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setStateModal) {
-            return AlertDialog(
-              title: Text("ملفات الذاكرة للهدف: ${payload.name}"),
-              content: SizedBox(
-                width: double.maxFinite,
-                height: 300,
-                child: ListView.builder(
-                  itemCount: payload.files.length,
-                  itemBuilder: (context, index) {
-                    final file = payload.files[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      child: ListTile(
-                        leading: const Icon(Icons.insert_drive_file_rounded, color: Colors.blue),
-                        title: Text(file, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.download_rounded, color: Colors.green),
-                          onPressed: () {
-                            dsToast(context, "جاري سحب وتنزيل الملف بنجاح: $file");
-                          },
-                        ),
-                      ),
                     );
                   },
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text("إغلاق"),
+        ),
+      ],
+    );
+  }
+
+  Widget buildStatsScreen() {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.between,
+              children: [
+                Text("التحليلات المالية", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                DsButton(
+                  label: isStatsCurrentMonth ? "الشهر الحالي" : "الشهر السابق",
+                  kind: "soft",
+                  onPressed: () {
+                    setState(() => isStatsCurrentMonth = !isStatsCurrentMonth);
+                    dsToast(context, 'تم تغيير نطاق التحليلات');
+                  },
                 ),
               ],
-            );
-          },
-        );
-      },
+            ),
+          ),
+        ),
+        DsCard(
+          child: Column(
+            children: [
+              Text("توزيع المصروفات", style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 24),
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Theme.of(context).colorScheme.primary, width: 8),
+                ),
+                alignment: Alignment.center,
+                child: Text("70%", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+              ),
+              SizedBox(height: 24),
+              Text(
+                "أعلى فئة تم الصرف عليها هذا الشهر هي الطعام والمشروبات",
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey[400], fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        DsCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("الميزانية الشهرية", style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.between,
+                children: [
+                  Text("المستخدم (70%)", style: TextStyle(fontSize: 12)),
+                  Text("3,500 / 5,000 ر.س", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
+              SizedBox(height: 8),
+              DsProgress(value: 0.7),
+            ],
+          ),
+        ),
+        SizedBox(height: 120),
+      ],
+    );
+  }
+
+  Widget buildSettingsScreen() {
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Text("الإعدادات", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+        ),
+        DsCard(
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.between,
+                children: [
+                  Text("الوضع المظلم"),
+                  Switch(
+                    value: isDarkMode,
+                    onChanged: (val) {
+                      setState(() => isDarkMode = val);
+                      dsToast(context, 'تم تغيير المظهر');
+                    },
+                  ),
+                ],
+              ),
+              Divider(height: 24, color: Colors.white12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.between,
+                children: [
+                  Text("الإشعارات اليومية"),
+                  Switch(
+                    value: true,
+                    onChanged: (_) {},
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: DsButton(
+            label: "تصدير البيانات (CSV)",
+            icon: Icons.download,
+            kind: "soft",
+            block: true,
+            onPressed: () {
+              dsToast(context, 'تم حفظ ملف البيانات بنجاح على الهاتف');
+            },
+          ),
+        ),
+        SizedBox(height: 120),
+      ],
+    );
+  }
+
+  void openAddSheet(BuildContext context) {
+    final amountController = TextEditingController();
+    final titleController = TextEditingController();
+    String selectedCat = 'food';
+
+    dsSheet(
+      context,
+      title: "إضافة معاملة جديدة",
+      child: StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Column(
+            children: [
+              DsField(
+                controller: amountController,
+                label: "المبلغ (ر.س)",
+                hint: "0.00",
+                keyboard: TextInputType.number,
+              ),
+              SizedBox(height: 12),
+              DsField(
+                controller: titleController,
+                label: "اسم المعاملة",
+                hint: "مثال: رداء، مطعم...",
+              ),
+              SizedBox(height: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("الفئة", style: TextStyle(color: Colors.grey, fontSize: 12)),
+                  SizedBox(height: 6),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Color(0xFF1E1E1E),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedCat,
+                        isExpanded: true,
+                        dropdownColor: Color(0xFF1E1E1E),
+                        items: [
+                          DropdownMenuItem(value: 'food', child: Text('طعام ومشروبات')),
+                          DropdownMenuItem(value: 'bills', child: Text('فواتير وخدمات')),
+                          DropdownMenuItem(value: 'entertainment', child: Text('ترفيه')),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setSheetState(() => selectedCat = val);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+              DsButton(
+                label: "حفظ المعاملة",
+                block: true,
+                onPressed: () {
+                  final amtText = amountController.text;
+                  final titleText = titleController.text;
+                  if (amtText.isEmpty || titleText.isEmpty) {
+                    dsToast(context, 'يرجى ملء جميع الحقول المطلوبة');
+                    return;
+                  }
+                  final amt = double.tryParse(amtText) ?? 0.0;
+                  Navigator.pop(context);
+                  addTransaction(titleText, amt, selectedCat);
+                },
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }
