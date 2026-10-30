@@ -7834,7 +7834,7 @@ const TPL_HTML=function(title,line){return '<div dir="rtl" style="font-family:Ta
 function errAr(m){
   m=String(m||'');
   if(/not authorized/i.test(m))return 'Supabase رفض الإيميل: البريد الخاص (SMTP) لسه ما مربوط. اربط Gmail أولاً.';
-  if(/rate limit|too many/i.test(m))return 'طلبات كتيرة في وقت قصير. أنتظر دقايق وجرّب تاني (الحد الافتراضي 30 رسالة في الساعة).';
+  if(/rate limit|too many|seconds|after/i.test(m))return 'وصلت حد الإرسال. اضغط «⏫ ارفع حد الرسائل» تحت، وبعدها أنتظر دقيقة وجرّب تاني.';
   if(/sending|smtp|535|auth/i.test(m))return 'Supabase ما قدر يرسل عبر خادم البريد. مع Gmail: راجع الإيميل وكلمة سر التطبيقات (16 حرف). مع Brevo: راجع Login ومفتاح SMTP، وإن إيميل المُرسِل متحقق منه في Brevo ← Senders.';
   if(/401|unauthor|JWT/i.test(m))return 'مفتاح Supabase (Access Token) غلط أو منتهي.';
   return m;
@@ -7882,6 +7882,7 @@ window.cxMailSetup=function(btn){
     const smtp={external_email_enabled:true,mailer_autoconfirm:false,smtp_admin_email:em,smtp_host:prov==='brevo'?'smtp-relay.brevo.com':'smtp.gmail.com',smtp_port:prov==='brevo'?587:465,smtp_user:lg,smtp_pass:pw,smtp_sender_name:nm};
     try{await sbApi('/config/auth',{method:'PATCH',body:smtp})}
     catch(e){smtp.smtp_port=String(smtp.smtp_port);await sbApi('/config/auth',{method:'PATCH',body:smtp})}
+    try{await sbApi('/config/auth',{method:'PATCH',body:{rate_limit_email_sent:100}})}catch(e){}
     let tplOk=true;
     if(code){
       const t={mailer_otp_length:6,
@@ -7899,6 +7900,13 @@ window.cxMailSetup=function(btn){
   });
 };
 
+window.cxMailRate=function(btn){
+  busy(btn,async function(){
+    await sbApi('/config/auth',{method:'PATCH',body:{rate_limit_email_sent:100}});
+    const c=await sbApi('/config/auth');
+    out('✔ حد الرسائل بقى '+esc(c.rate_limit_email_sent)+' في الساعة. لو قال «جرّب بعد شوية» أنتظر دقيقة واحدة (Supabase بيمنع إرسال رمزين لنفس الإيميل في أقل من 60 ثانية).');
+  });
+};
 window.cxMailTest=function(btn){
   busy(btn,async function(){
     const to=($('#ml-to').value||'').trim();
@@ -7947,6 +7955,7 @@ render=function(){
    +'<label>اسم المُرسِل (يظهر للزبون)</label><input id="ml-nm" placeholder="مثلاً: حجز الرغيف" value="'+esc(S.keys.mailNm||'')+'">'
    +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx);margin-top:8px"><input id="ml-code" type="checkbox" checked style="width:22px;height:22px;flex:none"> الرسالة فيها رمز من 6 أرقام (بدل الرابط)</label>'
    +'<div class="row" style="margin-top:10px"><button class="acc" onclick="cxMailSetup(this)">⚙️ اربط البريد</button><button class="sec" onclick="cxMailCheck(this)">🔍 افحص الحالة</button></div>'
+   +'<button class="sec" style="width:100%;margin-top:8px" onclick="cxMailRate(this)">⏫ ارفع حد الرسائل إلى 100 في الساعة</button>'
    +'<label style="margin-top:12px">جرّب: الإيميل البيوصله الرمز</label><input id="ml-to" type="email" dir="ltr" placeholder="test@gmail.com" value="'+esc(S.keys.mailEm||'')+'">'
    +'<button class="sec" style="width:100%;margin-top:8px" onclick="cxMailTest(this)">📨 أرسل رمز تجربة</button>'
    +'<div id="ml-out" class="note" style="margin-top:10px;line-height:1.9"></div>';
