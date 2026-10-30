@@ -7387,6 +7387,66 @@ if(typeof _cxProj==='function'){
 }
 })();
 render();
+/* ===== إضافة: زر إضافة التطبيق الحالي إلى المشاريع ===== */
+(function(){
+function hasCode(a){return !!(a&&a.code&&a.code.trim())}
+function curProj(){return (S.projects||[]).find(function(p){return p.id===S.cur})}
+function snap(){return S.apps.map(function(a){const c=JSON.parse(JSON.stringify(a));delete c.versions;delete c.pv;delete c.err;return c})}
+function nm(){const a=S.apps.find(hasCode)||S.apps[0]||{};return (a.set&&a.set.label)||a.name||'مشروعي'}
+function pid(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+function label(){const b=$('#pj-btn');if(b)b.textContent='📁 مشاريعي'+(S.projects.length?' ('+S.projects.length+')':'')}
+
+window.cxPjAdd=function(){
+  if(!S.apps.some(hasCode))return toast('ما في كود تحفظه');
+  const n=prompt('اسم المشروع؟',nm());
+  if(!n||!n.trim())return;
+  const apps=snap();
+  const p={id:pid(),name:n.trim(),t:Date.now(),kind:apps.filter(hasCode).length>1?2:1,apps:apps};
+  S.projects=S.projects||[];S.projects.unshift(p);S.cur=p.id;save();label();
+  toast('✔ اتضاف «'+p.name+'» لمشاريعي');
+  if($('#sheet').classList.contains('on')&&typeof cxProj==='function'&&$('#sheet h3')&&/مشاريعي/.test($('#sheet h3').textContent))cxProj();
+  else render();
+};
+window.cxPjCommit=function(){
+  const p=curProj();if(!p)return cxPjAdd();
+  p.apps=snap();p.kind=p.apps.filter(hasCode).length>1?2:1;p.t=Date.now();save();
+  toast('✔ اتحفظت التغييرات في «'+p.name+'»');
+  if($('#sheet').classList.contains('on')&&typeof cxProj==='function')cxProj();else render();
+};
+
+/* أزرار في نافذة مشاريعي */
+const _p=window.cxProj;
+if(typeof _p==='function'){
+  window.cxProj=function(){
+    _p.apply(this,arguments);
+    const box=document.querySelector('#sheet .sheetbox');if(!box||box.querySelector('#pj-add'))return;
+    const row=box.querySelector(':scope > .row');
+    const live=S.apps.some(hasCode),cur=curProj();
+    if(!row||!live)return;
+    const old=row.querySelector('button[onclick^="cxPjSave"]');if(old)old.remove();
+    row.insertAdjacentHTML('beforeend',
+      (cur?'<button class="sec" id="pj-add" onclick="cxPjCommit()">💾 احفظ التغييرات</button>':'')
+     +'<button class="sec" '+(cur?'':'id="pj-add" ')+'onclick="cxPjAdd()">📥 أضف الحالي كمشروع جديد</button>');
+  };
+}
+
+/* شريط المشروع في صفحة الكود */
+const _r=render;
+render=function(){
+  _r();
+  if(tab!=='code')return;
+  const m=$('#main');if(!m||$('#pj-bar'))return;
+  const live=S.apps.some(hasCode),cur=curProj();
+  if(!live&&!cur)return;
+  const d=document.createElement('div');d.id='pj-bar';d.className='card';
+  d.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px';
+  d.innerHTML=cur
+    ?'<span style="flex:1;font-size:14px">📁 <b>'+esc(cur.name)+'</b> <span class="note" style="color:var(--ok)">● في مشاريعي</span></span><button class="sec" style="width:auto;padding:8px 12px;font-size:13px" onclick="cxPjCommit()">💾 حفظ</button>'+(typeof cxStuOpen==='function'?'<button class="acc" style="width:auto;padding:8px 12px;font-size:13px" onclick="cxStuOpen()">🛠 تحديث</button>':'')
+    :'<span style="flex:1;font-size:14px">⚠ التطبيق ده ما محفوظ في مشاريعي</span><button class="acc" style="width:auto;padding:8px 12px;font-size:13px" onclick="cxPjAdd()">📥 أضفه للمشاريع</button>';
+  m.prepend(d);
+};
+})();
+render();
 </script>
 </body>
 </html>
