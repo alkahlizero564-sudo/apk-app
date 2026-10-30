@@ -1,3 +1,4 @@
+# ck3
 # ck2
 # ck1
 name: check-flutter
@@ -31,7 +32,22 @@ jobs:
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
           cd ..
-          if grep -E "^[[:space:]]*error" analyze.txt > errs.txt; then
+          F=flutter_out/lib/main.dart
+          DSL=$(grep -n "^// ===== نظام التصميم الجاهز" $F | head -n 1 | cut -d: -f1)
+          UPL=$(grep -n "^// ===== تحديث التطبيق" $F | head -n 1 | cut -d: -f1)
+          : > errs.txt
+          grep -E "^[[:space:]]*error" analyze.txt | while IFS= read -r line; do
+            L=$(echo "$line" | grep -o "main.dart:[0-9]*" | head -n 1 | cut -d: -f2)
+            T=APP
+            if [ -n "$L" ]; then
+              if [ -n "$UPL" ] && [ "$L" -ge "$UPL" ]; then T=UPD
+              elif [ -n "$DSL" ] && [ "$L" -ge "$DSL" ]; then T=DS
+              elif sed -n "$L"p $F | grep -q " as apk"; then T=UPD
+              fi
+            fi
+            echo "[$T] $line" >> errs.txt
+          done
+          if [ -s errs.txt ]; then
             echo APKERR_START
             cat errs.txt
             echo APKERR_END
