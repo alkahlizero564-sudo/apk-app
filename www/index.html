@@ -7209,6 +7209,184 @@ const have=TPL.map(function(t){return t.name});
 NEW.reverse().forEach(function(t){if(have.indexOf(t.name)<0)TPL.unshift(t)});
 })();
 render();
+/* ===== إضافة: استوديو تحديث المشاريع (تعديل بالذكاء الاصطناعي + معاينة + إرسال التحديث) ===== */
+(function(){
+const css=document.createElement('style');
+css.textContent=`
+.st-apps{display:flex;gap:8px;margin:6px 0 10px}
+.st-apps button{flex:1;padding:10px 6px;font-size:13px}
+.st-info{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.st-info span{padding:5px 10px;border-radius:99px;background:rgba(127,127,127,.14);font-size:12px;font-weight:700}
+.st-info span.ok{background:rgba(34,197,94,.16);color:#22c55e}.st-info span.no{background:rgba(245,158,11,.16);color:#f59e0b}
+.st-ph{position:relative;margin:4px auto 10px;width:100%;max-width:330px;height:520px;border-radius:30px;border:6px solid #1f2937;overflow:hidden;background:#0b1220;box-shadow:0 14px 34px rgba(0,0,0,.4)}
+.st-ph iframe{width:100%;height:100%;border:0;background:#fff;display:block}
+.st-ph .ld{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(11,18,32,.85);color:#cbd5e1;font-size:14px;text-align:center;padding:20px}
+.st-ph .ld.on{display:flex}
+.st-ph .ld b{font-size:34px;animation:stsp 1.2s linear infinite;display:inline-block}
+@keyframes stsp{to{transform:rotate(360deg)}}
+.st-q{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+.st-q::-webkit-scrollbar{display:none}
+.st-q button{flex:none;width:auto;padding:7px 12px;font-size:12.5px;border-radius:99px}
+.st-log{margin:8px 0;padding:10px 12px;border-radius:14px;background:rgba(127,127,127,.1);font-size:13px;line-height:1.9}
+.st-log b{display:block;font-size:12px;opacity:.7}
+.st-send{background:linear-gradient(135deg,#22c55e,#16a34a)!important;color:#fff!important;font-size:16px!important;padding:15px!important;width:100%;margin-top:10px}
+`;
+document.head.appendChild(css);
+
+const ST0={i:0,undo:[],log:[],auto:true,busy:false};
+window._stu=ST0;
+
+function hasCode(a){return !!(a&&a.code&&a.code.trim())}
+function verOf(a){return a.vc?(a.vbase||'1.0')+'.'+a.vc:'لم يُبنَ بعد'}
+function curProj(){return (S.projects||[]).find(function(p){return p.id===S.cur})}
+function syncProj(){
+  const p=curProj();if(!p)return;
+  p.apps=S.apps.map(function(a){const c=JSON.parse(JSON.stringify(a));delete c.versions;delete c.pv;delete c.err;return c});
+  p.t=Date.now();save();
+}
+const none='<body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font:15px sans-serif;background:#0b1220;color:#8fa0c4;text-align:center;padding:20px;direction:rtl">اضغط «✨ معاينة بالذكاء الاصطناعي» لعرض شكل التطبيق هنا</body>';
+function pvSrc(i){const a=S.apps[i];return langOf(i)==='html'?a.code:(a.pv||none)}
+
+/* تشغيل أي دالة بتستعمل busy(btn) وانتظار نهايتها */
+function runBusy(fn){
+  return new Promise(function(res){
+    const b=document.createElement('button');b.style.display='none';document.body.appendChild(b);
+    try{fn(b)}catch(e){b.remove();toast(String(e.message||e));return res()}
+    let n=0;
+    const t=setInterval(function(){
+      n++;
+      if((!b.disabled&&n>2)||n>2400){clearInterval(t);b.remove();res()}
+    },250);
+  });
+}
+
+function loader(on,msg){const l=$('#st-ld');if(!l)return;l.classList.toggle('on',on);if(msg)l.querySelector('span').textContent=msg}
+function showPv(){const f=$('#st-pv');if(f)f.srcdoc=pvSrc(ST0.i)}
+
+function draw(){
+  const sh=$('#sheet'),i=ST0.i,a=S.apps[i],l=langOf(i),st=a.set||{};
+  const p=curProj();
+  const apps=S.apps.map(function(x,k){return [x,k]}).filter(function(z){return hasCode(z[0])});
+  const updOk=l!=='python';
+  let h='<div class="sheetbox"><h3 style="margin:0 0 2px">🛠 استوديو التحديث</h3><p class="note" style="margin:0 0 6px">'+esc(p?p.name:'المشروع الحالي')+'</p>';
+  if(apps.length>1)h+='<div class="st-apps">'+apps.map(function(z){return '<button class="'+(z[1]===i?'acc':'sec')+'" onclick="cxStuApp('+z[1]+')">📱 '+esc(z[0].set&&z[0].set.label||z[0].name)+'</button>'}).join('')+'</div>';
+  h+='<div class="st-info"><span>'+esc(LANGN[l])+'</span><span>الإصدار '+esc(verOf(a))+'</span>'
+    +(updOk?(st.upd?'<span class="ok">🔔 إشعار التحديث مفعّل</span>':'<span class="no">🔕 إشعار التحديث مقفول</span>'):'<span class="no">🔕 إشعار التحديث غير متاح لـ Python</span>')+'</div>';
+  h+='<div class="st-ph"><iframe id="st-pv" sandbox="allow-scripts allow-forms allow-modals"></iframe><div class="ld" id="st-ld"><b>⚙️</b><span>جاري العمل...</span></div></div>';
+  if(l!=='html')h+='<div class="row" style="margin-bottom:6px"><button class="sec" onclick="cxStuPv()">✨ معاينة بالذكاء الاصطناعي</button></div>'
+    +'<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:0 0 8px"><input type="checkbox" style="width:20px;height:20px;flex:none" '+(ST0.auto?'checked':'')+' onchange="_stu.auto=this.checked"> معاينة تلقائية بعد كل تعديل (تستهلك طلب ذكاء اصطناعي إضافي)</label>';
+  h+='<label>التعديل المطلوب</label>'
+    +'<div class="st-q">'+[['➕ أضف ميزة','أضف ميزة: '],['🎨 حسّن التصميم','حسّن تصميم الواجهة وخلّيها أجمل وأكثر احترافية مع الحفاظ على كل الوظائف'],['🐞 صلّح مشكلة','صلّح المشكلة دي: '],['🗑 احذف','احذف '],['✏️ غيّر نص','غيّر النص '],['🌙 وضع داكن','أضف وضع داكن وزر للتبديل بين الفاتح والداكن']].map(function(q){return '<button class="sec" onclick="cxStuQ(\''+q[1].replace(/'/g,"\\'")+'\')">'+q[0]+'</button>'}).join('')+'</div>'
+    +'<textarea id="st-req" rows="3" placeholder="مثال: أضف زر مشاركة في صفحة المنتج، وغيّر لون الأزرار للأخضر"></textarea>'
+    +'<div class="row" style="margin-top:8px"><button class="acc" onclick="cxStuDo()">✨ نفّذ التعديل</button>'+(ST0.undo.length?'<button class="sec" onclick="cxStuUndo()">↩ تراجع</button>':'')+'</div>';
+  if(ST0.log.length)h+='<div class="st-log"><b>التعديلات في الجلسة دي</b>'+ST0.log.map(function(x){return '• '+esc(x)}).join('<br>')+'</div>';
+  h+='<button class="st-send" onclick="cxStuSend()">🚀 أرسل التحديث للتطبيق</button>'
+    +'<p class="note">بيبني نسخة جديدة برقم إصدار أعلى'+(updOk?'، وبينشر التحديث، فالتطبيق المثبّت يوريك «يتوفر إصدار جديد» وتضغط تحميل.':'. تطبيقات Python ما فيها إشعار تحديث لسه، فبتلقى النسخة الجديدة في Releases.')+'</p>'
+    +'<button class="ghost" onclick="closeSheet()">إغلاق</button></div>';
+  sh.innerHTML=h;sh.classList.add('on');
+  showPv();
+  if(ST0.busy)loader(true,ST0.busyMsg);
+}
+
+window.cxStuApp=function(k){if(ST0.busy)return toast('انتظر انتهاء العملية');ST0.i=k;ST0.undo=[];draw()};
+window.cxStuQ=function(t){const r=$('#st-req');if(!r)return;r.value=t;r.focus();try{r.setSelectionRange(t.length,t.length)}catch(e){}};
+
+async function aiPv(i){
+  ST0.busy=true;ST0.busyMsg='الذكاء الاصطناعي بيجهّز المعاينة...';loader(true,ST0.busyMsg);
+  await runBusy(function(b){aiPreview(i,b)});
+  ST0.busy=false;loader(false);showPv();
+}
+window.cxStuPv=function(){if(ST0.busy)return;aiPv(ST0.i)};
+
+window.cxStuDo=async function(){
+  if(ST0.busy)return toast('انتظر انتهاء العملية');
+  const i=ST0.i,a=S.apps[i],req=($('#st-req').value||'').trim();
+  if(!req)return toast('اكتب التعديل المطلوب');
+  const before=a.code;
+  ST0.busy=true;ST0.busyMsg='الذكاء الاصطناعي بينفّذ: '+req.slice(0,60);loader(true,ST0.busyMsg);
+  let tmp=null,ta=$('#req'+i);
+  if(!ta){tmp=document.createElement('textarea');tmp.id='req'+i;tmp.style.display='none';document.body.appendChild(tmp);ta=tmp}
+  ta.value=req;
+  await runBusy(function(b){aiEdit(i,b)});
+  if(tmp)tmp.remove();
+  ST0.busy=false;loader(false);
+  if(S.apps[i].code===before){toast('ما حصل تغيير. جرّب توضّح الطلب أكتر');return}
+  ST0.undo.push(before);ST0.log.push(req);
+  syncProj();
+  draw();
+  toast('✔ اتنفّذ التعديل');
+  if(langOf(i)!=='html'&&ST0.auto)aiPv(i);
+};
+
+window.cxStuUndo=function(){
+  if(ST0.busy||!ST0.undo.length)return;
+  const i=ST0.i;
+  setCode(i,ST0.undo.pop());ST0.log.pop();
+  syncProj();draw();toast('↩ رجعنا للنسخة القبلها');
+  if(langOf(i)!=='html'&&ST0.auto)aiPv(i);
+};
+
+window.cxStuSend=function(){
+  if(ST0.busy)return toast('انتظر انتهاء العملية');
+  const i=ST0.i,a=S.apps[i],l=langOf(i),st=a.set||{};
+  if(!hasCode(a))return toast('ما في كود');
+  if(!slugOf(a.name))return toast('سمّ التطبيق باسم إنجليزي أولاً');
+  const notes=st.notes&&!ST0.log.length?st.notes:ST0.log.join('، ').slice(0,300);
+  const sh=$('#sheet');
+  sh.innerHTML='<div class="sheetbox"><h3 style="margin-top:0">🚀 إرسال التحديث</h3>'
+   +'<p class="note">التطبيق: <b>'+esc(a.set&&a.set.label||a.name)+'</b> — الإصدار الحالي '+esc(verOf(a))+'</p>'
+   +'<label>ما الجديد؟ (يظهر للمستخدم في إشعار التحديث)</label><textarea id="st-notes" rows="3" maxlength="300">'+esc(notes||'تحسينات وإصلاحات')+'</textarea>'
+   +(l!=='python'?'<label style="display:flex;gap:10px;align-items:center;margin-top:10px"><input type="checkbox" id="st-force" style="width:22px;height:22px;flex:none" '+(st.updForce?'checked':'')+'> تحديث إجباري (المستخدم ما يقدر يكمّل بالنسخة القديمة)</label>':'')
+   +(l!=='python'&&!st.upd?'<p class="note" style="color:#f59e0b">⚠ إشعار التحديث كان مقفول، وحيتفعّل هسه. النسخة المثبّتة حالياً ما فيها الإشعار، فثبّت النسخة دي يدوياً مرة واحدة، والتحديثات الجاية بتظهر في التطبيق براها.</p>':'')
+   +'<button class="st-send" onclick="cxStuGo()">✅ ابنِ وأرسل التحديث</button><button class="ghost" onclick="cxStuOpen()">رجوع</button></div>';
+  sh.classList.add('on');
+};
+
+window.cxStuGo=async function(){
+  const i=ST0.i,a=S.apps[i],l=langOf(i);
+  a.set=a.set||{};
+  a.set.notes=($('#st-notes').value||'').trim().slice(0,300);
+  if(l!=='python'){a.set.upd=true;const f=$('#st-force');a.set.updForce=!!(f&&f.checked)}
+  save();syncProj();
+  ST0.log=[];ST0.undo=[];
+  closeSheet();
+  const apkBefore=a.apk;
+  try{await buildAny(i)}catch(e){}
+  if(S.apps[i].apk&&S.apps[i].apk!==apkBefore){syncProj();toast(l!=='python'?'🚀 التحديث اتنشر! افتح التطبيق وبيظهر ليك إشعار التحديث':'✔ النسخة الجديدة جاهزة في Releases')}
+};
+
+window.cxStuOpen=function(id){
+  if(id&&id!==S.cur){
+    if(ST0.busy)return toast('انتظر انتهاء العملية');
+    if(typeof cxPjOpen==='function'){cxPjOpen(id)}
+    if(S.cur!==id)return;
+    ST0.undo=[];ST0.log=[];
+  }
+  const k=S.apps.findIndex(hasCode);
+  if(k<0)return toast('المشروع فاضي، أنشئ التطبيق أولاً');
+  if(!hasCode(S.apps[ST0.i]))ST0.i=k;
+  draw();
+};
+
+/* زر «🛠 تحديث» في كل مشروع */
+const _cxProj=window.cxProj;
+if(typeof _cxProj==='function'){
+  window.cxProj=function(){
+    _cxProj.apply(this,arguments);
+    const box=document.querySelector('#sheet .sheetbox');if(!box)return;
+    const cards=box.querySelectorAll(':scope > .card');
+    if(cards.length!==(S.projects||[]).length)return;
+    cards.forEach(function(c,n){
+      const p=S.projects[n];
+      const has=(p.id===S.cur?S.apps:p.apps||[]).some(hasCode);
+      const row=c.querySelector('.row:last-child');
+      if(!row||!has||row.querySelector('.st-btn'))return;
+      row.insertAdjacentHTML('afterbegin','<button class="acc st-btn" onclick="cxStuOpen(\''+p.id+'\')">🛠 تحديث</button>');
+    });
+  };
+}
+})();
+render();
 </script>
 </body>
 </html>
