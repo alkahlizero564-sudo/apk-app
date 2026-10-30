@@ -180,12 +180,10 @@ class _MainScreenState extends State<MainScreen> {
       children: [
         DsHero(
           title: "مصروفاتي",
-          trailing: [
-            IconButton(
-              icon: Icon(Icons.settings_outlined, size: 20),
-              onPressed: () => setState(() => _currentIndex = 3),
-            ),
-          ],
+          trailing: IconButton(
+            icon: Icon(Icons.settings_outlined, size: 20),
+            onPressed: () => setState(() => _currentIndex = 3),
+          ),
           big: Column(
             children: [
               Text("الرصيد المتبقي هذا الشهر", style: TextStyle(color: Colors.grey[400], fontSize: 12)),
@@ -262,7 +260,7 @@ class _MainScreenState extends State<MainScreen> {
           child: Padding(
             padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("سجل المعاملات", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 Row(
@@ -375,7 +373,7 @@ class _MainScreenState extends State<MainScreen> {
           child: Padding(
             padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.between,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("التحليلات المالية", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 DsButton(
@@ -421,7 +419,7 @@ class _MainScreenState extends State<MainScreen> {
               Text("الميزانية الشهرية", style: TextStyle(fontWeight: FontWeight.bold)),
               SizedBox(height: 12),
               Row(
-                mainAxisAlignment: MainAxisAlignment.between,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text("المستخدم (70%)", style: TextStyle(fontSize: 12)),
                   Text("3,500 / 5,000 ر.س", style: TextStyle(color: Colors.grey, fontSize: 12)),
@@ -452,7 +450,7 @@ class _MainScreenState extends State<MainScreen> {
           child: Column(
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.between,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text("الوضع المظلم"),
                   Switch(
@@ -466,7 +464,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               Divider(height: 24, color: Colors.white12),
               Row(
-                mainAxisAlignment: MainAxisAlignment.between,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text("الإشعارات اليومية"),
                   Switch(
