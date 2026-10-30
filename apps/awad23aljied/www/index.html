@@ -496,13 +496,18 @@ var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimatio
         <label class="fld" style="margin-bottom: 12px;">
           <span style="font-size: 12px;">نموذج Gemini</span>
           <select id="settingsModel" class="in" style="font-size: 14px;">
+            <option value="argon-4">Argon 4 (النموذج الجديد والمتقدم)</option>
             <option value="gemini-3.8-flash">Gemini 3.8 Flash (الأحدث والأسرع)</option>
             <option value="gemini-3.8-pro">Gemini 3.8 Pro (الأحدث والأكثر دقة)</option>
+            <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+            <option value="gemini-3.2-flash">Gemini 3.2 Flash</option>
+            <option value="gemini-3-flash">Gemini 3 Flash</option>
             <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
             <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
             <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
             <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+            <option value="gemini-1-flash">Gemini 1 Flash</option>
           </select>
         </label>
         <button class="btn soft block" onclick="testConnection()" style="font-size: 13px;">اختبار الاتصال <i data-i="check"></i></button>
@@ -568,7 +573,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let settingsKey = document.getElementById('settingsApiKey');
     if(settingsKey) settingsKey.value = savedKey;
   }
-  let savedModel = DS.get('model', 'gemini-3.8-flash');
+  let savedModel = DS.get('model', 'argon-4');
   let modelSelect = document.getElementById('settingsModel');
   if(modelSelect) {
     modelSelect.value = savedModel;
@@ -658,7 +663,7 @@ async function startAnalysis() {
     let market = marketSelect ? marketSelect.value : 'XAUUSD';
     let chartNote = document.getElementById('chartNote');
     let note = chartNote ? chartNote.value : '';
-    let modelName = DS.get('model', 'gemini-3.8-flash');
+    let modelName = DS.get('model', 'argon-4');
 
     let promptText = `أنت محلل فني محترف في التداول. قم بتحليل هذه الصورة الحقيقية لشارت السوق (${market}) بدقة تامة واستخرج منها جني الأرباح (TP) ووقف الخسارة (SL) وسعر الدخول الحقيقي ومستويات الدعم والمقاومة. الملاحظة الإضافية: ${note}. أجب بصيغة JSON فقط بالتنسيق التالي بدون أي نص إضافي:
 {
@@ -913,7 +918,7 @@ function saveSettings() {
   let keyInput = document.getElementById('settingsApiKey');
   let modelSelect = document.getElementById('settingsModel');
   let key = keyInput ? keyInput.value.trim() : '';
-  let model = modelSelect ? modelSelect.value : 'gemini-3.8-flash';
+  let model = modelSelect ? modelSelect.value : 'argon-4';
   
   DS.set('apiKey', key);
   DS.set('model', model);
@@ -929,7 +934,7 @@ function toggleTheme(el) {
 }
 </script>
 <script id="apk-upd">(function(){
-var CUR=2,U="https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/awad23aljied/update.json";
+var CUR=3,U="https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/awad23aljied/update.json";
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){}return null}
 function show(j){
   var force=!!j.force;
