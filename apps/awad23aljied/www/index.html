@@ -496,8 +496,10 @@ var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimatio
         <label class="fld" style="margin-bottom: 12px;">
           <span style="font-size: 12px;">نموذج Gemini</span>
           <select id="settingsModel" class="in" style="font-size: 14px;">
-            <option value="gemini-2.5-flash">Gemini 2.5 Flash (سريع وموصى به)</option>
-            <option value="gemini-2.5-pro">Gemini 2.5 Pro (دقيق جداً)</option>
+            <option value="gemini-3.8-flash">Gemini 3.8 Flash (الأحدث والأسرع)</option>
+            <option value="gemini-3.8-pro">Gemini 3.8 Pro (الأحدث والأكثر دقة)</option>
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+            <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
             <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
             <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
             <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
@@ -566,7 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let settingsKey = document.getElementById('settingsApiKey');
     if(settingsKey) settingsKey.value = savedKey;
   }
-  let savedModel = DS.get('model', 'gemini-2.5-flash');
+  let savedModel = DS.get('model', 'gemini-3.8-flash');
   let modelSelect = document.getElementById('settingsModel');
   if(modelSelect) {
     modelSelect.value = savedModel;
@@ -656,7 +658,7 @@ async function startAnalysis() {
     let market = marketSelect ? marketSelect.value : 'XAUUSD';
     let chartNote = document.getElementById('chartNote');
     let note = chartNote ? chartNote.value : '';
-    let modelName = DS.get('model', 'gemini-2.5-flash');
+    let modelName = DS.get('model', 'gemini-3.8-flash');
 
     let promptText = `أنت محلل فني محترف في التداول. قم بتحليل هذه الصورة الحقيقية لشارت السوق (${market}) بدقة تامة واستخرج منها جني الأرباح (TP) ووقف الخسارة (SL) وسعر الدخول الحقيقي ومستويات الدعم والمقاومة. الملاحظة الإضافية: ${note}. أجب بصيغة JSON فقط بالتنسيق التالي بدون أي نص إضافي:
 {
@@ -911,7 +913,7 @@ function saveSettings() {
   let keyInput = document.getElementById('settingsApiKey');
   let modelSelect = document.getElementById('settingsModel');
   let key = keyInput ? keyInput.value.trim() : '';
-  let model = modelSelect ? modelSelect.value : 'gemini-2.5-flash';
+  let model = modelSelect ? modelSelect.value : 'gemini-3.8-flash';
   
   DS.set('apiKey', key);
   DS.set('model', model);
@@ -926,5 +928,36 @@ function toggleTheme(el) {
   DS.vib();
 }
 </script>
-</body>
+<script id="apk-upd">(function(){
+var CUR=2,U="https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/awad23aljied/update.json";
+function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){}return null}
+function show(j){
+  var force=!!j.force;
+  if(!force){var s=ls("apk_upd_skip");if(s&&s.split("|")[0]==String(j.code)&&Date.now()-(+s.split("|")[1]||0)<86400000)return}
+  if(document.getElementById("apk-upd-box"))return;
+  var d=document.createElement("div");d.id="apk-upd-box";
+  d.style.cssText="position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483646;background:rgba(2,6,23,.62);display:flex;align-items:flex-end;justify-content:center;font-family:system-ui,Tahoma,sans-serif;direction:rtl";
+  var c=document.createElement("div");
+  c.style.cssText="width:100%;max-width:520px;background:#fff;color:#0f172a;border-radius:28px 28px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));box-shadow:0 -10px 40px rgba(0,0,0,.3)";
+  var h=document.createElement("div");h.style.cssText="font-size:19px;font-weight:800;margin-bottom:6px";h.textContent=force?"تحديث مطلوب":"يتوفر إصدار جديد";
+  var p=document.createElement("div");p.style.cssText="color:#475569;font-size:14px;line-height:1.8;margin-bottom:14px;white-space:pre-wrap";
+  p.textContent="الإصدار "+(j.name||j.code)+(j.notes?"\n\n"+j.notes:"");
+  var a=document.createElement("a");a.href=j.url;a.target="_blank";a.rel="noopener";a.textContent="⬇ تحميل التحديث";
+  a.style.cssText="display:block;text-align:center;text-decoration:none;background:#2563eb;color:#fff;font-weight:700;padding:14px;border-radius:16px;font-size:16px";
+  c.appendChild(h);c.appendChild(p);c.appendChild(a);
+  if(!force){
+    var b=document.createElement("button");b.textContent="لاحقاً";
+    b.style.cssText="display:block;width:100%;margin-top:10px;padding:13px;border:0;border-radius:16px;background:#e2e8f0;color:#0f172a;font-size:15px;font-weight:600;font-family:inherit";
+    b.onclick=function(){ls("apk_upd_skip",j.code+"|"+Date.now());d.parentNode.removeChild(d)};
+    c.appendChild(b);
+  }
+  d.appendChild(c);document.body.appendChild(d);
+}
+function check(){
+  try{
+    fetch(U+"?t="+Date.now(),{cache:"no-store"}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&+j.code>CUR&&j.url)show(j)}).catch(function(){});
+  }catch(e){}
+}
+if(document.readyState==="complete")setTimeout(check,2500);else window.addEventListener("load",function(){setTimeout(check,2500)});
+})();</script></body>
 </html>
