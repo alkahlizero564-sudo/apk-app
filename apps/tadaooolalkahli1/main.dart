@@ -323,9 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
               DsSection(
                 title: 'آخر توصيات الذهب المستخرجة',
                 action: 'عرض الكل',
-                onAction: () {
-                  // الانتقال لشاشة التوصيات
-                },
+                onAction: () {},
               ),
               SizedBox(height: 8),
               ...recommendations.map((item) => Padding(
@@ -373,7 +371,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(height: 80),
             ],
           ),
-        ),
+        ],
       ],
     );
   }
@@ -507,16 +505,19 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     }
 
     return Scaffold(
-      appBar: DsTopBar(
-        title: 'سجل توصيات الذهب الفورية',
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search_rounded),
-            onPressed: () {
-              dsToast(context, 'تم تحديث أحدث أسعار ونماذج الذهب من البورصة العالمية بنجاح');
-            },
-          ),
-        ],
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(kToolbarHeight),
+        child: DsTopBar(
+          title: 'سجل توصيات الذهب الفورية',
+          actions: [
+            IconButton(
+              icon: Icon(Icons.search_rounded),
+              onPressed: () {
+                dsToast(context, 'تم تحديث أحدث أسعار ونماذج الذهب من البورصة العالمية بنجاح');
+              },
+            ),
+          ],
+        ),
       ),
       body: ListView(
         padding: EdgeInsets.all(16),
