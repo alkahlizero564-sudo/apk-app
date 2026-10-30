@@ -1,4 +1,5 @@
-# v5
+# v6
+# v5 compatible
 # v4 compatible
 # v3 compatible
 # v2 compatible
@@ -28,6 +29,30 @@ jobs:
         with:
           channel: stable
           cache: true
+      - name: app signing key
+        run: |
+          mkdir -p keys
+          KS=keys/$APP.keystore
+          PR=keys/$APP.properties
+          if [ ! -f "$KS" ] || [ ! -f "$PR" ]; then
+            PASS=$(openssl rand -hex 12)
+            rm -f "$KS"
+            keytool -genkeypair -keystore "$KS" -storetype PKCS12 -storepass "$PASS" -keypass "$PASS" -alias appkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=$APP, O=MyApps, C=SD"
+            echo "pass=$PASS" > "$PR"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$KS" "$PR"
+            git commit -m "add signing key for $APP"
+            PUSHED=0
+            for n in 1 2 3; do
+              if git pull --rebase origin "$GITHUB_REF_NAME" && git push origin "HEAD:$GITHUB_REF_NAME"; then PUSHED=1; break; fi
+              sleep 4
+            done
+            if [ "$PUSHED" != "1" ]; then echo "failed to save the signing key to the repo"; exit 1; fi
+            echo "NEW signing key created for $APP"
+          else
+            echo "using existing signing key for $APP"
+          fi
       - name: create project
         run: |
           PKG=$(cat apps/$APP/pkg.txt 2>/dev/null | tr -d '[:space:]')
@@ -45,48 +70,46 @@ jobs:
           ORI=$(jq -r '.ori // "auto"' $SET 2>/dev/null || echo auto)
           if [ -n "$LABEL" ]; then sed -i 's|android:label="[^"]*"|android:label="'"$LABEL"'"|' $MF; fi
           if [ "$ORI" = "portrait" ] || [ "$ORI" = "landscape" ]; then sed -i 's|android:name=".MainActivity"|android:name=".MainActivity" android:screenOrientation="'"$ORI"'"|' $MF; fi
-          KS="$GITHUB_WORKSPACE/keys/shared.keystore"
-          if [ -f "$KS" ]; then
-            cp "$KS" flutter_out/android/app/shared.keystore
-            if [ -f flutter_out/android/app/build.gradle.kts ]; then
-              cat >> flutter_out/android/app/build.gradle.kts <<'EOF'
+          PASS=$(grep '^pass=' keys/$APP.properties | cut -d= -f2)
+          cp keys/$APP.keystore flutter_out/android/app/app.keystore
+          if [ -f flutter_out/android/app/build.gradle.kts ]; then
+            cat >> flutter_out/android/app/build.gradle.kts <<EOF
 
           android {
               signingConfigs {
-                  create("shared") {
-                      storeFile = file("shared.keystore")
-                      storePassword = "android123"
-                      keyAlias = "shared"
-                      keyPassword = "android123"
+                  create("appkey") {
+                      storeFile = file("app.keystore")
+                      storePassword = "$PASS"
+                      keyAlias = "appkey"
+                      keyPassword = "$PASS"
                   }
               }
               buildTypes {
                   getByName("release") {
-                      signingConfig = signingConfigs.getByName("shared")
+                      signingConfig = signingConfigs.getByName("appkey")
                   }
               }
           }
           EOF
-            else
-              cat >> flutter_out/android/app/build.gradle <<'EOF'
+          else
+            cat >> flutter_out/android/app/build.gradle <<EOF
 
           android {
               signingConfigs {
-                  shared {
-                      storeFile file("shared.keystore")
-                      storePassword "android123"
-                      keyAlias "shared"
-                      keyPassword "android123"
+                  appkey {
+                      storeFile file("app.keystore")
+                      storePassword "$PASS"
+                      keyAlias "appkey"
+                      keyPassword "$PASS"
                   }
               }
               buildTypes {
                   release {
-                      signingConfig signingConfigs.shared
+                      signingConfig signingConfigs.appkey
                   }
               }
           }
           EOF
-            fi
           fi
           if [ -f apps/$APP/icon.png ]; then
             for d in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
@@ -99,6 +122,20 @@ jobs:
           VN=$(jq -r '.versionName // "1.0.0"' ../apps/$APP/settings.json 2>/dev/null || echo 1.0.0)
           VC=$(jq -r '.versionCode // 1' ../apps/$APP/settings.json 2>/dev/null || echo 1)
           flutter build apk --release --build-name=$VN --build-number=$VC
+      - name: verify signing
+        if: always()
+        continue-on-error: true
+        run: |
+          APK=flutter_out/build/app/outputs/flutter-apk/app-release.apk
+          if [ ! -f "$APK" ]; then echo "no apk to verify"; exit 0; fi
+          AS=$(ls $ANDROID_SDK_ROOT/build-tools/*/apksigner 2>/dev/null | tail -n 1)
+          if [ -z "$AS" ]; then echo "apksigner not found"; exit 0; fi
+          PASS=$(grep '^pass=' keys/$APP.properties | cut -d= -f2)
+          A=$("$AS" verify --print-certs "$APK" | grep -i "SHA-256 digest" | head -n 1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          K=$(keytool -list -v -keystore keys/$APP.keystore -storepass "$PASS" -alias appkey 2>/dev/null | grep -i "SHA256:" | head -n 1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          echo "apk:      $A"
+          echo "keystore: $K"
+          if [ -n "$A" ] && [ "$A" = "$K" ]; then echo "SIGNING OK: this app uses its own key"; else echo "SIGNING MISMATCH"; fi
       - name: release
         uses: softprops/action-gh-release@v2
         with:
