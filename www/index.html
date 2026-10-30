@@ -6766,6 +6766,164 @@ render=function(){
 };
 })();
 render();
+/* ===== إضافة: النسخ الاحتياطي والاسترجاع ===== */
+(function(){
+const SK='apkapp',UNDO='apkapp_before_restore',DAY=86400000;
+const SECRET=/token|key|claude|gemini|openai|deepseek|groq|secret|pass|anthropic/i;
+const KEEP=['provider','repo','fbUrl','sbRef','bkRepo','bkAuto','bkLast','bkErr','bkHash'];
+
+function snapshot(withKeys){
+  const s=JSON.parse(JSON.stringify(S));
+  s.keys=s.keys||{};
+  delete s.keys.ghToken;
+  if(!withKeys)Object.keys(s.keys).forEach(function(k){
+    if(KEEP.indexOf(k)<0&&SECRET.test(k)&&typeof s.keys[k]==='string')delete s.keys[k];
+  });
+  ['bkLast','bkErr','bkHash'].forEach(function(k){delete s.keys[k]});
+  return {app:'APK App',v:1,t:new Date().toISOString(),keys:!!withKeys,S:s};
+}
+function hash(str){let h=0;for(let i=0;i<str.length;i++){h=(h*31+str.charCodeAt(i))|0}return String(h)}
+function dstr(t){try{return new Date(t).toLocaleString('ar')}catch(e){return String(t)}}
+
+async function bkRepo(create){
+  const u=await gh('/user');
+  const name=(S.keys.bkRepo||'apk-app-backup').trim();
+  const full=u.login+'/'+name;
+  try{
+    const r=await gh('/repos/'+full);
+    if(!r.private)throw Object.assign(new Error('المستودع '+full+' عام! خلّيه خاص (Private) من Settings في GitHub قبل الحفظ، لأن النسخة فيها مفاتيحك.'),{pub:true});
+    return {full:full,branch:r.default_branch||'main'};
+  }catch(e){
+    if(e.pub||e.status!==404||!create)throw e;
+  }
+  try{
+    const r=await gh('/user/repos',{method:'POST',body:JSON.stringify({name:name,private:true,auto_init:true,description:'نسخ احتياطية لأداة APK App (خاص)'})});
+    await sleep(2500);
+    return {full:full,branch:r.default_branch||'main'};
+  }catch(e){
+    throw new Error('ما قدرت أنشئ المستودع الخاص تلقائياً ('+(e.message||e)+'). أنشئه براك: github.com/new ← الاسم '+name+' ← اختار Private ← Create. ولو مفتاح GitHub محدد لمستودعات معيّنة، ضيف '+name+' لصلاحياته.');
+  }
+}
+
+async function cloudSave(silent){
+  if(!S.keys.ghToken)throw new Error('أدخل مفتاح GitHub أولاً');
+  const snap=snapshot(true);
+  const body=JSON.stringify(snap.S);
+  const h=hash(body);
+  if(silent&&S.keys.bkHash===h){S.keys.bkLast=Date.now();save();return 'same'}
+  const rp=await bkRepo(!silent);
+  const txt=JSON.stringify(snap);
+  const day=new Date().toISOString().slice(0,10);
+  await put(rp.full,rp.branch,'backups/'+day+'.json',txt);
+  await put(rp.full,rp.branch,'backups/latest.json',txt);
+  S.keys.bkLast=Date.now();S.keys.bkHash=h;delete S.keys.bkErr;save();
+  return rp.full;
+}
+
+window.cxBkSave=function(btn){
+  busy(btn,async function(){
+    const r=await cloudSave(false);
+    toast('✔ اتحفظت النسخة في '+r);
+    render();
+  });
+};
+
+window.cxBkCopy=function(){
+  const withKeys=!!($('#bk-keys')&&$('#bk-keys').checked);
+  const t=JSON.stringify(snapshot(withKeys));
+  function ok(){toast('✔ اتنسخت النسخة ('+Math.round(t.length/1024)+' كيلوبايت). الصقها في ملاحظات أو ملف واحفظها')}
+  function fb(){
+    const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');ok()}catch(e){toast('تعذّر النسخ')}
+    ta.remove();
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb();
+};
+
+function summary(b){
+  const s=b.S||{};
+  const apps=(s.apps||[]).map(function(a,i){return (i+1)+') '+(a.name||'-')+(a.code&&a.code.trim()?'':' (فاضي)')}).join('\n');
+  return 'تاريخ النسخة: '+dstr(b.t)+'\nالتطبيقان:\n'+apps+'\nالمشاريع: '+((s.projects||[]).length)+' — القوالب: '+((s.tpls||[]).length)+'\nالمفاتيح: '+(b.keys?'موجودة':'غير موجودة (حتحتاج تدخلها تاني)');
+}
+
+function applyBackup(b){
+  if(!b||!b.S||!Array.isArray(b.S.apps))throw new Error('الملف ده ما نسخة احتياطية صحيحة من APK App');
+  if(!confirm('حترجع كل حاجة للنسخة دي:\n\n'+summary(b)+'\n\nالوضع الحالي بيتحفظ، وتقدر تتراجع بعدين. أكمّل؟'))return false;
+  const cur=localStorage.getItem(SK);
+  try{if(cur)localStorage.setItem(UNDO,cur)}catch(e){}
+  const n=b.S;n.keys=n.keys||{};
+  Object.keys(S.keys||{}).forEach(function(k){if(n.keys[k]===undefined&&SECRET.test(k))n.keys[k]=S.keys[k]});
+  if(S.keys.ghToken)n.keys.ghToken=S.keys.ghToken;
+  S=n;localStorage.setItem(SK,JSON.stringify(n));
+  toast('✔ اترجعت النسخة، الأداة بتفتح من جديد');
+  setTimeout(function(){location.reload()},900);
+  return true;
+}
+
+window.cxBkRestoreCloud=function(btn){
+  busy(btn,async function(){
+    if(!S.keys.ghToken)throw new Error('أدخل مفتاح GitHub أولاً');
+    const rp=await bkRepo(false);
+    let list=[];
+    try{list=await gh('/repos/'+rp.full+'/contents/backups?ref='+rp.branch)}catch(e){throw new Error('ما لقيت نسخ محفوظة في '+rp.full)}
+    const files=list.filter(function(f){return /^\d{4}-\d{2}-\d{2}\.json$/.test(f.name)}).map(function(f){return f.name}).sort().reverse();
+    if(!files.length)throw new Error('ما لقيت نسخ محفوظة في '+rp.full);
+    const pick=prompt('النسخ المحفوظة (الأحدث أولاً):\n'+files.slice(0,15).map(function(f,i){return (i+1)+') '+f.replace('.json','')}).join('\n')+'\n\nاكتب رقم النسخة:','1');
+    if(pick===null)return;
+    const f=files[(parseInt(pick,10)||1)-1];
+    if(!f)throw new Error('رقم غير صحيح');
+    const r=await fetch('https://api.github.com/repos/'+rp.full+'/contents/backups/'+f+'?ref='+rp.branch,{headers:{Authorization:'Bearer '+S.keys.ghToken,Accept:'application/vnd.github.raw'}});
+    if(!r.ok)throw new Error('تعذّر تحميل النسخة ('+r.status+')');
+    applyBackup(JSON.parse(await r.text()));
+  });
+};
+
+window.cxBkRestoreText=function(){
+  const t=($('#bk-text')&&$('#bk-text').value||'').trim();
+  if(!t)return toast('الصق نص النسخة الاحتياطية أولاً');
+  try{applyBackup(JSON.parse(t))}catch(e){toast(e.message||'النص ده ما نسخة صحيحة')}
+};
+
+window.cxBkUndo=function(){
+  const u=localStorage.getItem(UNDO);
+  if(!u)return toast('ما في حاجة للتراجع عنها');
+  if(!confirm('ترجع للوضع اللي كان قبل آخر استرجاع؟'))return;
+  S=JSON.parse(u);localStorage.setItem(SK,u);localStorage.removeItem(UNDO);
+  setTimeout(function(){location.reload()},300);
+};
+
+/* حفظ تلقائي: مرة في اليوم عند فتح الأداة، وبعد ساعتين من آخر تعديل */
+function autoRun(){
+  if(S.keys.bkAuto===false||!S.keys.ghToken)return;
+  if(S.keys.bkLast&&Date.now()-S.keys.bkLast<DAY)return;
+  if(window.busyNow&&busyNow())return;
+  cloudSave(true).catch(function(e){S.keys.bkErr=String(e.message||e).slice(0,200);save()});
+}
+setTimeout(autoRun,12000);
+setInterval(autoRun,2*3600000);
+
+const _render31=render;
+render=function(){
+  _render31();
+  if(tab!=='keys')return;
+  const m=$('#main');
+  if(!m||$('#cx-bk'))return;
+  const last=S.keys.bkLast?dstr(S.keys.bkLast):'لسه ما اتحفظت';
+  const old=!S.keys.bkLast||Date.now()-S.keys.bkLast>3*DAY;
+  const c=document.createElement('div');c.className='card';c.id='cx-bk';
+  c.innerHTML='<h2>💾 النسخ الاحتياطي</h2>'
+   +'<p class="note" style="margin-top:0">آخر نسخة: <b style="color:'+(old?'var(--bad,#e11d48)':'inherit')+'">'+esc(last)+'</b>'+(S.keys.bkErr?'<br>⚠ '+esc(S.keys.bkErr):'')+'</p>'
+   +'<button class="acc" style="width:100%" onclick="cxBkSave(this)">☁️ احفظ نسخة الآن في GitHub (مستودع خاص)</button>'
+   +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:10px 0 0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.bkAuto===false?'':'checked')+' onchange="S.keys.bkAuto=this.checked;save()"> حفظ تلقائي مرة في اليوم</label>'
+   +'<div class="row" style="margin-top:10px"><button class="sec" onclick="cxBkRestoreCloud(this)">📥 استرجع من GitHub</button><button class="sec" onclick="cxBkCopy()">📋 انسخ النسخة كنص</button></div>'
+   +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:14px;margin:8px 0 0"><input id="bk-keys" type="checkbox" style="width:20px;height:20px;flex:none"> ضمّن مفاتيح الذكاء الاصطناعي في النص المنسوخ</label>'
+   +'<details style="margin-top:10px"><summary style="cursor:pointer">📝 استرجاع من نص منسوخ</summary><textarea id="bk-text" rows="4" dir="ltr" style="width:100%;margin-top:8px" placeholder="الصق نص النسخة هنا"></textarea><button class="sec" style="width:100%;margin-top:6px" onclick="cxBkRestoreText()">استرجع من النص</button></details>'
+   +(localStorage.getItem(UNDO)?'<button class="sec" style="width:100%;margin-top:10px" onclick="cxBkUndo()">↩️ تراجع عن آخر استرجاع</button>':'')
+   +'<p class="note">النسخة بتحفظ: كود التطبيقين ونسخهم السابقة، والمشاريع، والقوالب، والإعدادات، ومفاتيح الذكاء الاصطناعي وFirebase وSupabase. مفتاح GitHub نفسه ما بيتحفظ، لأنك محتاجه عشان تسترجع. المستودع apk-app-backup بيتعمل خاص (Private)، والأداة بترفض تحفظ فيه لو بقى عام.</p>';
+  m.appendChild(c);
+};
+})();
+render();
 </script>
 </body>
 </html>
