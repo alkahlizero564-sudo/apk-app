@@ -3310,21 +3310,7 @@ buildNative=async function(i,l){
   return _bn5(i,l);
 };
 })();
-render();/* ===== إضافة: حماية ملفات بناء Flutter و Python من الكتابة فوقها ===== */
-(function(){
-const _put9=put;
-put=async function(repo,branch,path,content){
-  if(/^\.github\/workflows\/build-(flutter|python)\.yml$/.test(String(path))){
-    try{
-      await gh('/repos/'+repo+'/contents/'+path+'?ref='+branch);
-      return;
-    }catch(e){
-      if(e.status!==404)throw e;
-    }
-  }
-  return _put9(repo,branch,path,content);
-};
-})();/* ===== إضافة: إشعار التحديث داخل التطبيق (لتطبيقات HTML) ===== */
+render();/* ===== إضافة: إشعار التحديث داخل التطبيق (لتطبيقات HTML) ===== */
 (function(){
 
 /* الكود الذي يُحقن داخل التطبيق المبني */
@@ -6254,6 +6240,393 @@ render=function(){
   if(!m||$('#cx-diag'))return;
   const c=document.createElement('div');c.className='card';c.id='cx-diag';
   c.innerHTML='<h2>🩺 فحص الأداة</h2><p class="note">يفحص الكتل المركّبة وترتيبها، والمفاتيح، والتطبيقين، والتخزين، وملفات البناء في GitHub، وآخر الأخطاء.</p><button class="acc" style="width:100%" onclick="cxDiag()">🩺 افحص الأداة الآن</button>';
+  m.appendChild(c);
+};
+})();
+render();
+/* ===== إضافة: فحص قبل البناء (حتى 100 محاولة + تصنيف الأخطاء + إصلاح ذاتي) ===== */
+(function(){
+
+function maxFix(){const v=parseInt(S.keys.maxFix3,10);return (v>=1&&v<=100)?v:30}
+function stallN(){const v=parseInt(S.keys.stall3,10);return (v>=3&&v<=50)?v:10}
+
+const CK_FL=`# ck3
+# ck2
+# ck1
+name: check-flutter
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: analyze
+        run: |
+          flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
+          rm -rf flutter_out/test
+          cp apps/$APP/main.dart flutter_out/lib/main.dart
+          cd flutter_out
+          if grep -q "package:url_launcher" lib/main.dart; then flutter pub add url_launcher; fi
+          flutter pub get
+          flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
+          cd ..
+          F=flutter_out/lib/main.dart
+          DSL=$(grep -n "^// ===== نظام التصميم الجاهز" $F | head -n 1 | cut -d: -f1)
+          UPL=$(grep -n "^// ===== تحديث التطبيق" $F | head -n 1 | cut -d: -f1)
+          : > errs.txt
+          grep -E "^[[:space:]]*error" analyze.txt | while IFS= read -r line; do
+            L=$(echo "$line" | grep -o "main.dart:[0-9]*" | head -n 1 | cut -d: -f2)
+            T=APP
+            if [ -n "$L" ]; then
+              if [ -n "$UPL" ] && [ "$L" -ge "$UPL" ]; then T=UPD
+              elif [ -n "$DSL" ] && [ "$L" -ge "$DSL" ]; then T=DS
+              elif sed -n "$L"p $F | grep -q " as apk"; then T=UPD
+              fi
+            fi
+            echo "[$T] $line" >> errs.txt
+          done
+          if [ -s errs.txt ]; then
+            echo APKERR_START
+            cat errs.txt
+            echo APKERR_END
+            exit 1
+          fi
+`;
+
+const CK_PY=`# ck1
+name: check-python
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: analyze
+        run: |
+          pip install pyflakes
+          : > errs.txt
+          python -m py_compile apps/$APP/main.py 2> comp.txt || cat comp.txt >> errs.txt
+          python -m pyflakes apps/$APP/main.py 2>&1 | grep -v -E "imported but unused|unable to detect undefined names|may be undefined, or defined from star|redefinition of unused|assigned to but never used|f-string is missing placeholders" >> errs.txt || true
+          if [ -s errs.txt ]; then
+            echo APKERR_START
+            cat errs.txt
+            echo APKERR_END
+            exit 1
+          fi
+`;
+
+const CK={
+  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck3',main:'main.dart',name:'Flutter',min:'2-4'},
+  python:{file:'check-python.yml',yaml:CK_PY,mk:'# ck1',main:'main.py',name:'Python',min:'1'}
+};
+
+const DS_SIG=[
+'',
+'',
+'توقيعات الويدجتات الجاهزة (الأسماء والأنواع بالضبط، ولا تخترع بارامترات غيرها):',
+'DsApp({required Widget home, double hue = 250, String title = "App"})',
+'DsHero({required String title, String? subtitle, String? big, Widget? trailing})',
+'DsTopBar({required String title, List<Widget> actions = const [], VoidCallback? onBack})',
+'DsCard({required Widget child, VoidCallback? onTap, EdgeInsets padding, EdgeInsets margin})',
+'DsItem({String? emoji, IconData? icon, required String title, String? subtitle, Widget? trailing, VoidCallback? onTap})',
+'DsStat({required String label, required String value, String? emoji})  و  DsStats({required List<DsStat> items})',
+'DsButton({required String label, VoidCallback? onPressed, IconData? icon, String kind = "primary", bool block = true})  (kind: primary أو soft أو ghost أو danger)',
+'DsChips({required List<String> items, required int index, required ValueChanged<int> onChanged})',
+'DsSection({required String title, String? action, VoidCallback? onAction})',
+'DsBadge({required String text, String kind = "info"})  (kind: ok أو bad أو warn أو info)',
+'DsProgress({required double value})',
+'DsField({TextEditingController? controller, required String label, String? hint, TextInputType? keyboard, bool obscure = false, int maxLines = 1, ValueChanged<String>? onChanged})',
+'DsEmpty({String emoji = "📭", required String title, String? text, String? actionLabel, VoidCallback? onAction})',
+'DsFab({IconData icon = Icons.add, required VoidCallback onPressed})',
+'DsNavItem(String label, IconData icon) (وسيطان موضعيان)  و  DsNav({required List<DsNavItem> items, required int index, required ValueChanged<int> onChanged})',
+'DsFade({int index = 0, required Widget child})',
+'Future<T?> dsSheet<T>(BuildContext context, {required String title, required Widget child})',
+'void dsToast(BuildContext context, String msg)  و  void dsUndo(BuildContext context, String msg, VoidCallback onUndo)  و  Future<bool> dsConfirm(BuildContext context, String title, String text)',
+'أخطاء شائعة تجنّبها: لا تستخدم const أمام ويدجت فيه دالة أو قيمة ديناميكية؛ DsChips.onChanged تأخذ int؛ DsStats.items قائمة من DsStat؛ لا تعرّف صنفاً أو دالة اسمها يبدأ بـ Ds أو ds؛ لا تستخدم MaterialApp مباشرة بل DsApp.'
+].join('\n');
+
+const HINTS='\n\nتلميحات لأخطاء Flutter الشائعة: Undefined name أو class أو method → أضف الاستيراد المناسب (dart:convert لـ jsonDecode وjsonEncode وutf8، وdart:io لـ HttpClient، وdart:async لـ Timer وFuture) أو صحّح الاسم؛ Not a constant expression → احذف const؛ The named parameter isn\'t defined → راجع أسماء البارامترات؛ A value of type X can\'t be assigned to Y → أضف تحويلاً أو as أو ??؛ تأكد من توازن الأقواس ومن الفواصل المنقوطة، ومن أن كل متغير معرّف قبل استخدامه.';
+
+function extractErr(log){
+  const lines=String(log).replace(/\r/g,'').split('\n').map(x=>x.replace(/^\S+Z\s?/,''));
+  const txt=lines.join('\n');
+  const s=txt.lastIndexOf('APKERR_START');
+  if(s<0)return null;
+  const e=txt.indexOf('APKERR_END',s);
+  if(e<0)return null;
+  return txt.slice(s+12,e).trim().slice(0,6000);
+}
+function tailOf(log){
+  return String(log).replace(/\r/g,'').split('\n').map(x=>x.replace(/^\S+Z\s?/,'')).filter(x=>x.trim()).slice(-12).join('\n').slice(0,1200);
+}
+function bal(t){return (String(t).match(/\{/g)||[]).length===(String(t).match(/\}/g)||[]).length}
+function norm(e){
+  return String(e).split('\n').map(x=>x.replace(/main\.(dart|py):[0-9]+(:[0-9]+)?/g,'').replace(/[0-9]+/g,'#').trim()).filter(Boolean).sort().join('|');
+}
+function splitErr(errs){
+  const o={app:[],upd:[],ds:[]};
+  String(errs).split('\n').forEach(function(x){
+    const t=x.trim();
+    if(!t)return;
+    const m=/^\[(APP|UPD|DS)\]\s?(.*)$/.exec(t);
+    if(!m){o.app.push(t);return}
+    if(m[1]==='UPD')o.upd.push(m[2]);
+    else if(m[1]==='DS')o.ds.push(m[2]);
+    else o.app.push(m[2]);
+  });
+  return o;
+}
+
+async function nativeCheck(i,l,P){
+  const C=CK[l],key=slugOf(S.apps[i].name);
+  const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
+  let cur='';
+  try{const f=await gh('/repos/'+repo+'/contents/.github/workflows/'+C.file+'?ref='+br);cur=atob(String(f.content||'').replace(/\s/g,''))}catch(e){if(e.status!==404)throw e}
+  if(cur.indexOf(C.mk)<0){P.set(0,'run','تحديث ملف الفحص '+C.file+'...');await put(repo,br,'.github/workflows/'+C.file,C.yaml);await sleep(6000)}
+  await put(repo,br,'apps/'+key+'/'+C.main,S.apps[i].code);
+  const t0=Date.now();
+  for(let n=0;n<8;n++){
+    try{await gh('/repos/'+repo+'/actions/workflows/'+C.file+'/dispatches',{method:'POST',body:JSON.stringify({ref:br,inputs:{app:key}})});break}
+    catch(e){if((e.status===404||e.status===422)&&n<7){P.set(0,'run','بانتظار تجهيز الفحص...');await sleep(4000)}else throw e}
+  }
+  P.set(0,'run','جاري الفحص... (قد يستغرق '+C.min+' دقيقة)');
+  let run=null;const lim=Date.now()+15*60000;
+  while(Date.now()<lim){
+    await sleep(5000);
+    const rs=await gh('/repos/'+repo+'/actions/workflows/'+C.file+'/runs?event=workflow_dispatch&per_page=5');
+    run=rs.workflow_runs.find(x=>new Date(x.created_at).getTime()>=t0-30000)||null;
+    if(run&&run.status==='completed')break;
+  }
+  if(!run||run.status!=='completed')throw new Error('انتهى وقت انتظار الفحص. تابعه من تبويب Actions في GitHub.');
+  if(run.conclusion==='success')return {ok:true};
+  if(run.conclusion!=='failure')throw new Error('توقف الفحص ('+run.conclusion+').');
+  const jobs=await gh('/repos/'+repo+'/actions/runs/'+run.id+'/jobs');
+  const job=jobs.jobs.find(j=>j.conclusion==='failure')||jobs.jobs[0];
+  let log='';try{log=await ghText('/repos/'+repo+'/actions/jobs/'+job.id+'/logs')}catch(e){}
+  const err=extractErr(log);
+  if(!err)throw new Error('تعذّر الفحص بسبب مشكلة في الإعداد أو الخادم (وليس في كودك):\n'+tailOf(log));
+  return {ok:false,err:err};
+}
+
+function fixPrompt(i,l,old,errs,hist,stag,why){
+  let p=sysFor(i)+'الكود الحالي:\n'+BT+FENCE[l]+'\n'+old+'\n'+BT+'\n\nنتيجة الفحص الآلي (أخطاء حقيقية يجب إصلاحها):\n'+errs;
+  p+='\n\nملاحظة: أرقام الأسطر في الأخطاء قد تزيد بحوالي 5 أسطر عن الكود الظاهر أعلاه.';
+  if(hist.length)p+='\n\nأخطاء ظهرت في محاولات سابقة (لا تكرر الأسلوب الذي لم ينجح):\n'+hist.join('\n---\n');
+  if(stag>=2)p+='\n\nتنبيه: آخر محاولتين لم تغيّرا الأخطاء. غيّر طريقتك تماماً: أعد كتابة الدوال أو الشاشات المسببة للأخطاء من الصفر بكود أبسط وأكثر أماناً، وتجنب أي أسلوب أو واجهة قد لا تكون موجودة.';
+  if(why)p+='\n\n'+why;
+  if(l==='flutter')p+=HINTS;
+  if(l==='flutter'&&/\bDs[A-Z][A-Za-z]*\s*\(|\bds(Sheet|Toast|Undo|Confirm)\s*\(/.test(old))p+=DS_SIG;
+  p+='\n\nأصلح هذه الأخطاء وأبقِ كل شي آخر كما هو (الوظائف والتصميم والأسماء). أعد الكود الكامل.';
+  return p;
+}
+async function fixOnce(i,l,old,errs,hist,stag){
+  let why='';
+  for(let t=0;t<3;t++){
+    const out=await ai(fixPrompt(i,l,old,errs,hist,stag,why));
+    const nw=clean(out);
+    if(nw===old.trim()){why='الرد السابق لم يغيّر الكود. يجب أن تعدّل الكود فعلاً لإصلاح الأخطاء.';continue}
+    if(nw.length<old.length*0.4||(l==='flutter'&&bal(old)&&!bal(nw))){why='الرد السابق كان ناقصاً (انقطع). أعد الكود كاملاً حتى آخره.';continue}
+    return nw;
+  }
+  throw new Error('الذكاء الاصطناعي لم يعطِ كوداً صالحاً بعد 3 محاولات متتالية.');
+}
+
+const _bPrev=buildAny;
+async function runBuild(i){
+  const o1=S.keys.noPreN,o2=S.keys.noChk2;
+  S.keys.noPreN=true;S.keys.noChk2=true;
+  try{return await _bPrev(i)}
+  finally{S.keys.noPreN=o1;S.keys.noChk2=o2}
+}
+window.cxForceNative3=function(i){closeSheet();return runBuild(i)};
+window.cxCopyErr=function(){
+  const t=String(window._shownErr||'');
+  if(!t)return toast('لا توجد أخطاء لنسخها');
+  const ok=()=>toast('تم نسخ الأخطاء ✔');
+  function fb(){
+    const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;left:-9999px';
+    document.body.appendChild(ta);ta.select();
+    try{document.execCommand('copy');ok()}catch(e){toast('تعذّر النسخ')}
+    document.body.removeChild(ta);
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb();
+};
+
+buildAny=async function(i){
+  const a=S.apps[i],l=langOf(i);
+  if(l==='html'||S.keys.noChk3||!CK[l]||!a.code.trim()||!slugOf(a.name)||!S.keys.ghToken)return runBuild(i);
+  const pk=(a.pkg||'').trim().toLowerCase();
+  if(pk&&typeof pkgOk==='function'&&!pkgOk(pk))return runBuild(i);
+  if(S.apps.some((x,j)=>j!==i&&slugOf(x.name)===slugOf(a.name)))return runBuild(i);
+  if(window._preN3)return toast('الفحص شغّال، انتظر...');
+  window._preN3=true;window._chkStop=false;
+  const MAX=maxFix(),STALL=stallN(),C=CK[l];
+  const P=progress(C.name+' — فحص قبل البناء: '+a.name,['فحص الكود على GitHub','إصلاح الأخطاء بالذكاء الاصطناعي']);
+  const force='<button class="acc" style="margin-top:10px;width:100%" onclick="cxForceNative3('+i+')">🏗 ابنِ رغم ذلك</button>';
+  const copyB='<button class="sec" style="margin-top:8px;width:100%" onclick="cxCopyErr()">📋 انسخ الأخطاء</button>';
+  const STOP='<button class="sec" style="margin-top:10px;width:100%" onclick="window._chkStop=true;toast(\'سيتوقف بعد انتهاء الخطوة الحالية\')">⏹ أوقف الفحص</button>';
+  let wl=null,proceed=false;
+  try{
+    try{if(navigator.wakeLock)wl=await navigator.wakeLock.request('screen')}catch(e){}
+    let best={code:a.code,n:1e9,errs:''},bestAt=0,prev='',stag=0,hist=[],errs='',why='',ok=false,offUpd=false;
+    for(let n=0;n<=MAX;n++){
+      if(window._chkStop){why='stop';break}
+      P.set(0,'run',n?'إعادة الفحص بعد الإصلاح '+n+'...':'تجهيز الفحص...');
+      P.extra(STOP);
+      const r=await nativeCheck(i,l,P);
+      if(r.ok){
+        ok=true;
+        P.set(0,'ok','لا توجد أخطاء ✔');
+        P.set(1,'ok',n?'تم الإصلاح ✔ (بعد '+n+' محاولة)':'لا حاجة للإصلاح');
+        break;
+      }
+      const sp=splitErr(r.err);
+      /* أخطاء في إضافة إشعار التحديث: عطّلها وأعد الفحص بدون استهلاك محاولة */
+      if(sp.upd.length&&!offUpd&&S.apps[i].set&&S.apps[i].set.upd){
+        offUpd=true;
+        S.apps[i].set=Object.assign({},S.apps[i].set,{upd:false});
+        save();
+        toast('إشعار التحديث سبب أخطاء، عطّلته لهذا التطبيق');
+        P.set(0,'run','تم تعطيل إشعار التحديث، إعادة الفحص...');
+        n--;
+        continue;
+      }
+      /* الأخطاء كلها في كود مُضاف تلقائياً */
+      if(!sp.app.length){
+        why='auto';
+        errs=sp.ds.concat(sp.upd).join('\n')||r.err;
+        P.set(0,'bad',errs);
+        break;
+      }
+      errs=sp.app.join('\n');
+      window._shownErr=errs+(sp.ds.length||sp.upd.length?'\n\n(أخطاء في الكود المُضاف تلقائياً)\n'+sp.ds.concat(sp.upd).join('\n'):'');
+      const cnt=sp.app.length;
+      if(cnt<best.n){best={code:S.apps[i].code,n:cnt,errs:errs};bestAt=n}
+      P.set(0,'bad',errs+(sp.ds.length?'\n(+ '+sp.ds.length+' خطأ في نظام التصميم الجاهز)':''));
+      if(n===MAX)break;
+      if(n-bestAt>=STALL){why='stall';break}
+      const nm=norm(errs);
+      stag=(nm===prev)?stag+1:0;
+      prev=nm;
+      P.set(1,'run','محاولة إصلاح '+(n+1)+' من '+MAX+' (أقل عدد أخطاء حتى الآن: '+best.n+')...');
+      const old=S.apps[i].code;
+      const nw=await fixOnce(i,l,old,errs,hist,stag);
+      hist.push(errs.slice(0,300));
+      if(hist.length>3)hist.shift();
+      setCode(i,nw);
+    }
+    if(ok){
+      proceed=true;
+    }else{
+      if(why!=='auto'&&best.n<1e9&&best.code!==S.apps[i].code){setCode(i,best.code);errs=best.errs}
+      if(why==='auto')window._shownErr=errs;
+      const msg=why==='stop'?'تم الإيقاف':why==='auto'?'الأخطاء كلها في الكود المُضاف تلقائياً':why==='stall'?'توقفت لأن النتيجة ما تحسنت في آخر '+STALL+' محاولات':'ما قدرت أصلحها بعد '+MAX+' محاولات';
+      P.set(1,'bad',msg);
+      P.extra('<div class="errbox">'+esc(errs)+'</div>'
+        +(why==='auto'?'<p class="note">هذه الأخطاء في كود تضيفه الأداة تلقائياً (نظام التصميم أو التحديث) وليست في كودك. انسخها وابعتها لي.</p>':'')
+        +(why!=='auto'&&best.n<1e9?'<p class="note">رجّعت أفضل نسخة (أقل عدد أخطاء: '+best.n+').</p>':'')
+        +copyB+force);
+    }
+  }catch(e){
+    P.set(1,'bad',arErr(e));
+    P.extra('<div class="errbox">'+esc(arErr(e))+'</div>'+force);
+  }finally{
+    window._preN3=false;window._chkStop=false;
+    try{if(wl)await wl.release()}catch(e){}
+  }
+  if(proceed)return runBuild(i);
+};
+
+/* بطاقة الإعداد في قائمة المفاتيح (وإزالة البطاقات القديمة) */
+const _render24=render;
+render=function(){
+  _render24();
+  if(tab!=='keys')return;
+  const m=$('#main');if(!m)return;
+  m.querySelectorAll('.card').forEach(function(c){
+    const h=c.querySelector('h2');
+    if(h&&c.id!=='cx-chk3'&&h.textContent.indexOf('فحص Flutter و Python قبل البناء')>-1)c.remove();
+  });
+  const c=document.createElement('div');c.className='card';c.id='cx-chk3';
+  c.innerHTML='<h2>🔎 فحص Flutter و Python قبل البناء</h2>'
+   +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noChk3?'':'checked')+' onchange="S.keys.noChk3=!this.checked;save()"> فحص الكود وإصلاح الأخطاء تلقائياً قبل البناء</label>'
+   +'<label>أقصى عدد محاولات إصلاح (من 1 إلى 100)</label><input type="number" inputmode="numeric" min="1" max="100" value="'+maxFix()+'" onchange="S.keys.maxFix3=Math.max(1,Math.min(100,parseInt(this.value)||30));this.value=S.keys.maxFix3;save()">'
+   +'<label>أوقف لو أقل عدد أخطاء ما تحسّن في آخر كم محاولة (من 3 إلى 50)</label><input type="number" inputmode="numeric" min="3" max="50" value="'+stallN()+'" onchange="S.keys.stall3=Math.max(3,Math.min(50,parseInt(this.value)||10));this.value=S.keys.stall3;save()">'
+   +'<p class="note">كل محاولة تأخذ حوالي 2 إلى 4 دقائق في Flutter ودقيقة في Python. الأخطاء في كودك تذهب للذكاء الاصطناعي، وأخطاء إشعار التحديث بيعطّله تلقائياً، وأخطاء نظام التصميم بيوقف عندها فوراً. الشاشة بتفضل مضيئة أثناء الفحص.</p>';
+  m.appendChild(c);
+};
+})();
+render();
+/* ===== إضافة: تنظيف كاش GitHub ===== */
+(function(){
+const GB=1073741824;
+function gb(n){return (n/GB).toFixed(2)}
+window.cxCacheClean=function(btn){
+  busy(btn,async()=>{
+    if(!S.keys.ghToken)throw new Error('أدخل مفتاح GitHub أولاً');
+    const repo=await repoFull();
+    let all=[];
+    for(let p=1;p<=10;p++){
+      const r=await gh('/repos/'+repo+'/actions/caches?per_page=100&page='+p+'&sort=last_accessed_at&direction=asc');
+      const a=r.actions_caches||[];
+      all=all.concat(a);
+      if(a.length<100)break;
+    }
+    if(!all.length){toast('الكاش فاضي');return}
+    const total=all.reduce(function(s,c){return s+(+c.size_in_bytes||0)},0);
+    const now=Date.now(),old=3*86400000,del=[];
+    let left=total;
+    all.forEach(function(c){
+      if(now-new Date(c.last_accessed_at).getTime()>old){del.push(c);left-=(+c.size_in_bytes||0)}
+    });
+    all.forEach(function(c){
+      if(left<=6*GB||del.indexOf(c)>-1)return;
+      del.push(c);left-=(+c.size_in_bytes||0);
+    });
+    if(!del.length){toast('الكاش '+gb(total)+' جيجا، وما في كاش قديم يحتاج حذف');return}
+    if(!confirm('الكاش الحالي '+gb(total)+' جيجا ('+all.length+' ملف).\nحذف '+del.length+' ملف قديم (حوالي '+gb(total-left)+' جيجا)؟\nالبناء الجاي ممكن يكون أبطأ شوية.'))return;
+    let n=0;
+    for(const c of del){
+      try{await gh('/repos/'+repo+'/actions/caches/'+c.id,{method:'DELETE'});n++}catch(e){}
+    }
+    toast('تم حذف '+n+' ملف كاش ✔ المتبقي حوالي '+gb(left)+' جيجا');
+  });
+};
+const _render28=render;
+render=function(){
+  _render28();
+  if(tab!=='keys')return;
+  const m=$('#main');
+  if(!m||$('#cx-cache'))return;
+  const c=document.createElement('div');c.className='card';c.id='cx-cache';
+  c.innerHTML='<h2>🧹 كاش GitHub</h2><p class="note">حد الكاش 10 جيجا لكل مستودع. التنظيف يمسح الكاش اللي ما اتستخدم في آخر 3 أيام، ولو لسه كبير يمسح الأقدم لحد ما ينزل لـ6 جيجا.</p><button class="acc" style="width:100%" onclick="cxCacheClean(this)">🧹 نظّف الكاش</button>';
   m.appendChild(c);
 };
 })();
