@@ -8500,7 +8500,43 @@ window.cxHubNew=function(){
    +'<p class="note">مشروعك الحالي بيتحفظ تلقائياً قبل ما يبدأ الجديد.</p><button class="ghost" onclick="closeSheet()">إلغاء</button></div>';
   sh.classList.add('on');
 };
+window.cxHubSys=function(){
+  const f=window._sysf=window._sysf||{desc:'',be:'firebase',lang:'html',sty:''},k=S.keys||{};
+  const seg=function(key,opts){return '<div class="hb-seg">'+opts.map(function(o){return '<button class="'+((f[key]||opts[0][0])===o[0]?'on':'')+'" onclick="window._sysf.'+key+'=\''+o[0]+'\';cxHubSys()">'+o[1]+'</button>'}).join('')+'</div>'};
+  const miss=[];
+  if(!(k.gemini||k.claude||k.orKey||k.gqKey))miss.push('مفتاح الذكاء الاصطناعي');
+  if((f.be||'firebase')==='firebase'&&!k.fbUrl)miss.push('رابط Firebase');
+  if(f.be==='supabase'&&!(k.sbToken&&k.sbRef))miss.push('مفتاح Supabase ورقم المشروع');
+  const sh=$('#sheet');
+  sh.innerHTML='<div class="sheetbox"><h3 style="margin:0 0 4px">🔗 نظام متكامل (تطبيقين)</h3>'
+   +'<p class="note" style="margin:0">الذكاء يعمل تطبيق للزبائن وتطبيق للإدارة، ويربطهم بقاعدة بيانات واحدة.</p>'
+   +'<label>اوصف نشاطك</label><textarea id="hb-sysd" style="height:120px" placeholder="مثال: مخبز. الزبون يحجز رغيف بالاسم والتلفون ويتابع حالة طلبه، وصاحب المخبز يفتح ويقفل الحجز ويشوف التقارير" oninput="window._sysf.desc=this.value">'+esc(f.desc||'')+'</textarea>'
+   +'<label>قاعدة البيانات</label>'+seg('be',[['firebase','🔥 Firebase (الأسهل)'],['supabase','⚡ Supabase']])
+   +'<label>لغة التطبيقين</label>'+seg('lang',[['html','HTML'],['flutter','Flutter'],['python','Python']])
+   +(miss.length?'<div class="hb-warn" style="margin:12px 0 0">⚠ ناقص: '+miss.join('، ')+'.<button class="sec" style="width:100%;margin-top:8px" onclick="closeSheet();window._st=\'keys\';go(\'keys\')">⚙️ أضفها في الإعدادات</button></div>':'')
+   +'<button class="hb-big" onclick="cxHubSysGo()">🚀 أنشئ التطبيقين واربطهم</button>'
+   +'<p class="note">بياخد من 3 لـ 8 دقايق. مشروعك الحالي بيتحفظ، والنظام الجديد بيتضاف في مشاريعي براهو.</p>'
+   +'<button class="ghost" onclick="cxHubNew()">رجوع</button></div>';
+  sh.classList.add('on');
+};
+window.cxHubSysGo=async function(){
+  const f=window._sysf||{};
+  if(String(f.desc||'').trim().length<8)return toast('اكتب وصف أوضح للنشاط');
+  if(typeof cxSysGo!=='function')return toast('الميزة دي ما متاحة');
+  if(busyNow())return toast('انتظر انتهاء العملية الجارية');
+  f.sty='';
+  saveCur();
+  const bak={cur:S.cur,apps:JSON.parse(JSON.stringify(S.apps))};
+  S.cur=null;S.apps[0]=newApp('first');S.apps[1]=newApp('second');save();
+  closeSheet();go('home');
+  await cxSysGo();
+  if(!S.cur||!S.apps.every(hasCode)){
+    if(!S.apps.some(hasCode)){S.cur=bak.cur;S.apps[0]=bak.apps[0];S.apps[1]=bak.apps[1];save()}
+  }else{f.desc=''}
+  render();
+};
 window.cxHubStart=function(how){
+  if(how==='ai'&&window._hk===2)return cxHubSys();
   newEmpty();closeSheet();
   if(how==='tpl'){go('tpl');toast('اختار قالب، وبعدها سمّ التطبيق باسم إنجليزي فريد');return}
   if(window._hk===2){
@@ -8697,7 +8733,7 @@ function polish(){
   document.body.classList.toggle('hb-build',tab==='build');
   if(tab==='code'){
     const sys=$('#cx-sys');
-    if(sys&&S.apps.some(hasCode))sys.style.display='none';
+    if(sys)sys.style.display='none';
   }
   if(tab==='keys'){
     const g=window._st||'';
