@@ -1,8 +1,8 @@
 {
   "code": 4,
-  "name": "1.0.4",
+  "name": "1.1.4",
   "url": "https://github.com/alkahlizero564-sudo/apk-app/releases/download/awad23aljied-build-54/app-release.apk",
   "notes": "اضف النمازج من 1 flash الي النموزج الحديد argon 4، اضف النمازج التي بين النموزج Gemini-3-flash1 3.2-flash وبين النموزج 3.5-flash",
-  "force": false,
-  "t": 1793423359632
+  "force": true,
+  "t": 1793423915999
 }
