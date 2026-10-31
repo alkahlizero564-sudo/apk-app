@@ -4,17 +4,11 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-
 import 'dart:async' as apkas;
 import 'dart:convert' as apkjs;
 import 'dart:io' as apkio;
 import 'package:flutter/widgets.dart' as apkw;
 import 'package:url_launcher/url_launcher.dart' as apkul;
-
-class APKPush {
-  static void setUser(dynamic id) {}
-  static void toAdmin(String title, String body) {}
-}
 
 class LocalStore {
   static final Map<String, dynamic> _memory = <String, dynamic>{};
