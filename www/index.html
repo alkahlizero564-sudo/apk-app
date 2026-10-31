@@ -8718,11 +8718,12 @@ body.hb #pj-bar,body.hb.hb-code #cx-rv,body.hb.hb-code .link,body.hb.hb-build #m
 .hb-st button.on{background:var(--tx)!important;color:#0b1220!important;border-color:var(--tx)!important}
 `;
 document.head.appendChild(st2);
-const SG=[['keys','🔑 المفاتيح'],['design','🎨 التصميم'],['build','🛠 البناء والفحص'],['bk','💾 النسخ الاحتياطي'],['mail','📧 البريد']];
+const SG=[['keys','🔑 المفاتيح'],['push','🔔 الإشعارات'],['design','🎨 التصميم'],['build','🛠 البناء والفحص'],['bk','💾 النسخ الاحتياطي'],['mail','📧 البريد']];
 function groupOf(el){
   const id=el.id||'',t=((el.querySelector('h2,summary')||{}).textContent||'');
   if(el.classList.contains('cx-ks')||/قائمة المفاتيح/.test(t))return 'keys';
   if(id==='cx-mail')return 'mail';
+  if(id==='cx-push')return 'push';
   if(id==='cx-bk')return 'bk';
   if(id==='cx-xp'||id==='cx-ed-card'||/تصميم/.test(t))return 'design';
   return 'build';
@@ -8749,6 +8750,7 @@ function polish(){
       box.innerHTML='<div class="hb-h3" style="margin-top:0">الأساسي</div>'
        +it('keys','🔑','المفاتيح','GitHub، Supabase، Firebase، الذكاء الاصطناعي',rd+' من '+ks.length+' جاهز',rd===ks.length?'g':'o')
        +it('mail','📧','بريد التأكيد','رمز 6 أرقام لإيميل الزبون',k.mailEm?'✔ مربوط':'غير مربوط',k.mailEm?'g':'')
+       +it('push','🔔','الإشعارات','توصل حتى لو التطبيق مقفول (Firebase + Supabase)',(k.push&&k.push.on)?'✔ شغّالة':'مقفولة',(k.push&&k.push.on)?'g':'')
        +it('bk','💾','النسخ الاحتياطي','حفظ واسترجاع كل شي في GitHub',bl?'آخر نسخة '+bl:'لسه ما اتحفظت',bl?'g':'r')
        +'<div class="hb-h3">متقدم</div>'
        +it('design','🎨','التصميم والمحرر','أسلوب الخبير، ثيمات المحرر','')
@@ -8964,6 +8966,357 @@ render=function(){
   if(tab==='code')rebuildCode();
   else if(f)f.style.display='none';
   if(tab==='build')rebuildBuild();
+};
+})();
+render();
+
+/* ===== إضافة: الإشعارات حتى لو التطبيق مقفول (Supabase + Firebase Cloud Messaging) ===== */
+(function(){
+function hasCode(a){return !!(a&&a.code&&a.code.trim())}
+function nmOf(a){return (a&&a.set&&a.set.label)||(a&&a.name)||'تطبيق'}
+function PK(){return (S.keys&&S.keys.push)||null}
+function on(){const p=PK();return !!(p&&p.on&&p.fn&&p.anon)}
+function grpKey(){return slugOf(S.apps[0]&&S.apps[0].name)||slugOf(S.apps[1]&&S.apps[1].name)||'app'}
+function roleOf(i){return i===1?'admin':'customer'}
+function appOn(a){return on()&&!(a&&a.set&&a.set.push===false)}
+
+/* ---------- الدالة في Supabase (Edge Function) ---------- */
+const FN_SRC=String.raw`const SA = JSON.parse(Deno.env.get("FCM_SA") || "{}");
+const SB = Deno.env.get("SUPABASE_URL")!, SRK = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const CORS = {"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
+let TOK = "", EXP = 0;
+function out(o, s = 200) { return new Response(JSON.stringify(o), { status: s, headers: { ...CORS, "content-type": "application/json" } }); }
+function b64u(b) { const u = typeof b === "string" ? new TextEncoder().encode(b) : new Uint8Array(b); let t = ""; for (const x of u) t += String.fromCharCode(x); return btoa(t).replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_"); }
+async function gtoken() {
+  if (TOK && Date.now() < EXP - 60000) return TOK;
+  if (!SA.private_key) throw new Error("FCM_SA secret missing");
+  const now = Math.floor(Date.now() / 1000);
+  const h = b64u(JSON.stringify({ alg: "RS256", typ: "JWT" }));
+  const c = b64u(JSON.stringify({ iss: SA.client_email, scope: "https://www.googleapis.com/auth/firebase.messaging", aud: "https://oauth2.googleapis.com/token", iat: now, exp: now + 3600 }));
+  const pem = SA.private_key.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+  const der = Uint8Array.from(atob(pem), (x) => x.charCodeAt(0));
+  const key = await crypto.subtle.importKey("pkcs8", der, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
+  const sig = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(h + "." + c));
+  const r = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=" + h + "." + c + "." + b64u(sig) });
+  const j = await r.json();
+  if (!j.access_token) throw new Error("google auth: " + JSON.stringify(j));
+  TOK = j.access_token; EXP = Date.now() + (j.expires_in || 3600) * 1000;
+  return TOK;
+}
+function db(path, opt = {}) {
+  return fetch(SB + "/rest/v1/" + path, { ...opt, headers: { apikey: SRK, Authorization: "Bearer " + SRK, "content-type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal", ...(opt.headers || {}) } });
+}
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+  try {
+    const b = await req.json();
+    if (b.action === "ping") { await gtoken(); return out({ ok: true, project: SA.project_id }); }
+    const grp = String(b.grp || "").slice(0, 80);
+    if (!grp) throw new Error("grp missing");
+    if (b.action === "register") {
+      if (!b.token) throw new Error("token missing");
+      const r = await db("apk_push?on_conflict=token", { method: "POST", body: JSON.stringify({ token: String(b.token), grp, role: String(b.role || "customer").slice(0, 20), uid: b.uid ? String(b.uid).slice(0, 120) : null, updated_at: new Date().toISOString() }) });
+      if (!r.ok) throw new Error("db: " + (await r.text()));
+      return out({ ok: true });
+    }
+    if (b.action === "count") {
+      const r = await db("apk_push?select=role&grp=eq." + encodeURIComponent(grp));
+      const rows = await r.json();
+      return out({ ok: true, admin: rows.filter((x) => x.role === "admin").length, customer: rows.filter((x) => x.role !== "admin").length });
+    }
+    const to = String(b.to || "admin");
+    let q = "apk_push?select=token&grp=eq." + encodeURIComponent(grp);
+    if (to === "user") { if (!b.uid) throw new Error("uid missing"); q += "&uid=eq." + encodeURIComponent(String(b.uid)); }
+    else if (to !== "all") q += "&role=eq." + encodeURIComponent(to);
+    const rows = await (await db(q)).json();
+    if (!Array.isArray(rows) || !rows.length) return out({ ok: true, sent: 0, failed: 0, total: 0 });
+    const at = await gtoken();
+    const data = {};
+    for (const [k, v] of Object.entries(b.data || {})) data[k] = String(v);
+    let sent = 0, failed = 0, err = "";
+    await Promise.all(rows.map(async (r) => {
+      const res = await fetch("https://fcm.googleapis.com/v1/projects/" + SA.project_id + "/messages:send", { method: "POST", headers: { Authorization: "Bearer " + at, "content-type": "application/json" },
+        body: JSON.stringify({ message: { token: r.token, notification: { title: String(b.title || "").slice(0, 120), body: String(b.body || "").slice(0, 600) }, data, android: { priority: "HIGH", notification: { sound: "default", default_vibrate_timings: true } } } }) });
+      if (res.ok) { sent++; return; }
+      failed++; const t = await res.text(); err = t.slice(0, 300);
+      if (/UNREGISTERED|registration-token-not-registered|NOT_FOUND/.test(t)) await db("apk_push?token=eq." + encodeURIComponent(r.token), { method: "DELETE" });
+    }));
+    return out({ ok: true, sent, failed, total: rows.length, error: failed ? err : undefined });
+  } catch (e) {
+    return out({ ok: false, error: String((e && e.message) || e) }, 400);
+  }
+});
+`;
+const SQL="create table if not exists public.apk_push(token text primary key, grp text not null, role text not null default 'customer', uid text, updated_at timestamptz default now());\n"
+ +"create index if not exists apk_push_grp on public.apk_push(grp, role);\n"
+ +"create index if not exists apk_push_uid on public.apk_push(grp, uid);\n"
+ +"alter table public.apk_push enable row level security;";
+
+/* ---------- الكود الذي يُحقن داخل تطبيقات HTML ---------- */
+function pushJS(i){
+  const p=PK();
+  return '(function(){var C={fn:'+JSON.stringify(p.fn)+',key:'+JSON.stringify(p.anon)+',grp:'+JSON.stringify(grpKey())+',role:'+JSON.stringify(roleOf(i))+'};'
+  +'var uid=null,tk=null;try{uid=localStorage.getItem("apk_push_uid")||null}catch(e){}'
+  +'function call(o){o.grp=C.grp;return fetch(C.fn,{method:"POST",headers:{"content-type":"application/json",apikey:C.key,Authorization:"Bearer "+C.key},body:JSON.stringify(o)}).then(function(r){return r.json()}).catch(function(e){return {ok:false,error:String(e)}})}'
+  +'function reg(){if(tk)call({action:"register",token:tk,role:C.role,uid:uid})}'
+  +'function banner(t,b){try{var d=document.createElement("div");d.style.cssText="position:fixed;top:calc(10px + env(safe-area-inset-top));left:10px;right:10px;z-index:2147483647;background:#111827;color:#fff;border-radius:16px;padding:12px 14px;font-family:system-ui,Tahoma,sans-serif;direction:rtl;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:14px;line-height:1.6";var h=document.createElement("b");h.textContent="🔔 "+(t||"");var p=document.createElement("div");p.style.opacity=".85";p.textContent=b||"";d.appendChild(h);d.appendChild(p);d.onclick=function(){d.remove()};document.body.appendChild(d);setTimeout(function(){d.remove()},6000)}catch(e){}}'
+  +'function init(){var P=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.PushNotifications;if(!P)return;'
+  +'P.addListener("registration",function(t){tk=t.value;reg()});'
+  +'P.addListener("pushNotificationReceived",function(n){banner(n.title,n.body);try{window.dispatchEvent(new CustomEvent("apkpush",{detail:n}))}catch(e){}});'
+  +'P.addListener("pushNotificationActionPerformed",function(a){try{window.dispatchEvent(new CustomEvent("apkpush-open",{detail:a.notification}))}catch(e){}});'
+  +'P.checkPermissions().then(function(s){return s.receive==="granted"?s:P.requestPermissions()}).then(function(s){if(s.receive==="granted")P.register()}).catch(function(){})}'
+  +'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();'
+  +'window.APKPush={role:C.role,setUser:function(u){uid=u?String(u):null;try{localStorage.setItem("apk_push_uid",uid||"")}catch(e){}reg()},'
+  +'toAdmin:function(t,b,d){return call({to:"admin",title:t,body:b,data:d||{}})},'
+  +'toUser:function(u,t,b,d){return call({to:"user",uid:String(u),title:t,body:b,data:d||{}})},'
+  +'toAll:function(t,b,d){return call({to:"customer",title:t,body:b,data:d||{}})}};})();';
+}
+function injectHtml(h,i){
+  if(h.indexOf('id="apk-push"')>-1)h=h.replace(/<script id="apk-push">[\s\S]*?<\/script>/,'');
+  const blk='<scr'+'ipt id="apk-push">'+pushJS(i)+'<\/scr'+'ipt>';
+  return /<head[^>]*>/i.test(h)?h.replace(/<head[^>]*>/i,function(m){return m+blk}):blk+h;
+}
+
+/* ---------- ملف Flutter ---------- */
+function pushDart(i,real){
+  const p=PK()||{};
+  if(!real)return "// APKPush (الإشعارات مقفولة لهذا التطبيق)\nclass APKPush {\n  static const String role = '"+roleOf(i)+"';\n  static Future<void> start() async {}\n  static void setUser(String? u) {}\n  static Future<Map> toAdmin(String title, String body) async => {'ok': false};\n  static Future<Map> toUser(String uid, String title, String body) async => {'ok': false};\n  static Future<Map> toAll(String title, String body) async => {'ok': false};\n}\n";
+  const q=function(s){return "'"+String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+"'"};
+  return "import 'dart:convert';\nimport 'dart:io';\nimport 'package:flutter/widgets.dart';\nimport 'package:firebase_core/firebase_core.dart';\nimport 'package:firebase_messaging/firebase_messaging.dart';\n\n"
+   +"class APKPush {\n  static const String _fn = "+q(p.fn)+";\n  static const String _key = "+q(p.anon)+";\n  static const String _grp = "+q(grpKey())+";\n  static const String role = "+q(roleOf(i))+";\n  static String? _token;\n  static String? _uid;\n\n"
+   +"  static Future<Map> _call(Map<String, dynamic> o) async {\n    o['grp'] = _grp;\n    try {\n      final c = HttpClient();\n      final rq = await c.postUrl(Uri.parse(_fn));\n      rq.headers.set('content-type', 'application/json');\n      rq.headers.set('apikey', _key);\n      rq.headers.set('Authorization', 'Bearer ' + _key);\n      rq.add(utf8.encode(jsonEncode(o)));\n      final rs = await rq.close();\n      final t = await rs.transform(utf8.decoder).join();\n      c.close();\n      return jsonDecode(t) as Map;\n    } catch (e) {\n      return {'ok': false, 'error': e.toString()};\n    }\n  }\n\n"
+   +"  static Future<void> start() async {\n    try {\n      WidgetsFlutterBinding.ensureInitialized();\n      await Firebase.initializeApp();\n      final m = FirebaseMessaging.instance;\n      await m.requestPermission();\n      _token = await m.getToken();\n      m.onTokenRefresh.listen((t) { _token = t; _reg(); });\n      _reg();\n    } catch (e) {\n      debugPrint('APKPush: ' + e.toString());\n    }\n  }\n\n"
+   +"  static void _reg() {\n    if (_token != null) _call({'action': 'register', 'token': _token, 'role': role, 'uid': _uid});\n  }\n\n"
+   +"  static void setUser(String? u) { _uid = u; _reg(); }\n"
+   +"  static Future<Map> toAdmin(String title, String body) => _call({'to': 'admin', 'title': title, 'body': body});\n"
+   +"  static Future<Map> toUser(String uid, String title, String body) => _call({'to': 'user', 'uid': uid, 'title': title, 'body': body});\n"
+   +"  static Future<Map> toAll(String title, String body) => _call({'to': 'customer', 'title': title, 'body': body});\n}\n";
+}
+function prepDart(c,real){
+  let s=String(c);
+  if(/APKPush/.test(s)||real){
+    if(!/import\s+['"]push\.dart['"]/.test(s)){
+      const m=s.match(/^(?:\s*import\s+[^;]+;\s*\n)+/);
+      s=m?s.slice(0,m[0].length)+"import 'push.dart';\n"+s.slice(m[0].length):"import 'push.dart';\n"+s;
+    }
+  }
+  if(real&&!/APKPush\.start\(\)/.test(s))s=s.replace(/runApp\s*\(/,'APKPush.start();\n  runApp(');
+  return s;
+}
+
+/* ---------- الرفع إلى GitHub ---------- */
+const _putP=put;
+put=async function(repo,branch,path,content){
+  const m=String(path).match(/^apps\/([^/]+)\/(www\/index\.html|main\.dart)$/);
+  if(!m)return _putP(repo,branch,path,content);
+  const i=S.apps.findIndex(function(x){return slugOf(x.name)===m[1]});
+  if(i<0)return _putP(repo,branch,path,content);
+  const a=S.apps[i],real=appOn(a)&&i<2;
+  if(m[2]==='main.dart'){
+    content=prepDart(content,real);
+    await _putP(repo,branch,path,content);
+    if(real||/APKPush/.test(content))await _putP(repo,branch,'apps/'+m[1]+'/push.dart',pushDart(i,real));
+  }else{
+    if(real)content=injectHtml(content,i);
+    await _putP(repo,branch,path,content);
+  }
+  await _putP(repo,branch,'apps/'+m[1]+'/push.txt',(real?'on':'off')+'\n');
+};
+
+/* ---------- تعليمات للذكاء الاصطناعي ---------- */
+const API_HTML='الإشعارات (حتى لو التطبيق مقفول) جاهزة عبر الكائن window.APKPush (يُضاف تلقائياً عند البناء، فاستعمله دايماً بشرط وجوده: if(window.APKPush)...):\n'
+ +'- APKPush.setUser(id): نادِها لما الزبون يعرّف نفسه (تسجيل/حجز/طلب) وبعد كل فتح للتطبيق لو بياناته محفوظة. id = رقم تلفون الزبون أرقام بس (احذف أي شي غير الأرقام)، ولو ما في تلفون استعمل الإيميل بحروف صغيرة.\n'
+ +'- APKPush.toAdmin(عنوان, نص): إشعار لتطبيق الإدارة (مثلاً لما يجي طلب أو حجز جديد).\n'
+ +'- APKPush.toUser(id, عنوان, نص): إشعار لزبون معيّن، و id نفس رقم تلفونه المحفوظ في السجل (أرقام بس).\n'
+ +'- APKPush.toAll(عنوان, نص): إشعار لكل الزباين (إعلان عام).\n';
+const API_DART='الإشعارات (حتى لو التطبيق مقفول) جاهزة عبر الكلاس APKPush من الملف push.dart (أضف import \'push.dart\'; في أول الملف، والأداة بتضيف APKPush.start() براها):\n'
+ +'- APKPush.setUser(id): لما الزبون يعرّف نفسه (تسجيل/حجز/طلب). id = رقم تلفونه أرقام بس، ولو ما في تلفون الإيميل بحروف صغيرة.\n'
+ +'- APKPush.toAdmin(title, body): إشعار لتطبيق الإدارة (طلب/حجز جديد).\n'
+ +'- APKPush.toUser(id, title, body): إشعار لزبون معيّن بنفس id المحفوظ في السجل.\n'
+ +'- APKPush.toAll(title, body): إشعار لكل الزباين.\n';
+function rulesFor(i){
+  const l=langOf(i),api=l==='flutter'?API_DART:API_HTML;
+  return api+(i===1
+    ?'هذا تطبيق الإدارة: لما تتغيّر حالة طلب أو حجز (قبول، جاهز، رفض، اتفتح الحجز...) أرسل toUser للزبون صاحب السجل برسالة عربية قصيرة واضحة. ولو في زر لإعلان عام استعمل toAll.\n'
+    :'هذا تطبيق الزبائن: نادِ setUser لما الزبون يكتب بياناته، ولما يرسل طلب أو حجز جديد أرسل toAdmin برسالة عربية قصيرة فيها اسمه وتفاصيل الطلب.\n');
+}
+const _aiP=ai;
+ai=async function(prompt){
+  try{
+    if(on()&&typeof prompt==='string'&&prompt.indexOf('هذا التطبيق أحد تطبيقين يتشاركان البيانات في السحابة')>-1&&prompt.indexOf('APKPush')<0){
+      const i=prompt.indexOf('تطبيق الإدارة (صاحب النشاط)')>-1?1:0;
+      if(langOf(i)!=='python')prompt+='\n\n'+rulesFor(i);
+    }
+  }catch(e){}
+  return _aiP(prompt);
+};
+
+/* ---------- الإعداد من الأداة ---------- */
+async function sbApi(path,opt){
+  const k=S.keys;if(!k.sbToken||!k.sbRef)throw new Error('أدخل مفتاح Supabase ورقم المشروع (Ref) في المفاتيح أولاً');
+  opt=opt||{};
+  const r=await fetch('https://api.supabase.com/v1/projects/'+k.sbRef+path,{method:opt.method||'GET',headers:Object.assign({Authorization:'Bearer '+k.sbToken},opt.form?{}:{'Content-Type':'application/json'}),body:opt.form||(opt.body!==undefined?JSON.stringify(opt.body):undefined)});
+  const t=await r.text();let j;try{j=JSON.parse(t)}catch(e){j={message:t}}
+  if(!r.ok){const e=new Error((j&&(j.message||j.error))||('Supabase '+r.status));e.status=r.status;throw e}
+  return j;
+}
+async function deployFn(){
+  const meta={entrypoint_path:'index.ts',name:'apk-push',verify_jwt:false};
+  try{
+    const fd=new FormData();
+    fd.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+    fd.append('file',new Blob([FN_SRC],{type:'application/typescript'}),'index.ts');
+    await sbApi('/functions/deploy?slug=apk-push',{method:'POST',form:fd});
+    return;
+  }catch(e){if(e.status===401||e.status===403)throw e}
+  try{await sbApi('/functions',{method:'POST',body:{slug:'apk-push',name:'apk-push',body:FN_SRC,verify_jwt:false}})}
+  catch(e){if(e.status===409||/exist/i.test(e.message))await sbApi('/functions/apk-push',{method:'PATCH',body:{body:FN_SRC,verify_jwt:false}});else throw e}
+}
+async function saveSA(sa){
+  const u=await gh('/user');
+  const full=u.login+'/'+((S.keys.bkRepo||'apk-app-backup').trim());
+  const r=await gh('/repos/'+full);
+  if(!r.private)throw new Error('المستودع '+full+' عام! لازم يكون خاص (Private) عشان مفتاح Firebase يتحفظ فيهو.');
+  const br=r.default_branch||'main',path='keys/fcm-sa.json';
+  let sha;try{const o=await gh('/repos/'+full+'/contents/'+path+'?ref='+br);sha=o.sha}catch(e){}
+  const b64=btoa(unescape(encodeURIComponent(JSON.stringify(sa,null,2))));
+  await gh('/repos/'+full+'/contents/'+path,{method:'PUT',body:JSON.stringify({message:'fcm service account',content:b64,branch:br,sha:sha})});
+  return full;
+}
+async function callFn(o){
+  const p=PK();
+  const r=await fetch(p.fn,{method:'POST',headers:{'content-type':'application/json',apikey:p.anon,Authorization:'Bearer '+p.anon},body:JSON.stringify(o)});
+  const j=await r.json().catch(function(){return {ok:false,error:'رد غير مفهوم ('+r.status+')'}});
+  if(!j.ok)throw new Error(errAr(j.error||('خطأ '+r.status)));
+  return j;
+}
+function errAr(m){
+  m=String(m||'');
+  if(/FCM_SA secret missing/.test(m))return 'مفتاح Firebase ما اتحفظ في Supabase. اضغط «فعّل الإشعارات» تاني.';
+  if(/google auth|invalid_grant/.test(m))return 'Google رفض مفتاح Firebase. نزّل مفتاح جديد (Generate new private key) وارفعو تاني.';
+  if(/PERMISSION_DENIED|SERVICE_DISABLED|has not been used/.test(m))return 'خدمة Firebase Cloud Messaging مقفولة في مشروعك. افتح console.cloud.google.com ← APIs ← فعّل «Firebase Cloud Messaging API».';
+  if(/relation .*apk_push|does not exist/.test(m))return 'جدول الإشعارات ما موجود. اضغط «فعّل الإشعارات» تاني.';
+  return m;
+}
+function outP(h,bad){const o=$('#ps-out');if(o){o.innerHTML=h;o.style.color=bad?'#f87171':'inherit'}}
+
+window.cxPushFile=function(){const f=$('#ps-f');if(f){f.value='';f.click()}};
+window.cxPushSetup=function(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=async function(){
+    let sa;try{sa=JSON.parse(String(r.result))}catch(e){return outP('الملف ده ما JSON. لازم يكون الملف البينزل من Firebase ← Service accounts ← Generate new private key.',1)}
+    if(sa.type!=='service_account'||!sa.private_key||!sa.client_email||!sa.project_id)return outP('الملف ده ما مفتاح Service account. نزّلو من Firebase ← ⚙️ Project settings ← Service accounts ← Generate new private key.',1);
+    const steps=[];const st=function(t){steps.push(t);outP(steps.join('<br>'))};
+    try{
+      st('⏳ حفظ المفتاح في المستودع الخاص...');
+      const full=await saveSA(sa);steps[steps.length-1]='✔ المفتاح اتحفظ في '+esc(full)+' (خاص)';outP(steps.join('<br>'));
+      st('⏳ إنشاء جدول الإشعارات في Supabase...');
+      await sbApi('/database/query',{method:'POST',body:{query:SQL}});steps[steps.length-1]='✔ جدول الإشعارات جاهز';outP(steps.join('<br>'));
+      st('⏳ حفظ المفتاح كسر في Supabase...');
+      await sbApi('/secrets',{method:'POST',body:[{name:'FCM_SA',value:JSON.stringify(sa)}]});steps[steps.length-1]='✔ السر اتحفظ';outP(steps.join('<br>'));
+      st('⏳ رفع دالة الإرسال (apk-push)...');
+      await deployFn();steps[steps.length-1]='✔ دالة الإرسال اترفعت';outP(steps.join('<br>'));
+      const keys=await sbApi('/api-keys');
+      const anon=(keys.find(function(x){return x.name==='anon'})||{}).api_key;
+      if(!anon)throw new Error('ما قدرت أجيب anon key من Supabase');
+      S.keys.push={on:1,pid:sa.project_id,ref:S.keys.sbRef,fn:'https://'+S.keys.sbRef+'.supabase.co/functions/v1/apk-push',anon:anon,t:Date.now()};save();
+      st('⏳ تجربة الاتصال بـ Firebase...');
+      await sleep(4000);
+      let ok=false,last;
+      for(let n=0;n<4&&!ok;n++){try{await callFn({action:'ping'});ok=true}catch(e){last=e;await sleep(4000)}}
+      if(!ok)throw last;
+      steps[steps.length-1]='✔ Firebase ('+esc(sa.project_id)+') شغّال';
+      outP(steps.join('<br>')+'<br><br><b style="color:#4ade80">🔔 الإشعارات اتفعّلت!</b> ابنِ التطبيقين من جديد عشان الإشعارات تدخل فيهم.');
+      setTimeout(function(){if(tab==='keys')render()},2500);
+    }catch(e){
+      steps[steps.length-1]=steps[steps.length-1].replace('⏳','✖');
+      outP(steps.join('<br>')+'<br><br>'+esc(errAr(arErr(e))),1);
+    }
+  };
+  r.readAsText(f);
+};
+window.cxPushOff=function(){
+  if(!PK())return;
+  if(!confirm('تقفل الإشعارات؟ التطبيقات البتتبني بعد كده ما بيكون فيها إشعارات.'))return;
+  S.keys.push.on=0;save();render();toast('الإشعارات اتقفلت');
+};
+window.cxPushOn=function(){if(!PK())return;S.keys.push.on=1;save();render();toast('🔔 الإشعارات اتفعّلت تاني')};
+window.cxPushTest=function(btn,to){
+  busy(btn,async function(){
+    if(!on())throw new Error('فعّل الإشعارات أولاً');
+    const j=await callFn({grp:grpKey(),to:to||'all',title:'🔔 تجربة من APK App',body:'لو وصلك الإشعار ده، الإشعارات شغّالة ✔'});
+    toast(j.total?('✔ اترسل لـ '+j.sent+' من '+j.total+' جهاز'+(j.failed?' ('+j.failed+' فشل)':'')):'ما في أجهزة مسجّلة لسه. ثبّت التطبيق بعد البناء الجديد وافتحو مرة ووافق على الإشعارات.');
+  });
+};
+window.cxPushCount=async function(){
+  const e=$('#ps-cnt');if(!e||!on())return;
+  try{const j=await callFn({action:'count',grp:grpKey()});e.textContent='📱 أجهزة مسجّلة: الزباين '+j.customer+' · الإدارة '+j.admin}catch(x){e.textContent=''}
+};
+window.cxPushAI=function(btn){
+  busy(btn,async function(){
+    if(!on())throw new Error('فعّل الإشعارات أولاً من ⚙️ الإعدادات ← 🔔 الإشعارات');
+    const idx=[0,1].filter(function(i){return hasCode(S.apps[i])&&langOf(i)!=='python'});
+    if(!idx.length)throw new Error('ما في تطبيق HTML أو Flutter تضيف ليهو الإشعارات');
+    for(const i of idx){
+      toast('✨ إضافة الإشعارات لـ «'+nmOf(S.apps[i])+'»...');
+      const l=langOf(i),fence=l==='flutter'?'dart':'html';
+      const head=l==='flutter'?'أنت مبرمج Flutter محترف. أعد ملف main.dart الكامل فقط داخل كتلة ```dart بدون أي شرح.\n\n':SYS;
+      const out=clean(await ai(head+'الكود الحالي:\n```'+fence+'\n'+S.apps[i].code+'\n```\n\nالتعديل المطلوب: أضف الإشعارات للتطبيق بدون ما تغيّر أي شي تاني في التصميم أو الوظائف.\n'+rulesFor(i)));
+      if(!out||out.length<S.apps[i].code.length*0.6)throw new Error('رد الذكاء الاصطناعي كان ناقص لـ «'+nmOf(S.apps[i])+'»، جرّب تاني');
+      setCode(i,out);
+    }
+    save();render();
+    toast('✔ الإشعارات اتضافت للكود. ابنِ التطبيقين عشان تشتغل');
+  });
+};
+
+/* ---------- البطاقة في الإعدادات ---------- */
+function card(){
+  const p=PK(),k=S.keys;
+  const sbOk=k.sbToken&&k.sbRef;
+  let h='<h2>🔔 الإشعارات (حتى لو التطبيق مقفول)</h2>';
+  if(p&&p.on)h+='<div class="hb-mt" style="margin:0 0 10px"><span class="hb-bd g">✔ شغّالة</span><span class="hb-bd">Firebase: '+esc(p.pid)+'</span><span class="hb-bd">Supabase: '+esc(p.ref)+'</span></div>';
+  else if(p)h+='<div class="hb-mt" style="margin:0 0 10px"><span class="hb-bd o">مقفولة</span></div>';
+  h+='<p class="note" style="margin-top:0">الزبون يطلب ← يوصل إشعار لتطبيق الإدارة. الإدارة تغيّر حالة الطلب ← يوصل إشعار للزبون. وبيوصل حتى لو التطبيق مقفول. الإرسال المجاني عبر Firebase، والتسجيل في Supabase بتاعك.</p>';
+  if(!sbOk)h+='<div class="hb-warn">⚠ محتاج مفتاح Supabase ورقم المشروع أولاً.<button class="sec" style="width:100%;margin-top:8px" onclick="window._st=\'keys\';render()">🔑 افتح المفاتيح</button></div>';
+  h+='<details'+(p?'':' open')+'><summary style="cursor:pointer;font-weight:800">📋 خطوات مرة واحدة بس (5 دقايق)</summary><p class="note" style="line-height:2">'
+   +'1) افتح <b>console.firebase.google.com</b> ← Create a project (مجاني، ما محتاج بطاقة).<br>'
+   +'2) جوه المشروع اضغط ⚙️ ← <b>Project settings</b> ← تبويب <b>Service accounts</b>.<br>'
+   +'3) اضغط <b>Generate new private key</b> ← Generate key. بينزل ليك ملف .json في التلفون.<br>'
+   +'4) ارجع هنا واضغط «📁 ارفع ملف المفتاح» واختار الملف ده. الأداة بتعمل الباقي براها.<br>'
+   +'⚠ الملف ده سري: ما ترسلو لأي زول. الأداة بتحفظو في مستودعك الخاص وفي Supabase بس، وما بتخليهو في التلفون.</p></details>';
+  h+='<input type="file" id="ps-f" accept=".json,application/json" style="display:none" onchange="cxPushSetup(this)">'
+   +'<button class="acc" style="width:100%;margin-top:10px" onclick="cxPushFile()"'+(sbOk?'':' disabled')+'>📁 '+(p?'ارفع مفتاح جديد / أعد التفعيل':'ارفع ملف المفتاح وفعّل الإشعارات')+'</button>';
+  if(p){
+    h+='<div class="row" style="margin-top:8px"><button class="sec" onclick="cxPushTest(this,\'all\')">📨 جرّب إشعار</button>'
+     +(p.on?'<button class="sec" onclick="cxPushOff()">⏸ اقفلها</button>':'<button class="sec" onclick="cxPushOn()">▶ شغّلها</button>')+'</div>'
+     +'<div class="note" id="ps-cnt" style="margin-top:8px"></div>';
+  }
+  h+='<div id="ps-out" class="note" style="margin-top:10px;line-height:1.9"></div>';
+  return h;
+}
+const _rP=render;
+render=function(){
+  _rP();
+  const m=$('#main');if(!m)return;
+  if(tab==='keys'&&window._st==='push'&&!$('#cx-push')){
+    const c=document.createElement('div');c.className='card';c.id='cx-push';c.innerHTML=card();m.appendChild(c);
+    setTimeout(cxPushCount,300);
+  }
+  if(tab==='data'&&!$('#hb-push')){
+    const ok=[0,1].filter(function(i){return hasCode(S.apps[i])}).length;
+    const c=document.createElement('div');c.className='card';c.id='hb-push';
+    c.innerHTML='<h2>🔔 الإشعارات</h2>'
+     +(on()
+       ?'<p class="note" style="margin-top:0">مفعّلة ✔. لو التطبيقين اتعملوا قبل ما تفعّل الإشعارات، اضغط الزر عشان الذكاء يضيف الإرسال في الأماكن الصاح (طلب جديد ← الإدارة، تغيير الحالة ← الزبون).</p>'
+        +'<button class="acc" style="width:100%" onclick="cxPushAI(this)"'+(ok?'':' disabled')+'>✨ أضف الإشعارات للتطبيقين بالذكاء</button>'
+        +'<div class="row" style="margin-top:8px"><button class="sec" onclick="cxPushTest(this,\'admin\')">📨 جرّب للإدارة</button><button class="sec" onclick="cxPushTest(this,\'customer\')">📨 جرّب للزباين</button></div>'
+        +'<div class="note" id="ps-cnt" style="margin-top:8px"></div>'
+       :'<p class="note" style="margin-top:0">مقفولة. فعّلها مرة واحدة وبتشتغل لكل أنظمتك.</p><button class="acc" style="width:100%" onclick="window._st=\'push\';go(\'keys\')">🔔 فعّل الإشعارات</button>');
+    m.appendChild(c);
+    if(on())setTimeout(cxPushCount,300);
+  }
 };
 })();
 render();

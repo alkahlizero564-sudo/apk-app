@@ -75,6 +75,7 @@ jobs:
           if [ -z "$PKG" ]; then PKG=com.myapps.app_$APP; fi
           flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
           cp apps/$APP/main.dart flutter_out/lib/main.dart
+          if [ -f apps/$APP/push.dart ]; then cp apps/$APP/push.dart flutter_out/lib/push.dart; fi
           if grep -q "package:url_launcher" apps/$APP/main.dart; then
             (cd flutter_out && flutter pub add url_launcher)
           fi
@@ -132,6 +133,29 @@ jobs:
               cp apps/$APP/icon.png flutter_out/android/app/src/main/res/$d/ic_launcher.png
             done
           fi
+      - name: push notifications (FCM)
+        run: |
+          if ! grep -qs on apps/$APP/push.txt; then echo "push notifications: off"; exit 0; fi
+          SA="$RUNNER_TEMP/keysrepo/keys/fcm-sa.json"
+          if [ ! -f "$SA" ]; then echo "::error::push.txt is on but keys/fcm-sa.json is missing in apk-app-backup"; exit 1; fi
+          G=$(ls flutter_out/android/app/build.gradle* | head -n 1)
+          PKG=$(grep -m1 -oE 'applicationId *=? *"[^"]+"' "$G" | grep -oE '"[^"]+"' | tr -d '"')
+          echo "package: $PKG"
+          python3 .github/fcm_config.py "$SA" "$PKG" flutter_out/android/app/google-services.json
+          (cd flutter_out && flutter pub add firebase_core firebase_messaging)
+          SG=$(ls flutter_out/android/settings.gradle* | head -n 1)
+          if [[ "$SG" == *.kts ]]; then
+            grep -q google-services "$SG" || sed -i 's|^\(\s*\)id("com.android.application") version\(.*\)$|&\n\1id("com.google.gms.google-services") version "4.4.2" apply false|' "$SG"
+            grep -q google-services "$G" || sed -i '0,/id("com.android.application")/s//id("com.android.application")\n    id("com.google.gms.google-services")/' "$G"
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
+          else
+            grep -q google-services "$SG" || sed -i 's|^\(\s*\)id "com.android.application" version\(.*\)$|&\n\1id "com.google.gms.google-services" version "4.4.2" apply false|' "$SG"
+            grep -q google-services "$G" || sed -i '0,/id "com.android.application"/s//id "com.android.application"\n    id "com.google.gms.google-services"/' "$G"
+            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/; s/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
+          fi
+          echo "--- gradle ---"; grep -n "google-services\|minSdk" "$SG" "$G" || true
+          MF=flutter_out/android/app/src/main/AndroidManifest.xml
+          grep -q POST_NOTIFICATIONS $MF || sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/><application|' $MF
       - name: build
         working-directory: flutter_out
         run: |

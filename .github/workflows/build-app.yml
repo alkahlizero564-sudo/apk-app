@@ -115,6 +115,16 @@ jobs:
           rm -f "keys/$APPN.keystore" "keys/$APPN.properties"
           cp "$KS" "keys/$APPN.keystore"
           cp "$PR" "keys/$APPN.properties"
+      - name: Push notifications (FCM)
+        if: steps.type.outputs.type == 'capacitor'
+        working-directory: ${{ steps.find.outputs.dir }}
+        run: |
+          rm -f .push_ok google-services.json
+          if ! grep -qs on push.txt; then echo "push notifications: off"; exit 0; fi
+          SA="$RUNNER_TEMP/keysrepo/keys/fcm-sa.json"
+          if [ ! -f "$SA" ]; then echo "::warning::push.txt is on but keys/fcm-sa.json is missing in apk-app-backup"; exit 0; fi
+          PKG=$(node -e "console.log(JSON.parse(require('fs').readFileSync('capacitor.config.json','utf8')).appId)")
+          if python3 "$GITHUB_WORKSPACE/.github/fcm_config.py" "$SA" "$PKG" google-services.json; then touch .push_ok; else echo "::warning::could not get google-services.json, building without push"; fi
       - name: Build
         id: build
         if: steps.type.outputs.type == 'capacitor'
@@ -126,9 +136,15 @@ jobs:
           [ "$BT" = "release" ] || BT=debug
           echo "build type = $BT"
           npm install
+          if [ -f .push_ok ]; then
+            CV=$(node -p "require('@capacitor/core/package.json').version.split('.')[0]")
+            npm install "@capacitor/push-notifications@^$CV"
+          fi
           npx cap add android
+          if [ -f .push_ok ]; then cp google-services.json android/app/google-services.json; echo "google-services.json added"; fi
           npx cap sync android
           M=android/app/src/main/AndroidManifest.xml
+          if [ -f .push_ok ]; then grep -q "POST_NOTIFICATIONS" "$M" || sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.POST_NOTIFICATIONS\" />\n</manifest>|" "$M"; fi
           for P in INTERNET ACCESS_NETWORK_STATE; do
             grep -q "android.permission.$P" "$M" || sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.$P\" />\n</manifest>|" "$M"
           done
