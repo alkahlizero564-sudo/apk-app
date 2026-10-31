@@ -77,18 +77,27 @@ class SupabaseService {
     return false;
   }
 
-  static Future<bool> updateRow(String table, String filter, Map<String, dynamic> data) async {
+  static Future<List<dynamic>> updateRow(String table, String filter, Map<String, dynamic> data) async {
     try {
       final client = HttpClient();
       client.connectionTimeout = Duration(seconds: 10);
       final url = Uri.parse('$supabaseUrl/rest/v1/$table?$filter');
       final request = await client.patchUrl(url);
       _headers.forEach((k, v) => request.headers.set(k, v));
+      request.headers.set('Prefer', 'return=representation');
       request.add(utf8.encode(json.encode(data)));
       final response = await request.close();
-      return response.statusCode == 200 || response.statusCode == 204;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final body = await response.transform(utf8.decoder).join();
+        if (body.isNotEmpty) {
+          final decoded = json.decode(body);
+          if (decoded is List) {
+            return decoded;
+          }
+        }
+      }
     } catch (_) {}
-    return false;
+    return [];
   }
 }
 
@@ -215,7 +224,7 @@ class _AdminAuthScreenState extends State<AdminAuthScreen> {
 
     Map<String, dynamic> profile;
     if (profiles.isNotEmpty) {
-      profile = profiles.first;
+      profile = Map<String, dynamic>.from(profiles.first);
       await SupabaseService.updateRow('s2x7rw_profiles', 'id=eq.$email', {
         'full_name': name,
         'phone': profile['phone'] ?? '0912345678',
@@ -322,7 +331,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     _profileNameController = TextEditingController(text: widget.adminProfile['full_name'] ?? '');
     _profilePhoneController = TextEditingController(text: widget.adminProfile['phone'] ?? '');
     _fetchAllData();
-    _timer = Timer.periodic(Duration(seconds: 5), (_) {
+    _timer = Timer.periodic(Duration(seconds: 10), (_) {
       _fetchAllData(silent: true);
     });
   }
@@ -352,7 +361,6 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
           _bakerySettings = settingsList.first;
         } else {
           _bakerySettings = {
-            'id': 1,
             'is_open': true,
             'price': 50,
             'total_quantity': 500,
@@ -368,42 +376,89 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
 
   Future<void> _toggleIsOpen(bool value) async {
     if (_bakerySettings == null) return;
+
+    final oldState = Map<String, dynamic>.from(_bakerySettings!);
     setState(() {
       _bakerySettings!['is_open'] = value;
     });
 
     final id = _bakerySettings!['id'];
+    final payload = {
+      'is_open': value,
+      'price': _bakerySettings!['price'] ?? 50,
+      'total_quantity': _bakerySettings!['total_quantity'] ?? 500,
+      'remaining_quantity': _bakerySettings!['remaining_quantity'] ?? 500,
+    };
+
     bool success = false;
     if (id != null) {
-      success = await SupabaseService.updateRow('s2x7rw_bakery_settings', 'id=eq.$id', {
-        'is_open': value,
-        'price': _bakerySettings!['price'] ?? 50,
-        'total_quantity': _bakerySettings!['total_quantity'] ?? 500,
-        'remaining_quantity': _bakerySettings!['remaining_quantity'] ?? 500,
-      });
+      final res = await SupabaseService.updateRow('s2x7rw_bakery_settings', 'id=eq.$id', payload);
+      if (res.isNotEmpty) {
+        success = true;
+      } else {
+        success = await SupabaseService.insertRow('s2x7rw_bakery_settings', payload);
+      }
     } else {
-      success = await SupabaseService.insertRow('s2x7rw_bakery_settings', {
-        'is_open': value,
-        'price': _bakerySettings!['price'] ?? 50,
-        'total_quantity': _bakerySettings!['total_quantity'] ?? 500,
-        'remaining_quantity': _bakerySettings!['remaining_quantity'] ?? 500,
-      });
+      success = await SupabaseService.insertRow('s2x7rw_bakery_settings', payload);
     }
 
     if (success) {
+      if (value) {
+        APKPush.toAll('الحجز اتفتح 🍞', 'تقدر تحجز رغيفك هسي');
+      }
       dsToast(context, value ? 'تم فتح نظام الحجز للزبائن' : 'تم قفل الحجز مؤقتاً');
-      _fetchAllData(silent: true);
+      await _fetchAllData(silent: true);
     } else {
+      setState(() {
+        _bakerySettings = oldState;
+      });
       dsToast(context, 'تعذر تحديث الحالة');
     }
   }
 
   Future<void> _updateStatus(dynamic bookingId, String newStatus) async {
-    final success = await SupabaseService.updateRow('s2x7rw_bookings', 'id=eq.$bookingId', {
+    final res = await SupabaseService.updateRow('s2x7rw_bookings', 'id=eq.$bookingId', {
       'status': newStatus,
     });
-    if (success) {
+    if (res.isNotEmpty) {
       dsToast(context, 'تم تحديث حالة الطلب بنجاح');
+
+      final bkList = _bookings.where((b) => b['id'] == bookingId).toList();
+      if (bkList.isNotEmpty) {
+        final bk = bkList.first;
+        final customerId = bk['customer_id'];
+        String targetUser = customerId != null ? customerId.toString() : '';
+
+        final pList = _profiles.where((p) => p['id'] == customerId).toList();
+        if (pList.isNotEmpty) {
+          final p = pList.first;
+          if (p['phone'] != null && p['phone'].toString().trim().isNotEmpty) {
+            targetUser = p['phone'].toString().trim();
+          }
+        }
+
+        String title = '';
+        String body = '';
+
+        if (newStatus == 'accepted') {
+          title = 'تم قبول حجزك';
+          body = 'تم قبول حجزك ✔';
+        } else if (newStatus == 'ready') {
+          title = 'حجزك جاهز';
+          body = 'حجزك جاهز للاستلام 🍞';
+        } else if (newStatus == 'completed' || newStatus == 'delivered') {
+          title = 'تم الاستلام';
+          body = 'شكراً، تم الاستلام';
+        } else if (newStatus == 'rejected') {
+          title = 'رفض الحجز';
+          body = 'للأسف تم رفض الحجز';
+        }
+
+        if (body.isNotEmpty && targetUser.isNotEmpty) {
+          APKPush.toUser(targetUser, title, body);
+        }
+      }
+
       _fetchAllData(silent: true);
     } else {
       dsToast(context, 'تعذر تحديث الحالة');
@@ -634,7 +689,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                         if (status == 'accepted') {
                           badgeText = 'مقبول';
                           badgeKind = 'ok';
-                        } else if (status == 'completed') {
+                        } else if (status == 'completed' || status == 'delivered') {
                           badgeText = 'اتسلّم';
                           badgeKind = 'ok';
                         } else if (status == 'cancelled') {
@@ -711,7 +766,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                                         onPressed: () => _updateStatus(bk['id'], 'completed'),
                                         kind: "primary",
                                       ),
-                                    if (status != 'completed' && status != 'cancelled' && status != 'rejected')
+                                    if (status != 'completed' && status != 'delivered' && status != 'cancelled' && status != 'rejected')
                                       Padding(
                                         padding: EdgeInsets.only(right: 8),
                                         child: DsButton(
@@ -857,12 +912,12 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                         final newName = _profileNameController.text.trim();
                         final newPhone = _profilePhoneController.text.trim();
 
-                        final success = await SupabaseService.updateRow('s2x7rw_profiles', 'id=eq.${widget.adminProfile['id']}', {
+                        final res = await SupabaseService.updateRow('s2x7rw_profiles', 'id=eq.${widget.adminProfile['id']}', {
                           'full_name': newName,
                           'phone': newPhone,
                         });
 
-                        if (success) {
+                        if (res.isNotEmpty) {
                           widget.adminProfile['full_name'] = newName;
                           widget.adminProfile['phone'] = newPhone;
                           dsToast(context, 'تم حفظ ملف المدير بنجاح');
@@ -1673,7 +1728,7 @@ Future<bool> dsConfirm(BuildContext context, String title, String text) async {
 
 
 // ===== تحديث التطبيق (يُضاف تلقائياً) =====
-const int _apkCur = 1;
+const int _apkCur = 2;
 const String _apkUrl = 'https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/bakeryadmina0ovz/update.json';
 
 void runApp(apkw.Widget app) => apkw.runApp(ApkUpdateGate(child: app));
