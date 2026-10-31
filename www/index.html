@@ -8232,6 +8232,456 @@ render=function(){
 };
 })();
 render();
+/* ===== إضافة: الواجهة الجديدة (الرئيسية = مشاريعي + صفحة المشروع + استيراد كود جاهز) ===== */
+(function(){
+S.projects=S.projects||[];
+function hasCode(a){return !!(a&&a.code&&a.code.trim())}
+function snap(){return S.apps.map(function(a){const c=JSON.parse(JSON.stringify(a));delete c.versions;delete c.pv;delete c.err;return c})}
+function pid(){return 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)}
+function proj(id){return S.projects.find(function(p){return p.id===id})}
+function curP(){return S.cur?proj(S.cur):null}
+function appsOf(p){return (p&&p.id===S.cur)?S.apps:((p&&p.apps)||[])}
+function nmOf(a){return (a&&a.set&&a.set.label)||(a&&a.name)||'تطبيق'}
+function verOf(a){return a&&a.vc?(a.vbase||'1.0')+'.'+a.vc:'لم يُبنَ'}
+function langN(a){const l=(a&&a.lang)||'html';return l==='flutter'?'Flutter':l==='python'?'Python':'HTML'}
+function dbOf(apps){const c=apps.map(function(a){return (a&&a.code)||''}).join('\n');
+  if(/supabase\.co|createClient\s*\(|supabase_flutter/i.test(c))return 'sb';
+  if(/firebaseio\.com|firebasedatabase\.app|firebase/i.test(c))return 'fb';return ''}
+function linkOf(apps){const ok=apps.filter(hasCode);if(!ok.length)return {db:'',st:''};const ds=ok.map(function(a){return dbOf([a])});const db=ds.find(Boolean)||'';if(!db)return {db:'',st:'none'};if(ok.length>1&&ds[0]!==ds[1])return {db:db,st:'half'};return {db:db,st:'ok'}}
+function busyNow(){return !!(window._sysBusy||window._preN||window._preN3||window._pre||window._rvBusy||window._cxBuilding)}
+function rnd4(){return (Math.random().toString(36).replace(/[^a-z0-9]/g,'')+'x1k9').slice(0,4)}
+const PTABS=[['ov','نظرة عامة'],['tpl','تصميم'],['code','كود'],['data','بيانات'],['build','نشر']];
+const MINE=['home','ov','data'];
+
+/* ---------- المظهر ---------- */
+const st=document.createElement('style');
+st.textContent=`
+body.hb header,body.hb nav{display:none!important}
+body.hb #pj-bar>span:first-child{display:none}
+body.hb #pj-bar{justify-content:flex-start}
+body.hb{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+#hb-top{position:sticky;top:0;z-index:6;background:rgba(11,18,32,.92);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);padding:calc(10px + env(safe-area-inset-top)) 12px 8px;border-bottom:1px solid rgba(255,255,255,.06)}
+#hb-top .hb-bar{display:flex;align-items:center;gap:8px;max-width:720px;margin:auto}
+#hb-top h1{margin:0;font-size:20px;font-weight:900;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#hb-top h1 small{display:block;font-size:11.5px;font-weight:600;color:var(--mut)}
+.hb-ib{flex:none!important;width:42px;height:42px;padding:0!important;border-radius:14px!important;background:#131c31!important;border:1px solid var(--line)!important;font-size:18px!important;display:grid!important;place-items:center;color:var(--tx)!important}
+.hb-tabs{display:flex;gap:4px;max-width:720px;margin:10px auto 0;background:#0e1730;border:1px solid var(--line);border-radius:16px;padding:4px;overflow-x:auto;scrollbar-width:none}
+.hb-tabs::-webkit-scrollbar{display:none}
+.hb-tabs button{flex:1 0 auto;background:none;color:var(--mut);padding:9px 10px;font-size:13px;font-weight:800;border-radius:12px;white-space:nowrap}
+.hb-tabs button.on{background:var(--pri);color:#fff}
+.hb-srch{width:100%;margin:0 0 10px}
+.hb-chips{display:flex;gap:7px;overflow-x:auto;margin:0 0 12px;scrollbar-width:none}.hb-chips::-webkit-scrollbar{display:none}
+.hb-chips button{flex:none;width:auto;background:#131c31;border:1px solid var(--line);color:var(--mut);padding:8px 13px;font-size:12.5px;font-weight:800;border-radius:99px}
+.hb-chips button.on{background:var(--tx);color:#0b1220;border-color:var(--tx)}
+.hb-card{background:rgba(19,28,49,.82);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:13px;margin-bottom:10px;cursor:pointer;display:block;width:100%;text-align:right;color:var(--tx);font-weight:400}
+.hb-card.cur{border-color:rgba(46,204,113,.55);box-shadow:0 0 0 3px rgba(46,204,113,.12)}
+.hb-row{display:flex;align-items:center;gap:10px}
+.hb-ic{width:48px;height:48px;border-radius:15px;background:#0e1730;border:1px solid var(--line);display:grid;place-items:center;font-size:24px;flex:none;overflow:hidden}
+.hb-ic img{width:100%;height:100%;object-fit:cover}
+.hb-t{flex:1;min-width:0}.hb-t b{display:block;font-size:15.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hb-t small{font-size:12px;color:var(--mut)}
+.hb-bd{font-size:11px;font-weight:800;padding:4px 9px;border-radius:99px;background:#1c2742;color:var(--mut);white-space:nowrap;display:inline-block}
+.hb-bd.g{background:rgba(46,204,113,.15);color:#4ade80}.hb-bd.o{background:rgba(255,179,0,.15);color:var(--acc)}.hb-bd.b{background:rgba(99,102,241,.2);color:#a5b4fc}.hb-bd.r{background:rgba(255,92,92,.15);color:#ff8a8a}
+.hb-mt{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+.hb-fab{position:fixed;left:16px;bottom:calc(20px + env(safe-area-inset-bottom));z-index:7;width:auto!important;flex:none!important;height:58px;padding:0 22px!important;border-radius:20px!important;background:linear-gradient(135deg,#4f46e5,#2f80ff)!important;font-weight:900!important;font-size:16px!important;box-shadow:0 14px 30px rgba(79,70,229,.45)}
+.hb-h3{font-size:13px;font-weight:800;color:var(--mut);margin:14px 4px 8px}
+.hb-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hb-tile{background:rgba(19,28,49,.82);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:13px;cursor:pointer;color:var(--tx);text-align:right;font-weight:400;display:block;width:100%}
+.hb-tile .hb-ic{margin-bottom:8px}
+.hb-tile b{display:block;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.hb-tile small{font-size:11.5px;color:var(--mut)}
+.hb-tile.add{border-style:dashed;display:grid;place-items:center;text-align:center;color:var(--mut)}
+.hb-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.hb-acts button{background:rgba(19,28,49,.82);border:1px solid rgba(255,255,255,.07);color:var(--tx);padding:13px 4px;font-size:12.5px;font-weight:800;border-radius:18px}
+.hb-acts button span{display:block;font-size:22px;margin-bottom:4px}
+.hb-big{width:100%;margin-top:12px;padding:15px!important;font-size:16px!important;font-weight:900!important;background:linear-gradient(135deg,#4f46e5,#2f80ff)!important}
+.hb-opt{display:flex!important;align-items:center;gap:12px;width:100%;text-align:right;background:#0e1730!important;border:2px solid var(--line)!important;color:var(--tx)!important;padding:12px!important;border-radius:18px!important;margin-top:8px;font-weight:400!important}
+.hb-opt:active,.hb-opt.on{border-color:var(--pri)!important;background:rgba(47,128,255,.1)!important}
+.hb-opt b{display:block;font-size:15px}.hb-opt small{color:var(--mut);font-size:12px}
+.hb-seg{display:flex;gap:6px;background:#0e1730;border:1px solid var(--line);border-radius:16px;padding:4px;margin-top:6px}
+.hb-seg button{background:none;color:var(--mut);padding:10px 4px;font-size:13.5px;font-weight:800;border-radius:12px}
+.hb-seg button.on{background:var(--tx);color:#0b1220}
+.hb-imp{background:#0e1730;border:1px solid var(--line);border-radius:18px;padding:12px;margin-top:10px}
+.hb-imp textarea{height:120px;direction:ltr;text-align:left;font-family:monospace;font-size:12px;margin-top:8px}
+.hb-imp .hb-chips{margin:8px 0 0}
+.hb-chk{font-size:12.5px;line-height:1.9;margin-top:6px}
+.hb-warn{background:rgba(255,179,0,.1);border:1px solid rgba(255,179,0,.35);border-radius:16px;padding:12px;font-size:13px;line-height:1.8;margin-bottom:10px}
+.hb-empty{text-align:center;padding:30px 16px;color:var(--mut);line-height:1.9}
+.hb-empty div{font-size:46px}
+`;
+document.head.appendChild(st);
+document.body.classList.add('hb');
+const top=document.createElement('div');top.id='hb-top';
+const mn=$('#main');mn.parentNode.insertBefore(top,mn);
+
+/* ---------- الشريط العلوي ---------- */
+function drawTop(){
+  const p=curP();
+  let h='<div class="hb-bar">';
+  if(tab==='home'){
+    h+='<h1>📁 مشاريعي<small>APK App · Alpha Web</small></h1>'
+     +'<button class="hb-ib" title="نسخة احتياطية" onclick="go(\'keys\');setTimeout(function(){var e=document.querySelector(\'#main [onclick*=cxBkSave]\');if(e)e.scrollIntoView({block:\'center\'})},150)">💾</button>'
+     +'<button class="hb-ib" title="الإعدادات" onclick="go(\'keys\')">⚙️</button>';
+  }else if(tab==='keys'){
+    h+='<button class="hb-ib" onclick="go(window._hbBack||\'home\')">→</button><h1>⚙️ الإعدادات<small>المفاتيح، الذكاء الاصطناعي، البريد، النسخ الاحتياطي</small></h1>';
+  }else{
+    const nm=p?p.name:'خانة العمل';
+    const sub=p?(appsOf(p).filter(hasCode).length>1?'🔗 نظام · تطبيقين':'📱 تطبيق واحد'):'⚠ ما محفوظ في المشاريع';
+    h+='<button class="hb-ib" onclick="go(\'home\')">→</button><h1>'+esc(nm)+'<small>'+sub+'</small></h1>'
+     +'<button class="hb-ib" onclick="cxHubMenu()">⋯</button>';
+  }
+  h+='</div>';
+  if(tab!=='home'&&tab!=='keys'){
+    h+='<div class="hb-tabs">'+PTABS.map(function(t){return '<button class="'+(tab===t[0]?'on':'')+'" onclick="go(\''+t[0]+'\')">'+t[1]+'</button>'}).join('')+'</div>';
+  }
+  top.innerHTML=h;
+  let f=$('#hb-fab');
+  if(tab==='home'){
+    if(!f){f=document.createElement('button');f.id='hb-fab';f.className='hb-fab';f.textContent='＋ مشروع جديد';f.onclick=function(){cxHubNew()};document.body.appendChild(f)}
+    f.style.display='';
+  }else if(f)f.style.display='none';
+}
+
+/* ---------- الرئيسية ---------- */
+window._hf=window._hf||'all';window._hq=window._hq||'';
+function cardOf(p){
+  const apps=appsOf(p),ok=apps.filter(hasCode),isCur=p.id===S.cur;
+  const sys=ok.length>1,db=dbOf(apps),a0=ok[0]||apps[0]||{};
+  const ic=a0.icon?'<img src="'+esc(a0.icon)+'">':(sys?'🔗':'📱');
+  const cl=p.client&&p.client.name;
+  let h='<button class="hb-card'+(isCur?' cur':'')+'" onclick="cxHubOpen(\''+p.id+'\')"><div class="hb-row"><div class="hb-ic">'+ic+'</div><div class="hb-t"><b>'+esc(p.name)+'</b><small>'+(cl?'👤 '+esc(cl):(sys?'نظام من تطبيقين':ok.length?'تطبيق واحد':'فاضي'))+'</small></div>'
+   +(isCur?'<span class="hb-bd g">● مفتوح</span>':'<span class="hb-bd '+(sys?'b':'')+'">'+(sys?'🔗 نظام':'📱 واحد')+'</span>')+'</div><div class="hb-mt">';
+  ok.forEach(function(a){h+='<span class="hb-bd">'+esc(nmOf(a))+' · '+esc(verOf(a))+(a.set&&a.set.upd?' 🔔':'')+'</span>'});
+  if(!ok.length)h+='<span class="hb-bd o">ما فيهو كود لسه</span>';
+  const L=linkOf(apps);
+  if(L.st==='ok')h+='<span class="hb-bd g">'+(L.db==='fb'?'🔥 Firebase':'⚡ Supabase')+'</span>';
+  else if(L.st==='half')h+='<span class="hb-bd o">⚠ واحد بس مربوط</span>';
+  else if(sys)h+='<span class="hb-bd r">⚠ غير مربوطين</span>';
+  return h+'</div></button>';
+}
+function listHtml(){
+  const q=(window._hq||'').trim().toLowerCase(),f=window._hf;
+  const L=S.projects.filter(function(p){
+    const apps=appsOf(p),n=apps.filter(hasCode).length;
+    if(f==='sys'&&n<2)return false;
+    if(f==='one'&&n>1)return false;
+    if(f==='cl'&&!(p.client&&p.client.name))return false;
+    if(!q)return true;
+    const s=(p.name+' '+((p.client&&p.client.name)||'')+' '+apps.map(function(a){return nmOf(a)+' '+(a.name||'')}).join(' ')).toLowerCase();
+    return s.indexOf(q)>-1;
+  });
+  if(!S.projects.length)return '<div class="hb-empty"><div>📂</div><b style="color:var(--tx)">ما عندك مشاريع لسه</b><br>اضغط «＋ مشروع جديد» تحت، وابدأ بوصف أو بكود عندك.</div>';
+  if(!L.length)return '<div class="hb-empty"><div>🔍</div>ما لقيت مشروع بالبحث ده</div>';
+  return L.map(cardOf).join('');
+}
+function vHome(){
+  let h='';
+  const k=S.keys||{};
+  if(!k.ghToken||!(k.gemini||k.claude||k.orKey||k.gqKey))h+='<div class="hb-warn">⚠ قبل ما تبدأ، أضف <b>مفتاح GitHub</b> و<b>مفتاح الذكاء الاصطناعي</b> في ⚙️ الإعدادات.<button class="acc" style="margin-top:8px;width:100%" onclick="go(\'keys\')">⚙️ افتح الإعدادات</button></div>';
+  if(!S.cur&&S.apps.some(hasCode))h+='<div class="hb-warn">عندك تطبيق في خانة العمل ما محفوظ في المشاريع.<div class="row"><button class="acc" onclick="cxPjAdd()">📥 أضفه للمشاريع</button><button class="sec" onclick="go(\'code\')">💻 افتحه</button></div></div>';
+  const n=function(fn){return S.projects.filter(fn).length};
+  const sys=n(function(p){return appsOf(p).filter(hasCode).length>1});
+  const cl=n(function(p){return p.client&&p.client.name});
+  h+='<input class="hb-srch" placeholder="🔍 ابحث عن مشروع أو زبون…" value="'+esc(window._hq)+'" oninput="window._hq=this.value;document.getElementById(\'hb-list\').innerHTML=cxHubList()">'
+   +'<div class="hb-chips">'+[['all','الكل '+S.projects.length],['sys','🔗 أنظمة '+sys],['one','📱 تطبيق واحد '+(S.projects.length-sys)],['cl','👤 بزبون '+cl]].map(function(c){return '<button class="'+(window._hf===c[0]?'on':'')+'" onclick="window._hf=\''+c[0]+'\';render()">'+c[1]+'</button>'}).join('')+'</div>'
+   +'<div id="hb-list">'+listHtml()+'</div>';
+  return h;
+}
+window.cxHubList=listHtml;
+window.cxHubOpen=function(id){
+  if(id===S.cur){go('ov');return}
+  if(busyNow())return toast('انتظر انتهاء العملية الجارية');
+  if(typeof cxPjOpen==='function')cxPjOpen(id);
+  if(S.cur===id)go('ov');
+};
+
+/* ---------- صفحة المشروع: نظرة عامة ---------- */
+function tile(i){
+  const a=S.apps[i];
+  if(!hasCode(a))return '<button class="hb-tile add" onclick="cxHubSlot('+i+')"><div style="font-size:26px">＋</div><small>'+(i?'أضف التطبيق الثاني':'أضف التطبيق الأول')+'<br>(وصف أو كود جاهز)</small></button>';
+  const ic=a.icon?'<img src="'+esc(a.icon)+'">':(i?'📊':'📱');
+  return '<button class="hb-tile" onclick="go(\'code\');setTimeout(function(){if(window.cxApp)cxApp('+i+')},60)"><div class="hb-ic">'+ic+'</div><b>'+esc(nmOf(a))+'</b><small>'+langN(a)+' · '+esc(verOf(a))+'</small></button>';
+}
+function vOv(){
+  const p=curP(),ok=S.apps.filter(hasCode),L=linkOf(S.apps),db=L.db,half=L.st==='half';
+  let h='';
+  if(!p&&ok.length)h+='<div class="hb-warn">التطبيق ده ما محفوظ في المشاريع.<button class="acc" style="width:100%;margin-top:8px" onclick="cxPjAdd()">📥 أضفه للمشاريع</button></div>';
+  h+='<div class="hb-h3">'+(ok.length>1?'🔗 النظام المرتبط':'📱 التطبيقات')+'</div><div class="hb-two">'+tile(0)+tile(1)+'</div>';
+  h+='<div class="hb-h3">🗄 قاعدة البيانات المشتركة</div><button class="hb-card" onclick="go(\'data\')"><div class="hb-row"><div class="hb-ic">'+(db==='sb'?'⚡':db==='fb'?'🔥':'🗄')+'</div><div class="hb-t"><b>'+(db==='sb'?'Supabase':db==='fb'?'Firebase':'غير مربوط')+'</b><small>'+(half?'تطبيق واحد بس متصل، اربط التاني بنفس القاعدة':db?(ok.length>1?'التطبيقين بيقروا ويكتبوا في نفس القاعدة':'التطبيق متصل بالقاعدة'):(ok.length>1?'اربط التطبيقين عشان يشوفوا نفس البيانات':'اختياري: لو التطبيق محتاج بيانات سحابية'))+'</small></div>'
+   +(half?'<span class="hb-bd o">⚠ اربط ←</span>':db?'<span class="hb-bd g">● مربوط</span>':(ok.length>1?'<span class="hb-bd r">اربط ←</span>':'<span class="hb-bd">←</span>'))+'</div></button>';
+  h+='<div class="hb-h3">⚡ إجراءات سريعة</div><div class="hb-acts">'
+   +'<button onclick="'+(p?'cxStuOpen(\''+p.id+'\')':'go(\'code\')')+'"><span>🛠</span>تعديل بالذكاء</button>'
+   +'<button onclick="go(\'build\')"><span>🏗</span>'+(ok.length>1?'بناء الاتنين':'بناء')+'</button>'
+   +'<button onclick="'+(p?'cxCF(\''+p.id+'\')':'cxPjAdd()')+'"><span>💬</span>أرسل للزبون</button></div>';
+  h+='<div class="hb-h3">📋 الحالة</div><div class="card" style="padding:13px">';
+  if(!ok.length)h+='<p class="note" style="margin:0">المشروع فاضي. اضغط «＋» فوق عشان تضيف تطبيق بوصف أو بكود جاهز.</p>';
+  ok.forEach(function(a){
+    const i=S.apps.indexOf(a);
+    h+='<div class="hb-row" style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="hb-t"><b style="font-size:14px">'+esc(nmOf(a))+'</b><small>'+(a.vc?'الإصدار '+esc(verOf(a))+(a.set&&a.set.upd?' · 🔔 إشعار التحديث شغّال':''):'لسه ما اتبنى')+(a.err?' · <span style="color:var(--bad)">⚠ في خطأ</span>':'')+'</small></div>'
+     +(a.apk?'<a class="btn acc" style="flex:none;padding:8px 12px;font-size:13px" href="'+esc(a.apk)+'" target="_blank">⬇ APK</a>':'<button class="sec" style="flex:none;width:auto;padding:8px 12px;font-size:13px" onclick="go(\'build\')">🏗 ابنِ</button>')+'</div>';
+  });
+  const c=p&&p.client||{};
+  h+='<div class="hb-mt">'
+   +'<span class="hb-bd '+(S.keys.mailEm?'g':'')+'" onclick="cxHubMail()" style="cursor:pointer">📧 بريد التأكيد'+(S.keys.mailEm?' ✔':'')+'</span>'
+   +'<span class="hb-bd '+(ok.some(function(a){return a.vc})?'g':'')+'">🔑 '+(ok.some(function(a){return a.vc})?'المفتاح محفوظ':'المفتاح بعد أول بناء')+'</span>'
+   +(p?'<span class="hb-bd '+(c.name?'g':'o')+'" onclick="cxCF(\''+p.id+'\')" style="cursor:pointer">📦 '+(c.name?'ملف '+esc(c.name):'ملف الزبون')+'</span>':'')
+   +'</div></div>';
+  if(p&&ok.length)h+='<button class="hb-big" onclick="cxStuOpen(\''+p.id+'\')">✨ اطلب تعديل جديد</button>';
+  return h;
+}
+
+/* ---------- صفحة المشروع: البيانات ---------- */
+function vData(){
+  const ok=S.apps.filter(hasCode),db=dbOf(S.apps),k=S.keys||{};
+  const per=S.apps.map(function(a,i){if(!hasCode(a))return '';const d=dbOf([a]);return '<div class="hb-row" style="padding:6px 0"><div class="hb-t"><b style="font-size:14px">'+esc(nmOf(a))+'</b></div><span class="hb-bd '+(d?'g':'r')+'">'+(d==='fb'?'🔥 Firebase':d==='sb'?'⚡ Supabase':'غير مربوط')+'</span></div>'}).join('');
+  let h='<div class="card"><h2>🗄 الربط بين التطبيقين</h2>'+(per||'<p class="note">ما في تطبيقات بكود لسه.</p>')
+   +(ok.length>1&&dbOf([S.apps[0]])!==dbOf([S.apps[1]])?'<div class="hb-warn" style="margin:8px 0 0">⚠ التطبيقين ما على نفس القاعدة. اضغط واحد من زرار الربط تحت عشان يشوفوا نفس البيانات.</div>':'')
+   +'<p class="note">زر الربط بيخلي الذكاء الاصطناعي يعدّل كود التطبيقين عشان يقروا ويكتبوا في نفس قاعدة البيانات.</p>'
+   +'<div class="row"><button class="acc" onclick="linkFirebase(this)">🔥 اربط بـ Firebase</button><button class="acc" onclick="linkApps(this)">⚡ اربط بـ Supabase</button></div>'
+   +(ok.length<2?'<p class="note">الربط محتاج التطبيقين يكون فيهم كود.</p>':'')+'</div>';
+  h+='<div class="card"><h2>🔑 بيانات القاعدة</h2>'
+   +'<div class="hb-row" style="padding:5px 0"><div class="hb-t"><b style="font-size:14px">🔥 Firebase</b><small>رابط Realtime Database</small></div><span class="hb-bd '+(k.fbUrl?'g':'r')+'">'+(k.fbUrl?'✔ موجود':'ناقص')+'</span></div>'
+   +'<div class="hb-row" style="padding:5px 0"><div class="hb-t"><b style="font-size:14px">⚡ Supabase</b><small>Access Token + Project ref</small></div><span class="hb-bd '+(k.sbToken&&k.sbRef?'g':'r')+'">'+(k.sbToken&&k.sbRef?'✔ موجود':'ناقص')+'</span></div>'
+   +'<button class="sec" style="width:100%;margin-top:8px" onclick="window._hbBack=\'data\';go(\'keys\')">⚙️ عدّل المفاتيح</button></div>';
+  h+='<div class="card"><h2>📧 بريد التأكيد</h2><p class="note" style="margin-top:0">رمز من 6 أرقام يوصل لإيميل الزبون عند التسجيل (Supabase عبر Gmail أو Brevo).</p>'
+   +'<div class="hb-mt" style="margin:0 0 10px"><span class="hb-bd '+(S.keys.mailEm?'g':'o')+'">'+(S.keys.mailEm?'✔ مربوط: '+esc(S.keys.mailEm):'لسه ما مربوط')+'</span></div>'
+   +'<button class="acc" style="width:100%" onclick="cxHubMail()">📧 إعداد وتجربة البريد</button></div>';
+  return h;
+}
+window.cxHubMail=function(){window._hbBack=tab==='keys'?'home':tab;go('keys');setTimeout(function(){const e=$('#cx-mail');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})},150)};
+
+/* ---------- قائمة ⋯ ---------- */
+window.cxHubMenu=function(){
+  const p=curP(),sh=$('#sheet');
+  const b=function(ic,t,fn,cls){return '<button class="hb-opt" onclick="'+fn+'"><span style="font-size:22px">'+ic+'</span><span style="flex:1"><b>'+t+'</b></span></button>'};
+  let h='<div class="sheetbox"><h3 style="margin:0 0 6px">'+esc(p?p.name:'خانة العمل')+'</h3>';
+  if(p){
+    h+=b('🛠','استوديو التحديث (عدّل بالذكاء وأرسل)','closeSheet();cxStuOpen(\''+p.id+'\')')
+     +b('📦','ملف التطبيق والزبون','closeSheet();cxCF(\''+p.id+'\')')
+     +b('💾','احفظ الآن','closeSheet();cxPjCommit&&cxPjCommit();toast(\'تم الحفظ ✔\')')
+     +b('✏️','إعادة تسمية','closeSheet();cxPjRen(\''+p.id+'\')')
+     +b('📄','نسخة بأسماء تطبيقات جديدة','closeSheet();cxPjDup(\''+p.id+'\')')
+     +b('🗑','حذف المشروع','closeSheet();cxPjDel(\''+p.id+'\')');
+  }else h+=b('📥','أضف للمشاريع','closeSheet();cxPjAdd()');
+  h+=b('⚙️','الإعدادات والمفاتيح','closeSheet();window._hbBack=tab;go(\'keys\')')
+   +'<button class="ghost" onclick="closeSheet()">إغلاق</button></div>';
+  sh.innerHTML=h;sh.classList.add('on');
+};
+
+/* ---------- مشروع جديد ---------- */
+window._hk=window._hk||2;
+function saveCur(){
+  const cur=curP();
+  if(cur){cur.apps=snap();cur.t=Date.now()}
+  else if(S.apps.some(hasCode)){
+    const apps=snap(),a=apps.find(hasCode)||{};
+    S.projects.unshift({id:pid(),name:nmOf(a)+' (حُفظ تلقائياً)',t:Date.now(),kind:apps.filter(hasCode).length>1?2:1,apps:apps});
+  }
+}
+function newEmpty(name){
+  saveCur();
+  S.apps[0]=newApp('first');S.apps[1]=newApp('second');
+  const np={id:pid(),name:name||'مشروع جديد',auto:name?0:1,t:Date.now(),kind:window._hk,apps:snap()};
+  S.projects.unshift(np);S.cur=np.id;save();
+  return np;
+}
+window.cxHubNew=function(){
+  if(busyNow())return toast('انتظر انتهاء العملية الجارية');
+  const sh=$('#sheet'),k=window._hk;
+  const o=function(ic,t,s,fn){return '<button class="hb-opt" onclick="'+fn+'"><div class="hb-ic" style="width:44px;height:44px;font-size:22px">'+ic+'</div><span style="flex:1"><b>'+t+'</b><small>'+s+'</small></span><span style="color:var(--mut)">←</span></button>'};
+  sh.innerHTML='<div class="sheetbox"><h3 style="margin:0 0 4px">＋ مشروع جديد</h3>'
+   +'<p class="note" style="margin:0 0 4px">نوع المشروع</p><div class="hb-seg"><button class="'+(k===2?'on':'')+'" onclick="window._hk=2;cxHubNew()">🔗 نظام (تطبيقين)</button><button class="'+(k===1?'on':'')+'" onclick="window._hk=1;cxHubNew()">📱 تطبيق واحد</button></div>'
+   +'<p class="note" style="margin:12px 0 0">ابدأ من</p>'
+   +o('✨','وصف بالذكاء الاصطناعي',k===2?'اكتب فكرة النظام ويعمل ليك التطبيقين مربوطين':'اكتب الفكرة ويعمل ليك الكود','cxHubStart(\'ai\')')
+   +o('📋','عندي كود جاهز','الصق الكود أو ارفع ملف أو رابط GitHub','cxHubImp()')
+   +o('🏗','من قائمة البناء','تطبيق بنيته قبل كده (الأول أو الثاني)','cxPjPick()')
+   +o('🎨','من قالب','قوالب احترافية جاهزة','cxHubStart(\'tpl\')')
+   +'<p class="note">مشروعك الحالي بيتحفظ تلقائياً قبل ما يبدأ الجديد.</p><button class="ghost" onclick="closeSheet()">إلغاء</button></div>';
+  sh.classList.add('on');
+};
+window.cxHubStart=function(how){
+  newEmpty();closeSheet();
+  if(how==='tpl'){go('tpl');toast('اختار قالب، وبعدها سمّ التطبيق باسم إنجليزي فريد');return}
+  if(window._hk===2){
+    window._sysO=true;go('code');
+    setTimeout(function(){const d=$('#cx-sys');if(d){d.open=true;d.scrollIntoView({behavior:'smooth',block:'start'});const t=$('#sysd');if(t)setTimeout(function(){t.focus()},350)}},120);
+    toast('اكتب وصف النظام واضغط «🚀 أنشئ النظام»');
+  }else{
+    go('code');
+    setTimeout(function(){
+      if(window.cxApp)cxApp(0);
+      const d=$('#desc0');if(d&&d.hidden&&typeof toggleDesc==='function')toggleDesc(0);
+      const t=$('#dsc0');if(t){t.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(function(){t.focus()},350)}
+    },120);
+    toast('اكتب وصف التطبيق واضغط إنشاء');
+  }
+};
+/* خانة فاضية في نظرة عامة */
+window.cxHubSlot=function(i){
+  const sh=$('#sheet');
+  sh.innerHTML='<div class="sheetbox"><h3 style="margin:0 0 6px">＋ '+(i?'التطبيق الثاني':'التطبيق الأول')+'</h3>'
+   +'<button class="hb-opt" onclick="closeSheet();go(\'code\');setTimeout(function(){if(window.cxApp)cxApp('+i+');var d=$(\'#desc'+i+'\');if(d&&d.hidden&&window.toggleDesc)toggleDesc('+i+');var t=$(\'#dsc'+i+'\');if(t){t.scrollIntoView({block:\'center\'});t.focus()}},120)"><span style="font-size:22px">✨</span><span style="flex:1"><b>اكتب وصف</b><small>'+(i&&hasCode(S.apps[0])?'الذكاء بيقرا التطبيق الأول ويعمل التاني مربوط بيهو':'الذكاء يكتب الكود')+'</small></span></button>'
+   +'<button class="hb-opt" onclick="cxHubImp('+i+')"><span style="font-size:22px">📋</span><span style="flex:1"><b>عندي كود جاهز</b><small>لصق أو رفع ملف</small></span></button>'
+   +'<button class="ghost" onclick="closeSheet()">إلغاء</button></div>';
+  sh.classList.add('on');
+};
+
+/* ---------- استيراد كود جاهز ---------- */
+const IMP={name:'',s:[{n:'',c:'',ai:false},{n:'',c:'',ai:false}],only:-1};
+function detLang(c){
+  if(/<!doctype html|<html[\s>]|<body[\s>]|<script[\s>]/i.test(c))return 'html';
+  if(/import\s+['"]package:flutter|void\s+main\s*\(\s*\)|Widget\s+build\s*\(/.test(c))return 'flutter';
+  if(/^\s*(from\s+kivy|import\s+kivy|def\s+\w+\s*\(|class\s+\w+\s*(\(|:)|import\s+\w+)/m.test(c))return 'python';
+  return '';
+}
+function balOk(c,l){
+  let s=String(c);
+  if(l==='html')s=(s.match(/<script[^>]*>([\s\S]*?)<\/script>/gi)||[]).join('\n');
+  s=s.replace(/\/\*[\s\S]*?\*\//g,'').replace(/(^|[^:])\/\/.*$/gm,'$1').replace(/'(?:\\.|[^'\\\n])*'|"(?:\\.|[^"\\\n])*"|`(?:\\.|[^`\\])*`/g,'""');
+  if(l==='python')s=s.replace(/#.*$/gm,'');
+  const cnt=function(r){return (s.match(r)||[]).length};
+  return cnt(/\{/g)===cnt(/\}/g)&&cnt(/\(/g)===cnt(/\)/g)&&cnt(/\[/g)===cnt(/\]/g);
+}
+function chk(i){
+  const x=IMP.s[i],c=x.c.trim();
+  if(x.ai)return '<span class="hb-bd b">✨ الذكاء بيكتبه بعد الإضافة (مربوط بالأول)</span>';
+  if(!c)return '<span class="hb-bd">فاضي</span>';
+  const l=detLang(c),lines=c.split('\n').length,d=dbOf([{code:c}]);
+  let h='<span class="hb-bd '+(l?'g':'r')+'">'+(l?'✔ '+(l==='flutter'?'Flutter':l==='python'?'Python':'HTML'):'⚠ ما عرفت اللغة')+' · '+lines+' سطر</span> '
+   +'<span class="hb-bd '+(balOk(c,l||'html')?'g':'o')+'">'+(balOk(c,l||'html')?'✔ الأقواس سليمة':'⚠ الأقواس ما متساوية، راجع الكود')+'</span> ';
+  if(d)h+='<span class="hb-bd g">'+(d==='fb'?'🔥 فيهو Firebase':'⚡ فيهو Supabase')+'</span>';
+  return h;
+}
+function impDraw(){
+  const sh=$('#sheet'),two=IMP.only<0&&window._hk===2;
+  const idx=IMP.only>=0?[IMP.only]:two?[0,1]:[0];
+  let h='<div class="sheetbox"><h3 style="margin:0 0 4px">📋 استيراد الكود</h3>';
+  if(IMP.only<0)h+='<label>اسم المشروع</label><input id="hb-pn" placeholder="مثلاً: نظام المخبز" value="'+esc(IMP.name)+'" oninput="cxHubImpSet(-1,\'name\',this.value)">';
+  idx.forEach(function(i){
+    const x=IMP.s[i];
+    h+='<div class="hb-imp"><div class="hb-row"><div class="hb-ic" style="width:40px;height:40px;font-size:20px">'+(i?'📊':'📱')+'</div><div class="hb-t"><b>التطبيق '+(i?'الثاني':'الأول')+(two?(i?' (الإدارة)':' (الزبون)'):'')+'</b><small>الاسم بالإنجليزي يصير اسم التطبيق في الجوال</small></div></div>'
+     +'<input dir="ltr" placeholder="'+(i?'bakeryadmin':'bakery')+'" style="margin-top:8px" value="'+esc(x.n)+'" oninput="cxHubImpSet('+i+',\'n\',this.value)">'
+     +(x.ai?'':'<textarea id="hb-c'+i+'" wrap="off" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="الصق كود HTML أو Flutter (main.dart) أو Python هنا…" oninput="cxHubImpSet('+i+',\'c\',this.value)">'+esc(x.c)+'</textarea>')
+     +'<div class="hb-chips">'
+     +(x.ai?'<button onclick="cxHubImpSet('+i+',\'ai\',false)">📋 عندي كود ليهو</button>'
+       :'<button onclick="cxHubPaste('+i+')">📋 لصق</button><button onclick="cxHubFile('+i+')">📁 رفع ملف</button><button onclick="cxHubGh('+i+')">🔗 رابط GitHub</button>'+(i===1&&two?'<button onclick="cxHubImpSet(1,\'ai\',true)">✨ خلي الذكاء يكتبه</button>':''))
+     +'</div><div class="hb-chk" id="hb-k'+i+'">'+chk(i)+'</div></div>';
+  });
+  if(two){
+    const d0=dbOf([{code:IMP.s[0].c}]),d1=dbOf([{code:IMP.s[1].c}]);
+    if((d0||d1)&&d0!==d1&&!IMP.s[1].ai&&IMP.s[1].c.trim())h+='<div class="hb-warn" style="margin-top:10px">⚠ التطبيقين ما على نفس القاعدة. بعد الإضافة افتح تبويب «بيانات» واضغط زر الربط.</div>';
+    else if(d0&&!IMP.s[1].c.trim()&&!IMP.s[1].ai)h+='<div class="hb-warn" style="margin-top:10px">الأول فيهو '+(d0==='fb'?'Firebase':'Supabase')+'. التاني ممكن تلصق كودو، أو تضغط «✨ خلي الذكاء يكتبه» ويتربط بنفس القاعدة.</div>';
+  }
+  h+='<input type="file" id="hb-f" accept=".html,.htm,.dart,.py,.txt,.js,text/*" style="display:none" onchange="cxHubFileGo(this)">'
+   +'<div class="row" style="margin-top:12px"><button class="sec" onclick="cxHubImpGo(1)">👁 أضف وعاين</button><button class="acc" style="flex:2" onclick="cxHubImpGo(0)">✔ أضف للمشاريع</button></div>'
+   +'<button class="ghost" onclick="'+(IMP.only>=0?'closeSheet()':'cxHubNew()')+'">رجوع</button></div>';
+  sh.innerHTML=h;sh.classList.add('on');
+}
+window.cxHubImp=function(only){
+  IMP.only=(typeof only==='number')?only:-1;
+  if(IMP.only>=0){IMP.s[IMP.only]={n:S.apps[IMP.only].name&&!/^(first|second)$/.test(S.apps[IMP.only].name)?S.apps[IMP.only].name:'',c:'',ai:false}}
+  impDraw();
+};
+window.cxHubImpSet=function(i,k,v){
+  if(i<0){IMP.name=v;return}
+  IMP.s[i][k]=v;
+  if(k==='c'){const e=$('#hb-k'+i);if(e)e.innerHTML=chk(i);clearTimeout(IMP._t);IMP._t=setTimeout(function(){const ae=document.activeElement&&document.activeElement.id;if(ae!=='hb-c'+i&&$('#sheet').classList.contains('on')&&$('#hb-c'+i))impDraw()},900);return}
+  if(k==='ai')impDraw();
+};
+window.cxHubPaste=async function(i){
+  try{const t=await navigator.clipboard.readText();if(!t||!t.trim())return toast('الحافظة فاضية');IMP.s[i].c=t;impDraw();toast('تم اللصق ✔')}
+  catch(e){toast('المتصفح ما سمح بالقراءة من الحافظة. اضغط مطوّل جوه المربع واختار «لصق»');const el=$('#hb-c'+i);if(el)el.focus()}
+};
+window.cxHubFile=function(i){IMP.fi=i;const f=$('#hb-f');if(f){f.value='';f.click()}};
+window.cxHubFileGo=function(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  if(f.size>3000000)return toast('الملف كبير شديد (أكتر من 3 ميجا)');
+  const r=new FileReader();
+  r.onload=function(){IMP.s[IMP.fi].c=String(r.result||'');if(!IMP.s[IMP.fi].n){const b=f.name.replace(/\.[^.]+$/,'');const s=slugOf(b);if(s&&!/^(index|main)$/.test(s))IMP.s[IMP.fi].n=s}impDraw();toast('تم رفع «'+f.name+'» ✔')};
+  r.onerror=function(){toast('ما قدرت أقرا الملف')};
+  r.readAsText(f);
+};
+window.cxHubGh=async function(i){
+  const u=prompt('الصق رابط الملف في GitHub (مثلاً github.com/user/repo/blob/main/index.html)');
+  if(!u||!u.trim())return;
+  let raw=u.trim();
+  const m=raw.match(/github\.com\/([^\/]+)\/([^\/]+)\/blob\/(.+)$/);
+  if(m)raw='https://raw.githubusercontent.com/'+m[1]+'/'+m[2]+'/'+m[3];
+  try{
+    toast('⏳ جاري التحميل…');
+    let r=await fetch(raw);
+    if(!r.ok&&S.keys.ghToken&&m){
+      const p=m[3].split('/'),ref=p.shift();
+      r=await fetch('https://api.github.com/repos/'+m[1]+'/'+m[2]+'/contents/'+p.join('/')+'?ref='+encodeURIComponent(ref),{headers:{Authorization:'Bearer '+S.keys.ghToken,Accept:'application/vnd.github.raw'}});
+    }
+    if(!r.ok)throw new Error('ما قدرت أحمّل الملف ('+r.status+'). تأكد من الرابط.');
+    IMP.s[i].c=await r.text();impDraw();toast('تم التحميل ✔');
+  }catch(e){toast(arErr(e))}
+};
+window.cxHubImpGo=function(view){
+  const idx=IMP.only>=0?[IMP.only]:(window._hk===2?[0,1]:[0]);
+  const use=idx.filter(function(i){return IMP.s[i].c.trim()});
+  if(!use.length)return toast('الصق كود تطبيق واحد على الأقل');
+  for(const i of use){
+    const l=detLang(IMP.s[i].c);
+    if(!l)return toast('ما عرفت لغة كود التطبيق '+(i?'الثاني':'الأول')+'. لازم يكون HTML أو Flutter أو Python');
+  }
+  if(IMP.only<0){
+    const pn=(IMP.name||'').trim()||(IMP.s[0].n||'').trim();
+    newEmpty(pn||'');
+  }else if(!S.cur){
+    newEmpty('');
+  }
+  clearTimeout(IMP._t);
+  const base=slugOf(IMP.s[0].n)||slugOf(S.apps[0].name&&!/^(first|second)$/.test(S.apps[0].name)?S.apps[0].name:'')||slugOf(IMP.name)||'app';
+  use.forEach(function(i){
+    const x=IMP.s[i],a=S.apps[i];
+    if(hasCode(a)&&typeof pushVersion==='function')pushVersion(i);
+    a.code=x.c;a.lang=detLang(x.c);
+    let n=slugOf(x.n);
+    if(!n||/^(first|second)$/.test(n))n=i?(base.slice(0,12)+'admin'):(base==='app'?'app'+rnd4():base);
+    if(i===1&&n===slugOf(S.apps[0].name))n=n.slice(0,12)+'admin';
+    a.name=n;a.nameOk=n;a.err='';a.pv='';
+    a.versions=a.versions||[];
+  });
+  const p=curP();
+  if(p){p.apps=snap();p.kind=S.apps.filter(hasCode).length>1?2:1;p.t=Date.now();
+    if(p.auto&&IMP.name.trim()){p.name=IMP.name.trim();delete p.auto}}
+  save();closeSheet();
+  const wantAi=IMP.only<0&&window._hk===2&&IMP.s[1].ai;
+  IMP.name='';IMP.s=[{n:'',c:'',ai:false},{n:'',c:'',ai:false}];
+  if(wantAi){
+    go('code');
+    setTimeout(function(){if(window.cxApp)cxApp(1);const d=$('#desc1');if(d&&d.hidden&&typeof toggleDesc==='function')toggleDesc(1);const t=$('#dsc1');if(t){t.scrollIntoView({block:'center'});t.focus()}},150);
+    toast('✔ اتضاف الأول. اكتب وصف التطبيق الثاني، والذكاء بيقرا الأول ويربطو بنفس القاعدة');
+    return;
+  }
+  if(view){go('code');toast('✔ اتضاف للمشاريع')}
+  else{go('ov');toast('✔ اتضاف «'+(curP()?curP().name:'المشروع')+'» للمشاريع')}
+};
+
+/* ---------- ربط الدوال القديمة بالواجهة الجديدة ---------- */
+window.cxPjNew=window.cxHubNew;
+window.cxProj=function(){closeSheet();go('home')};
+
+/* ---------- العرض ---------- */
+const _go=go;
+go=function(t){if(t==='keys'&&tab!=='keys')window._hbBack=tab;_go(t)};
+const _rH=render;
+render=function(){
+  if(MINE.indexOf(tab)>-1){
+    const m=$('#main');
+    m.innerHTML=tab==='home'?vHome():tab==='ov'?vOv():vData();
+    ['keys','code','build'].forEach(function(k){const b=$('#n-'+k);if(b)b.classList.remove('on')});
+    drawTop();
+    window.scrollTo(0,0);
+    return;
+  }
+  _rH();
+  drawTop();
+};
+tab='home';
+})();
+render();
+
 </script>
 </body>
 </html>
