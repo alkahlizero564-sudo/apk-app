@@ -8318,7 +8318,7 @@ function drawTop(){
   let h='<div class="hb-bar">';
   if(tab==='home'){
     h+='<h1>📁 مشاريعي<small>APK App · Alpha Web</small></h1>'
-     +'<button class="hb-ib" title="نسخة احتياطية" onclick="go(\'keys\');setTimeout(function(){var e=document.querySelector(\'#main [onclick*=cxBkSave]\');if(e)e.scrollIntoView({block:\'center\'})},150)">💾</button>'
+     +'<button class="hb-ib" title="نسخة احتياطية" onclick="window._st=\'bk\';go(\'keys\')">💾</button>'
      +'<button class="hb-ib" title="الإعدادات" onclick="go(\'keys\')">⚙️</button>';
   }else if(tab==='keys'){
     h+='<button class="hb-ib" onclick="go(window._hbBack||\'home\')">→</button><h1>⚙️ الإعدادات<small>المفاتيح، الذكاء الاصطناعي، البريد، النسخ الاحتياطي</small></h1>';
@@ -8437,6 +8437,7 @@ function vData(){
    +'<p class="note">زر الربط بيخلي الذكاء الاصطناعي يعدّل كود التطبيقين عشان يقروا ويكتبوا في نفس قاعدة البيانات.</p>'
    +'<div class="row"><button class="acc" onclick="linkFirebase(this)">🔥 اربط بـ Firebase</button><button class="acc" onclick="linkApps(this)">⚡ اربط بـ Supabase</button></div>'
    +(ok.length<2?'<p class="note">الربط محتاج التطبيقين يكون فيهم كود.</p>':'')+'</div>';
+  if(ok.length>1&&typeof cxReview==='function')h+='<div class="card"><h2>🤝 مراجعة التوافق</h2><p class="note" style="margin-top:0">يقارن التطبيقين (المسارات والحقول وقيم الحالة) ويصلح أي اختلاف بينهم عشان البيانات تمشي صاح بين الزبون والإدارة.</p><button class="acc" style="width:100%" onclick="cxReview()">🤝 راجع التوافق الآن</button></div>';
   h+='<div class="card"><h2>🔑 بيانات القاعدة</h2>'
    +'<div class="hb-row" style="padding:5px 0"><div class="hb-t"><b style="font-size:14px">🔥 Firebase</b><small>رابط Realtime Database</small></div><span class="hb-bd '+(k.fbUrl?'g':'r')+'">'+(k.fbUrl?'✔ موجود':'ناقص')+'</span></div>'
    +'<div class="hb-row" style="padding:5px 0"><div class="hb-t"><b style="font-size:14px">⚡ Supabase</b><small>Access Token + Project ref</small></div><span class="hb-bd '+(k.sbToken&&k.sbRef?'g':'r')+'">'+(k.sbToken&&k.sbRef?'✔ موجود':'ناقص')+'</span></div>'
@@ -8446,7 +8447,7 @@ function vData(){
    +'<button class="acc" style="width:100%" onclick="cxHubMail()">📧 إعداد وتجربة البريد</button></div>';
   return h;
 }
-window.cxHubMail=function(){window._hbBack=tab==='keys'?'home':tab;go('keys');setTimeout(function(){const e=$('#cx-mail');if(e)e.scrollIntoView({behavior:'smooth',block:'start'})},150)};
+window.cxHubMail=function(){window._st='mail';go('keys')};
 
 /* ---------- قائمة ⋯ ---------- */
 window.cxHubMenu=function(){
@@ -8662,9 +8663,54 @@ window.cxHubImpGo=function(view){
 window.cxPjNew=window.cxHubNew;
 window.cxProj=function(){closeSheet();go('home')};
 
+/* ---------- توحيد الشاشات القديمة مع الشكل الجديد ---------- */
+const st2=document.createElement('style');
+st2.textContent=`
+body.hb .card{border-radius:20px;border:1px solid rgba(255,255,255,.07);background:rgba(19,28,49,.82);box-shadow:none}
+body.hb .card h2,body.hb .card>h3{font-size:16px;font-weight:900}
+body.hb button.acc,body.hb .btn.acc{background:linear-gradient(135deg,#4f46e5,#2f80ff);color:#fff;box-shadow:0 8px 20px rgba(79,70,229,.25)}
+body.hb button.sec{background:#1c2742;color:var(--tx);border:1px solid var(--line)}
+body.hb main{padding-top:14px}
+body.hb input[type=checkbox]{accent-color:#4f46e5}
+body.hb details>summary{list-style:none}
+body.hb .cx-sw button.on{background:linear-gradient(135deg,#4f46e5,#2f80ff)}
+body.hb #pj-bar,body.hb.hb-code #cx-rv,body.hb.hb-code .link,body.hb.hb-build #main>.card:first-child{display:none!important}
+.hb-st{display:flex;gap:7px;overflow-x:auto;margin:0 0 12px;scrollbar-width:none}.hb-st::-webkit-scrollbar{display:none}
+.hb-st button{flex:none;width:auto;background:#131c31!important;border:1px solid var(--line)!important;color:var(--mut)!important;padding:9px 14px;font-size:13px;font-weight:800;border-radius:99px!important;box-shadow:none!important}
+.hb-st button.on{background:var(--tx)!important;color:#0b1220!important;border-color:var(--tx)!important}
+`;
+document.head.appendChild(st2);
+const SG=[['keys','🔑 المفاتيح'],['design','🎨 التصميم'],['build','🛠 البناء والفحص'],['bk','💾 النسخ الاحتياطي'],['mail','📧 البريد']];
+function groupOf(el){
+  const id=el.id||'',t=((el.querySelector('h2,summary')||{}).textContent||'');
+  if(el.classList.contains('cx-ks')||/قائمة المفاتيح/.test(t))return 'keys';
+  if(id==='cx-mail')return 'mail';
+  if(id==='cx-bk')return 'bk';
+  if(id==='cx-xp'||id==='cx-ed-card'||/تصميم/.test(t))return 'design';
+  return 'build';
+}
+function polish(){
+  const m=$('#main');if(!m)return;
+  document.body.classList.toggle('hb-code',tab==='code');
+  document.body.classList.toggle('hb-build',tab==='build');
+  if(tab==='code'){
+    const sys=$('#cx-sys');
+    if(sys&&S.apps.some(hasCode))sys.style.display='none';
+  }
+  if(tab==='keys'){
+    const g=window._st||'keys';
+    [].slice.call(m.children).forEach(function(el){if(el.classList.contains('hb-st'))return;el.style.display=groupOf(el)===g?'':'none'});
+    if(!m.querySelector('.hb-st')){
+      const bar=document.createElement('div');bar.className='hb-st';
+      bar.innerHTML=SG.map(function(x){return '<button class="'+(g===x[0]?'on':'')+'" onclick="window._st=\''+x[0]+'\';render()">'+x[1]+'</button>'}).join('');
+      m.prepend(bar);
+    }
+  }
+}
+
 /* ---------- العرض ---------- */
 const _go=go;
-go=function(t){if(t==='keys'&&tab!=='keys')window._hbBack=tab;_go(t)};
+go=function(t){if(t==='keys'&&tab!=='keys'){window._hbBack=tab;if(!window._st)window._st='keys'}if(tab==='keys'&&t!=='keys')window._st='';_go(t)};
 const _rH=render;
 render=function(){
   if(MINE.indexOf(tab)>-1){
@@ -8676,6 +8722,7 @@ render=function(){
     return;
   }
   _rH();
+  polish();
   drawTop();
 };
 tab='home';
