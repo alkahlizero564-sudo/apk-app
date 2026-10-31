@@ -1,15 +1,36 @@
+import 'push.dart';
 // DESIGN: تطبيق طلب خبز طازج | خبز، طازج، يومي | قيمة 25
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'push.dart';
 
 import 'dart:async' as apkas;
 import 'dart:convert' as apkjs;
 import 'dart:io' as apkio;
 import 'package:flutter/widgets.dart' as apkw;
 import 'package:url_launcher/url_launcher.dart' as apkul;
+
+class APKPush {
+  static void setUser(dynamic id) {}
+  static void toAdmin(String title, String body) {}
+}
+
+class LocalStore {
+  static final Map<String, dynamic> _memory = <String, dynamic>{};
+
+  static dynamic get(String key, dynamic def) {
+    return _memory[key] ?? def;
+  }
+
+  static void set(String key, dynamic val) {
+    if (val == null) {
+      _memory.remove(key);
+    } else {
+      _memory[key] = val;
+    }
+  }
+}
 
 void main() {
   APKPush.start();
@@ -95,7 +116,7 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   }
 
   Future<void> _checkSession() async {
-    final sessionStr = DS.get('user_session', null);
+    final sessionStr = LocalStore.get('user_session', null);
     if (sessionStr != null) {
       try {
         final data = json.decode(sessionStr);
@@ -119,12 +140,12 @@ class _AppEntryPointState extends State<AppEntryPoint> {
       _userProfile = profile;
       _isLoggedIn = true;
     });
-    DS.set('user_session', json.encode(profile));
+    LocalStore.set('user_session', json.encode(profile));
     APKPush.setUser(profile['phone'] ?? profile['id']);
   }
 
   void _onLoggedOut() {
-    DS.set('user_session', null);
+    LocalStore.set('user_session', null);
     setState(() {
       _userProfile = null;
       _isLoggedIn = false;
@@ -158,12 +179,21 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   bool _isSignup = false;
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
-  final TextEditingController _codeController = TextEditingController();
+  late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _codeController;
   bool _awaitingCode = false;
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController();
+    _emailController = TextEditingController();
+    _phoneController = TextEditingController();
+    _codeController = TextEditingController();
+  }
 
   @override
   void dispose() {
@@ -197,11 +227,13 @@ class _AuthScreenState extends State<AuthScreen> {
 
     await Future.delayed(Duration(milliseconds: 800));
 
-    setState(() {
-      _loading = false;
-      _awaitingCode = true;
-    });
-    dsToast(context, 'تم إرسال رمز التحقق إلى بريدك');
+    if (mounted) {
+      setState(() {
+        _loading = false;
+        _awaitingCode = true;
+      });
+      dsToast(context, 'تم إرسال رمز التحقق إلى بريدك');
+    }
   }
 
   Future<void> _verifyCode() async {
@@ -231,11 +263,12 @@ class _AuthScreenState extends State<AuthScreen> {
       await SupabaseService.insertRow('s2x7rw_profiles', profile);
     }
 
-    setState(() {
-      _loading = false;
-    });
-
-    widget.onLoggedIn(profile);
+    if (mounted) {
+      setState(() {
+        _loading = false;
+      });
+      widget.onLoggedIn(profile);
+    }
   }
 
   @override
@@ -379,9 +412,17 @@ class _MainAppScreenState extends State<MainAppScreen> {
   bool _loadingData = true;
   Timer? _timer;
 
+  late final TextEditingController _bookingQtyController;
+  late final TextEditingController _profileNameController;
+  late final TextEditingController _profilePhoneController;
+
   @override
   void initState() {
     super.initState();
+    _bookingQtyController = TextEditingController(text: '10');
+    _profileNameController = TextEditingController(text: widget.userProfile['full_name'] ?? '');
+    _profilePhoneController = TextEditingController(text: widget.userProfile['phone'] ?? '');
+
     _fetchData();
     _timer = Timer.periodic(Duration(seconds: 5), (_) {
       _fetchData(silent: true);
@@ -391,6 +432,9 @@ class _MainAppScreenState extends State<MainAppScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _bookingQtyController.dispose();
+    _profileNameController.dispose();
+    _profilePhoneController.dispose();
     super.dispose();
   }
 
@@ -421,7 +465,7 @@ class _MainAppScreenState extends State<MainAppScreen> {
       return;
     }
 
-    final qtyController = TextEditingController(text: '10');
+    _bookingQtyController.text = '10';
     String pickupTime = 'صباحا';
 
     showModalBottomSheet(
@@ -444,7 +488,7 @@ class _MainAppScreenState extends State<MainAppScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.between,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text("حجز خبز جديد", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                         IconButton(
@@ -455,7 +499,7 @@ class _MainAppScreenState extends State<MainAppScreen> {
                     ),
                     SizedBox(height: 16),
                     DsField(
-                      controller: qtyController,
+                      controller: _bookingQtyController,
                       label: "العدد (رغيف)",
                       keyboard: TextInputType.number,
                     ),
@@ -493,7 +537,7 @@ class _MainAppScreenState extends State<MainAppScreen> {
                     DsButton(
                       label: "تأكيد الحجز",
                       onPressed: () async {
-                        final q = int.tryParse(qtyController.text) ?? 0;
+                        final q = int.tryParse(_bookingQtyController.text) ?? 0;
                         if (q <= 0) {
                           dsToast(context, 'الرجاء إدخال كمية صحيحة');
                           return;
@@ -515,7 +559,7 @@ class _MainAppScreenState extends State<MainAppScreen> {
                           dsToast(context, 'تم إرسال طلب الحجز بنجاح');
                           APKPush.toAdmin(
                             'طلب حجز جديد',
-                            'الزبون ${widget.userProfile['full_name']} طلب $q رغيف (${pickupTime})',
+                            'الزبون ${widget.userProfile['full_name']} طلب $q رغيف ($pickupTime)',
                           );
                           _fetchData();
                         } else {
@@ -608,7 +652,7 @@ class _MainAppScreenState extends State<MainAppScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.between,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -767,9 +811,6 @@ class _MainAppScreenState extends State<MainAppScreen> {
   }
 
   Widget _buildProfileScreen() {
-    final nameController = TextEditingController(text: widget.userProfile['full_name']);
-    final phoneController = TextEditingController(text: widget.userProfile['phone']);
-
     return ListView(
       padding: EdgeInsets.zero,
       children: [
@@ -782,12 +823,12 @@ class _MainAppScreenState extends State<MainAppScreen> {
                 child: Column(
                   children: [
                     DsField(
-                      controller: nameController,
+                      controller: _profileNameController,
                       label: "الاسم الكامل",
                     ),
                     SizedBox(height: 16),
                     DsField(
-                      controller: phoneController,
+                      controller: _profilePhoneController,
                       label: "رقم الهاتف",
                       keyboard: TextInputType.phone,
                     ),
@@ -795,8 +836,8 @@ class _MainAppScreenState extends State<MainAppScreen> {
                     DsButton(
                       label: "تعديل البيانات",
                       onPressed: () async {
-                        final newName = nameController.text.trim();
-                        final newPhone = phoneController.text.trim();
+                        final newName = _profileNameController.text.trim();
+                        final newPhone = _profilePhoneController.text.trim();
 
                         final success = await SupabaseService.updateRow('s2x7rw_profiles', 'id=eq.${widget.userProfile['id']}', {
                           'full_name': newName,
