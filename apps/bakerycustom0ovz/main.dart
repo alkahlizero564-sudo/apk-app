@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:async' as apkas;
 import 'dart:convert' as apkjs;
 import 'dart:io' as apkio;
@@ -83,11 +84,202 @@ class SupabaseService {
       final url = Uri.parse('$supabaseUrl/rest/v1/$table?$filter');
       final request = await client.patchUrl(url);
       _headers.forEach((k, v) => request.headers.set(k, v));
+      request.headers.set('Prefer', 'return=representation');
       request.add(utf8.encode(json.encode(data)));
       final response = await request.close();
-      return response.statusCode == 200 || response.statusCode == 204;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final body = await response.transform(utf8.decoder).join();
+        final decoded = json.decode(body);
+        if (decoded is List && decoded.isNotEmpty) {
+          return true;
+        }
+      }
     } catch (_) {}
     return false;
+  }
+
+  static Future<Map<String, dynamic>> signUp(String email, String password, String name, String phone) async {
+    try {
+      final client = HttpClient();
+      client.connectionTimeout = Duration(seconds: 10);
+      final url = Uri.parse('$supabaseUrl/auth/v1/signup');
+      final request = await client.postUrl(url);
+      _headers.forEach((k, v) => request.headers.set(k, v));
+      final payload = {
+        'email': email,
+        'password': password,
+        'data': {
+          'full_name': name,
+          'phone': phone,
+        },
+      };
+      request.add(utf8.encode(json.encode(payload)));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      final data = json.decode(body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': data};
+      } else {
+        final err = data['msg'] ?? data['error_description'] ?? data['error'] ?? 'فشل إنشاء الحساب';
+        return {'success': false, 'error': _translateError(err.toString())};
+      }
+    } catch (_) {
+      return {'success': false, 'error': 'تعذر الاتصال بالخادم، تحقق من الإنترنت'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> verifyOtp(String email, String token, String type) async {
+    try {
+      final client = HttpClient();
+      client.connectionTimeout = Duration(seconds: 10);
+      final url = Uri.parse('$supabaseUrl/auth/v1/verify');
+      final request = await client.postUrl(url);
+      _headers.forEach((k, v) => request.headers.set(k, v));
+      final payload = {
+        'type': type,
+        'email': email,
+        'token': token,
+      };
+      request.add(utf8.encode(json.encode(payload)));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      final data = json.decode(body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': data};
+      } else {
+        final err = data['msg'] ?? data['error_description'] ?? data['error'] ?? 'رمز التحقق غير صحيح';
+        return {'success': false, 'error': _translateError(err.toString())};
+      }
+    } catch (_) {
+      return {'success': false, 'error': 'تعذر الاتصال بالخادم'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> resendOtp(String email, String type) async {
+    try {
+      final client = HttpClient();
+      client.connectionTimeout = Duration(seconds: 10);
+      final url = Uri.parse('$supabaseUrl/auth/v1/resend');
+      final request = await client.postUrl(url);
+      _headers.forEach((k, v) => request.headers.set(k, v));
+      final payload = {
+        'type': type,
+        'email': email,
+      };
+      request.add(utf8.encode(json.encode(payload)));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      final data = json.decode(body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true};
+      } else {
+        final err = data['msg'] ?? data['error_description'] ?? data['error'] ?? 'فشل إعادة الإرسال';
+        return {'success': false, 'error': _translateError(err.toString())};
+      }
+    } catch (_) {
+      return {'success': false, 'error': 'تعذر الاتصال بالخادم'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> signInWithPassword(String email, String password) async {
+    try {
+      final client = HttpClient();
+      client.connectionTimeout = Duration(seconds: 10);
+      final url = Uri.parse('$supabaseUrl/auth/v1/token?grant_type=password');
+      final request = await client.postUrl(url);
+      _headers.forEach((k, v) => request.headers.set(k, v));
+      final payload = {
+        'email': email,
+        'password': password,
+      };
+      request.add(utf8.encode(json.encode(payload)));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      final data = json.decode(body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': data};
+      } else {
+        final errStr = (data['msg'] ?? data['error_description'] ?? data['error'] ?? '').toString();
+        final isNotConfirmed = errStr.toLowerCase().contains('email not confirmed');
+        return {
+          'success': false,
+          'isNotConfirmed': isNotConfirmed,
+          'error': _translateError(errStr),
+        };
+      }
+    } catch (_) {
+      return {'success': false, 'error': 'تعذر الاتصال بالخادم'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> recoverPassword(String email) async {
+    try {
+      final client = HttpClient();
+      client.connectionTimeout = Duration(seconds: 10);
+      final url = Uri.parse('$supabaseUrl/auth/v1/recover');
+      final request = await client.postUrl(url);
+      _headers.forEach((k, v) => request.headers.set(k, v));
+      final payload = {'email': email};
+      request.add(utf8.encode(json.encode(payload)));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      final data = json.decode(body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true};
+      } else {
+        final err = data['msg'] ?? data['error_description'] ?? data['error'] ?? 'فشل طلب استعادة كلمة المرور';
+        return {'success': false, 'error': _translateError(err.toString())};
+      }
+    } catch (_) {
+      return {'success': false, 'error': 'تعذر الاتصال بالخادم'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateUserPassword(String accessToken, String newPassword) async {
+    try {
+      final client = HttpClient();
+      client.connectionTimeout = Duration(seconds: 10);
+      final url = Uri.parse('$supabaseUrl/auth/v1/user');
+      final request = await client.putUrl(url);
+      _headers.forEach((k, v) => request.headers.set(k, v));
+      request.headers.set('Authorization', 'Bearer $accessToken');
+      final payload = {'password': newPassword};
+      request.add(utf8.encode(json.encode(payload)));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+      final data = json.decode(body) as Map<String, dynamic>;
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {'success': true, 'data': data};
+      } else {
+        final err = data['msg'] ?? data['error_description'] ?? data['error'] ?? 'فشل تحديث كلمة المرور';
+        return {'success': false, 'error': _translateError(err.toString())};
+      }
+    } catch (_) {
+      return {'success': false, 'error': 'تعذر الاتصال بالخادم'};
+    }
+  }
+
+  static String _translateError(String err) {
+    final lower = err.toLowerCase();
+    if (lower.contains('user already registered') || lower.contains('already exists')) {
+      return 'البريد مسجل، سجّل دخول';
+    }
+    if (lower.contains('invalid login credentials') || lower.contains('invalid_grant')) {
+      return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+    }
+    if (lower.contains('email not confirmed')) {
+      return 'البريد الإلكتروني لم يتم تأكيده بعد';
+    }
+    if (lower.contains('token has expired') || lower.contains('otp_expired')) {
+      return 'انتهت صلاحية الرمز، يرجى طلب رمز جديد';
+    }
+    if (lower.contains('token is invalid') || lower.contains('invalid token')) {
+      return 'رمز التحقق غير صحيح';
+    }
+    if (lower.contains('rate limit') || lower.contains('too many requests')) {
+      return 'طلبات كثيرة جداً، يرجى الانتظار قليلاً';
+    }
+    return err.isNotEmpty ? err : 'حدث خطأ غير متوقع';
   }
 }
 
@@ -162,6 +354,9 @@ class _AppEntryPointState extends State<AppEntryPoint> {
   }
 }
 
+enum AuthMode { login, signup, forgotPassword }
+enum AuthStep { form, verifyCode, newPassword }
+
 class AuthScreen extends StatefulWidget {
   final Function(Map<String, dynamic>) onLoggedIn;
 
@@ -172,13 +367,33 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  bool _isSignup = false;
+  AuthMode _mode = AuthMode.login;
+  AuthStep _step = AuthStep.form;
+
   late final TextEditingController _nameController;
   late final TextEditingController _emailController;
   late final TextEditingController _phoneController;
-  late final TextEditingController _codeController;
-  bool _awaitingCode = false;
+  late final TextEditingController _passwordController;
+  late final TextEditingController _confirmPasswordController;
+  late final TextEditingController _newPasswordController;
+
+  late final List<TextEditingController> _otpControllers;
+  late final List<FocusNode> _otpFocusNodes;
+
+  bool _showPassword = false;
+  bool _showConfirmPassword = false;
   bool _loading = false;
+
+  Map<String, String> _errors = {};
+
+  String _pendingEmail = '';
+  String _pendingName = '';
+  String _pendingPhone = '';
+  String _verifyType = 'signup';
+  String _recoveryAccessToken = '';
+
+  Timer? _resendTimer;
+  int _resendCountdown = 60;
 
   @override
   void initState() {
@@ -186,54 +401,204 @@ class _AuthScreenState extends State<AuthScreen> {
     _nameController = TextEditingController();
     _emailController = TextEditingController();
     _phoneController = TextEditingController();
-    _codeController = TextEditingController();
+    _passwordController = TextEditingController();
+    _confirmPasswordController = TextEditingController();
+    _newPasswordController = TextEditingController();
+
+    _otpControllers = List.generate(6, (_) => TextEditingController());
+    _otpFocusNodes = List.generate(6, (_) => FocusNode());
   }
 
   @override
   void dispose() {
+    _resendTimer?.cancel();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _codeController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _newPasswordController.dispose();
+    for (final c in _otpControllers) {
+      c.dispose();
+    }
+    for (final f in _otpFocusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
-  Future<void> _handleAuthAction() async {
+  void _startResendTimer() {
+    _resendTimer?.cancel();
+    setState(() {
+      _resendCountdown = 60;
+    });
+    _resendTimer = Timer.periodic(Duration(seconds: 1), (t) {
+      if (!mounted) return;
+      if (_resendCountdown > 1) {
+        setState(() {
+          _resendCountdown--;
+        });
+      } else {
+        t.cancel();
+        setState(() {
+          _resendCountdown = 0;
+        });
+      }
+    });
+  }
+
+  bool _validateSignup() {
+    final errors = <String, String>{};
+    final name = _nameController.text.trim();
     final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final pass = _passwordController.text;
+    final confirm = _confirmPasswordController.text;
+
+    if (name.isEmpty) errors['name'] = 'الرجاء إدخال الاسم الكامل';
+    if (phone.isEmpty) errors['phone'] = 'الرجاء إدخال رقم الهاتف';
     if (email.isEmpty) {
-      dsToast(context, 'الرجاء إدخال البريد الإلكتروني');
-      return;
+      errors['email'] = 'الرجاء إدخال البريد الإلكتروني';
+    } else if (!email.contains('@') || !email.contains('.')) {
+      errors['email'] = 'الرجاء إدخال بريد إلكتروني صحيح';
+    }
+    if (pass.isEmpty) {
+      errors['password'] = 'الرجاء إدخال كلمة المرور';
+    } else if (pass.length < 6) {
+      errors['password'] = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+    }
+    if (confirm.isEmpty) {
+      errors['confirm'] = 'الرجاء تأكيد كلمة المرور';
+    } else if (confirm != pass) {
+      errors['confirm'] = 'كلمتا المرور غير متطابقتين';
     }
 
-    if (_isSignup && _nameController.text.trim().isEmpty) {
-      dsToast(context, 'الرجاء إدخال الاسم الكامل');
-      return;
+    setState(() {
+      _errors = errors;
+    });
+    return errors.isEmpty;
+  }
+
+  bool _validateLogin() {
+    final errors = <String, String>{};
+    final email = _emailController.text.trim();
+    final pass = _passwordController.text;
+
+    if (email.isEmpty) {
+      errors['email'] = 'الرجاء إدخال البريد الإلكتروني';
+    } else if (!email.contains('@') || !email.contains('.')) {
+      errors['email'] = 'الرجاء إدخال بريد إلكتروني صحيح';
+    }
+    if (pass.isEmpty) {
+      errors['password'] = 'الرجاء إدخال كلمة المرور';
     }
 
-    if (_isSignup && _phoneController.text.trim().isEmpty) {
-      dsToast(context, 'الرجاء إدخال رقم الهاتف');
-      return;
-    }
+    setState(() {
+      _errors = errors;
+    });
+    return errors.isEmpty;
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_validateLogin()) return;
 
     setState(() {
       _loading = true;
     });
 
-    await Future.delayed(Duration(milliseconds: 800));
+    final email = _emailController.text.trim();
+    final pass = _passwordController.text;
 
-    if (mounted) {
-      setState(() {
-        _loading = false;
-        _awaitingCode = true;
-      });
-      dsToast(context, 'تم إرسال رمز التحقق إلى بريدك');
+    final res = await SupabaseService.signInWithPassword(email, pass);
+
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+    });
+
+    if (res['success'] == true) {
+      dsToast(context, 'تم تسجيل الدخول بنجاح');
+      final profiles = await SupabaseService.getTable('s2x7rw_profiles', '?id=eq.$email');
+      Map<String, dynamic> profile;
+      if (profiles.isNotEmpty) {
+        profile = profiles.first;
+      } else {
+        profile = {
+          'id': email,
+          'full_name': 'مستخدم',
+          'phone': '',
+          'role': 'customer',
+        };
+        await SupabaseService.insertRow('s2x7rw_profiles', profile);
+      }
+      widget.onLoggedIn(profile);
+    } else {
+      if (res['isNotConfirmed'] == true) {
+        _pendingEmail = email;
+        _verifyType = 'signup';
+        dsToast(context, 'البريد غير مؤكد، تم إرسال رمز التحقق');
+        await SupabaseService.resendOtp(email, 'signup');
+        if (!mounted) return;
+        setState(() {
+          _step = AuthStep.verifyCode;
+        });
+        _startResendTimer();
+      } else {
+        dsToast(context, res['error'] ?? 'خطأ في تسجيل الدخول');
+      }
     }
   }
 
-  Future<void> _verifyCode() async {
-    final code = _codeController.text.trim();
-    if (code.length < 4) {
-      dsToast(context, 'الرجاء إدخال رمز صحيح مكون من 4 أرقام');
+  Future<void> _handleSignup() async {
+    if (!_validateSignup()) return;
+
+    setState(() {
+      _loading = true;
+    });
+
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final pass = _passwordController.text;
+
+    final res = await SupabaseService.signUp(email, pass, name, phone);
+
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+    });
+
+    if (res['success'] == true) {
+      _pendingEmail = email;
+      _pendingName = name;
+      _pendingPhone = phone;
+      _verifyType = 'signup';
+      dsToast(context, 'تم إرسال رمز التحقق إلى بريدك الإلكتروني');
+      setState(() {
+        _step = AuthStep.verifyCode;
+      });
+      _startResendTimer();
+    } else {
+      final err = res['error'] ?? '';
+      if (err.contains('مسجل')) {
+        dsToast(context, 'البريد مسجل، سجّل دخول');
+        setState(() {
+          _mode = AuthMode.login;
+        });
+      } else {
+        dsToast(context, err);
+      }
+    }
+  }
+
+  Future<void> _handleForgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() {
+        _errors = {'email': 'الرجاء إدخال بريد إلكتروني صحيح'};
+      });
       return;
     }
 
@@ -241,150 +606,561 @@ class _AuthScreenState extends State<AuthScreen> {
       _loading = true;
     });
 
-    final email = _emailController.text.trim();
-    final profiles = await SupabaseService.getTable('s2x7rw_profiles', '?id=eq.$email');
+    final res = await SupabaseService.recoverPassword(email);
 
-    Map<String, dynamic> profile;
-    if (profiles.isNotEmpty) {
-      profile = profiles.first;
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+    });
+
+    if (res['success'] == true) {
+      _pendingEmail = email;
+      _verifyType = 'recovery';
+      dsToast(context, 'تم إرسال رمز استعادة كلمة المرور إلى بريدك');
+      setState(() {
+        _step = AuthStep.verifyCode;
+      });
+      _startResendTimer();
     } else {
-      profile = {
-        'id': email,
-        'full_name': _isSignup ? _nameController.text.trim() : 'مستخدم جديد',
-        'phone': _isSignup ? _phoneController.text.trim() : '0790000000',
-        'role': 'customer',
-      };
-      await SupabaseService.insertRow('s2x7rw_profiles', profile);
+      dsToast(context, res['error'] ?? 'فشل إرسال طلب استعادة كلمة المرور');
+    }
+  }
+
+  Future<void> _handleVerifyCode() async {
+    final code = _otpControllers.map((c) => c.text.trim()).join();
+    if (code.length < 6) {
+      dsToast(context, 'الرجاء إدخال الرمز المكون من 6 أرقام كاملة');
+      return;
     }
 
-    if (mounted) {
+    setState(() {
+      _loading = true;
+    });
+
+    final res = await SupabaseService.verifyOtp(_pendingEmail, code, _verifyType);
+
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+    });
+
+    if (res['success'] == true) {
+      if (_verifyType == 'signup') {
+        dsToast(context, 'تم تأكيد الحساب بنجاح');
+        final profiles = await SupabaseService.getTable('s2x7rw_profiles', '?id=eq.$_pendingEmail');
+        Map<String, dynamic> profile;
+        if (profiles.isNotEmpty) {
+          profile = profiles.first;
+        } else {
+          profile = {
+            'id': _pendingEmail,
+            'full_name': _pendingName.isNotEmpty ? _pendingName : 'مستخدم جديد',
+            'phone': _pendingPhone.isNotEmpty ? _pendingPhone : '0790000000',
+            'role': 'customer',
+          };
+          await SupabaseService.insertRow('s2x7rw_profiles', profile);
+        }
+        widget.onLoggedIn(profile);
+      } else if (_verifyType == 'recovery') {
+        dsToast(context, 'تم التحقق، اكتب كلمة المرور الجديدة');
+        final session = res['data']?['session'];
+        final token = res['data']?['access_token'] ?? session?['access_token'] ?? '';
+        setState(() {
+          _recoveryAccessToken = token.toString();
+          _step = AuthStep.newPassword;
+        });
+      }
+    } else {
+      dsToast(context, res['error'] ?? 'رمز التحقق غير صحيح');
+    }
+  }
+
+  Future<void> _handleResendOtp() async {
+    if (_resendCountdown > 0) return;
+
+    setState(() {
+      _loading = true;
+    });
+
+    final res = await SupabaseService.resendOtp(_pendingEmail, _verifyType);
+
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+    });
+
+    if (res['success'] == true) {
+      dsToast(context, 'تم إعادة إرسال رمز التحقق إلى بريدك');
+      _startResendTimer();
+    } else {
+      dsToast(context, res['error'] ?? 'فشل إعادة إرسال الرمز');
+    }
+  }
+
+  Future<void> _handleNewPassword() async {
+    final newPass = _newPasswordController.text;
+    if (newPass.length < 6) {
+      dsToast(context, 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+    });
+
+    final res = await SupabaseService.updateUserPassword(_recoveryAccessToken, newPass);
+
+    if (!mounted) return;
+
+    setState(() {
+      _loading = false;
+    });
+
+    if (res['success'] == true) {
+      dsToast(context, 'تم تغيير كلمة المرور بنجاح، يمكنك تسجيل الدخول الآن');
       setState(() {
-        _loading = false;
+        _mode = AuthMode.login;
+        _step = AuthStep.form;
+        _passwordController.clear();
+        _newPasswordController.clear();
       });
-      widget.onLoggedIn(profile);
+    } else {
+      dsToast(context, res['error'] ?? 'فشل تحديث كلمة المرور');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_awaitingCode) {
-      return Scaffold(
-        body: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DsHero(
-              title: "رمز التحقق 🔐",
-              subtitle: "أدخل الرمز المرسل إلى بريدك الإلكتروني لتأكيد الحساب",
-            ),
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: DsCard(
-                child: Column(
-                  children: [
-                    DsField(
-                      controller: _codeController,
-                      label: "رمز التحقق",
-                      hint: "1234",
-                      keyboard: TextInputType.number,
-                    ),
-                    SizedBox(height: 16),
-                    DsButton(
-                      label: _loading ? "جاري التحقق..." : "تأكيد ودخول",
-                      onPressed: _loading ? () {} : _verifyCode,
-                      block: true,
-                    ),
-                    SizedBox(height: 12),
-                    DsButton(
-                      label: "إعادة إرسال الرمز",
-                      onPressed: () {
-                        dsToast(context, 'تم إرسال رمز جديد');
-                      },
-                      kind: "ghost",
-                      block: true,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Scaffold(
       body: ListView(
         padding: EdgeInsets.zero,
         children: [
-          DsHero(
-            title: "المخبز اليومي 🥖",
-            subtitle: "احصل على خبزك الطازج يومياً بكل سهولة",
-          ),
+          _buildHero(),
           Padding(
             padding: EdgeInsets.all(16),
-            child: DsCard(
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DsButton(
-                          label: "تسجيل دخول",
-                          onPressed: () {
-                            setState(() {
-                              _isSignup = false;
-                            });
-                          },
-                          kind: !_isSignup ? "primary" : "ghost",
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: DsButton(
-                          label: "إنشاء حساب",
-                          onPressed: () {
-                            setState(() {
-                              _isSignup = true;
-                            });
-                          },
-                          kind: _isSignup ? "primary" : "ghost",
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  if (_isSignup) ...[
-                    DsField(
-                      controller: _nameController,
-                      label: "الاسم الكامل",
-                      hint: "محمد أحمد",
-                    ),
-                    SizedBox(height: 16),
-                    DsField(
-                      controller: _phoneController,
-                      label: "رقم الهاتف",
-                      hint: "0790000000",
-                      keyboard: TextInputType.phone,
-                    ),
-                    SizedBox(height: 16),
-                  ],
-                  DsField(
-                    controller: _emailController,
-                    label: "البريد الإلكتروني",
-                    hint: "name@example.com",
-                    keyboard: TextInputType.emailAddress,
-                  ),
-                  SizedBox(height: 20),
-                  DsButton(
-                    label: _loading ? "جاري الإرسال..." : (_isSignup ? "إنشاء وإرسال رمز التأكيد" : "متابعة وإرسال الرمز"),
-                    onPressed: _loading ? () {} : _handleAuthAction,
-                    block: true,
-                  ),
-                ],
-              ),
-            ),
+            child: _buildAuthContent(),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildHero() {
+    String title = "المخبز اليومي 🥖";
+    String subtitle = "احصل على خبزك الطازج يومياً بكل سهولة";
+
+    if (_step == AuthStep.verifyCode) {
+      title = "رمز التحقق 🔐";
+      subtitle = "أدخل الرمز المكون من 6 أرقام المرسل لبريدك";
+    } else if (_step == AuthStep.newPassword) {
+      title = "كلمة مرور جديدة 🔑";
+      subtitle = "أنشئ كلمة مرور جديدة لحسابك";
+    }
+
+    return DsHero(
+      title: title,
+      subtitle: subtitle,
+    );
+  }
+
+  Widget _buildAuthContent() {
+    if (_step == AuthStep.verifyCode) {
+      return _buildVerifyCodeStep();
+    }
+    if (_step == AuthStep.newPassword) {
+      return _buildNewPasswordStep();
+    }
+    return _buildFormStep();
+  }
+
+  Widget _buildFormStep() {
+    return DsCard(
+      child: Column(
+        children: [
+          if (_mode != AuthMode.forgotPassword) _buildModeTabs(),
+          SizedBox(height: 20),
+          if (_mode == AuthMode.login) _buildLoginForm(),
+          if (_mode == AuthMode.signup) _buildSignupForm(),
+          if (_mode == AuthMode.forgotPassword) _buildForgotPasswordForm(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeTabs() {
+    return Row(
+      children: [
+        Expanded(
+          child: DsButton(
+            label: "تسجيل دخول",
+            onPressed: () {
+              setState(() {
+                _mode = AuthMode.login;
+                _errors.clear();
+              });
+            },
+            kind: _mode == AuthMode.login ? "primary" : "ghost",
+          ),
+        ),
+        SizedBox(width: 8),
+        Expanded(
+          child: DsButton(
+            label: "إنشاء حساب",
+            onPressed: () {
+              setState(() {
+                _mode = AuthMode.signup;
+                _errors.clear();
+              });
+            },
+            kind: _mode == AuthMode.signup ? "primary" : "ghost",
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLoginForm() {
+    return Column(
+      children: [
+        _buildInputField(
+          controller: _emailController,
+          label: "البريد الإلكتروني",
+          hint: "name@example.com",
+          keyboard: TextInputType.emailAddress,
+          errorText: _errors['email'],
+        ),
+        SizedBox(height: 14),
+        _buildInputField(
+          controller: _passwordController,
+          label: "كلمة المرور",
+          hint: "••••••••",
+          obscureText: !_showPassword,
+          errorText: _errors['password'],
+          suffixIcon: IconButton(
+            icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
+            onPressed: () {
+              setState(() {
+                _showPassword = !_showPassword;
+              });
+            },
+          ),
+        ),
+        SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () {
+              setState(() {
+                _mode = AuthMode.forgotPassword;
+                _errors.clear();
+              });
+            },
+            child: Text("نسيت كلمة المرور؟"),
+          ),
+        ),
+        SizedBox(height: 12),
+        DsButton(
+          label: _loading ? "جاري الدخول..." : "تسجيل الدخول",
+          onPressed: _loading ? () {} : _handleLogin,
+          block: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSignupForm() {
+    return Column(
+      children: [
+        _buildInputField(
+          controller: _nameController,
+          label: "الاسم الكامل",
+          hint: "محمد أحمد",
+          errorText: _errors['name'],
+        ),
+        SizedBox(height: 14),
+        _buildInputField(
+          controller: _phoneController,
+          label: "رقم الهاتف",
+          hint: "0790000000",
+          keyboard: TextInputType.phone,
+          errorText: _errors['phone'],
+        ),
+        SizedBox(height: 14),
+        _buildInputField(
+          controller: _emailController,
+          label: "البريد الإلكتروني",
+          hint: "name@example.com",
+          keyboard: TextInputType.emailAddress,
+          errorText: _errors['email'],
+        ),
+        SizedBox(height: 14),
+        _buildInputField(
+          controller: _passwordController,
+          label: "كلمة المرور",
+          hint: "••••••••",
+          obscureText: !_showPassword,
+          errorText: _errors['password'],
+          suffixIcon: IconButton(
+            icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
+            onPressed: () {
+              setState(() {
+                _showPassword = !_showPassword;
+              });
+            },
+          ),
+        ),
+        SizedBox(height: 14),
+        _buildInputField(
+          controller: _confirmPasswordController,
+          label: "تأكيد كلمة المرور",
+          hint: "••••••••",
+          obscureText: !_showConfirmPassword,
+          errorText: _errors['confirm'],
+          suffixIcon: IconButton(
+            icon: Icon(_showConfirmPassword ? Icons.visibility_off : Icons.visibility),
+            onPressed: () {
+              setState(() {
+                _showConfirmPassword = !_showConfirmPassword;
+              });
+            },
+          ),
+        ),
+        SizedBox(height: 20),
+        DsButton(
+          label: _loading ? "جاري الإنشاء..." : "تأكيد وإنشاء الحساب",
+          onPressed: _loading ? () {} : _handleSignup,
+          block: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildForgotPasswordForm() {
+    return Column(
+      children: [
+        Text(
+          "استعادة كلمة المرور",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        SizedBox(height: 12),
+        _buildInputField(
+          controller: _emailController,
+          label: "البريد الإلكتروني",
+          hint: "name@example.com",
+          keyboard: TextInputType.emailAddress,
+          errorText: _errors['email'],
+        ),
+        SizedBox(height: 20),
+        DsButton(
+          label: _loading ? "جاري الإرسال..." : "إرسال رمز الاستعادة",
+          onPressed: _loading ? () {} : _handleForgotPassword,
+          block: true,
+        ),
+        SizedBox(height: 12),
+        DsButton(
+          label: "العودة لتسجيل الدخول",
+          onPressed: () {
+            setState(() {
+              _mode = AuthMode.login;
+              _errors.clear();
+            });
+          },
+          kind: "ghost",
+          block: true,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVerifyCodeStep() {
+    final canResend = _resendCountdown == 0;
+    final resendText = canResend ? "إعادة إرسال الرمز" : "إعادة الإرسال خلال $_resendCountdown ثانية";
+
+    return DsCard(
+      child: Column(
+        children: [
+          Text(
+            "أدخل رمز التحقق (6 أرقام)",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          SizedBox(height: 6),
+          Text(
+            "تم إرسال الرمز إلى: $_pendingEmail",
+            style: TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+          SizedBox(height: 20),
+          _buildOtpBoxes(),
+          SizedBox(height: 24),
+          DsButton(
+            label: _loading ? "جاري التحقق..." : "تأكيد ودخول",
+            onPressed: _loading ? () {} : _handleVerifyCode,
+            block: true,
+          ),
+          SizedBox(height: 12),
+          DsButton(
+            label: resendText,
+            onPressed: (_loading || !canResend) ? () {} : _handleResendOtp,
+            kind: "ghost",
+            block: true,
+          ),
+          SizedBox(height: 8),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _step = AuthStep.form;
+              });
+            },
+            child: Text("تغيير البريد الإلكتروني"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNewPasswordStep() {
+    return DsCard(
+      child: Column(
+        children: [
+          Text(
+            "تعيين كلمة مرور جديدة",
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          SizedBox(height: 16),
+          _buildInputField(
+            controller: _newPasswordController,
+            label: "كلمة المرور الجديدة",
+            hint: "••••••••",
+            obscureText: !_showPassword,
+            suffixIcon: IconButton(
+              icon: Icon(_showPassword ? Icons.visibility_off : Icons.visibility),
+              onPressed: () {
+                setState(() {
+                  _showPassword = !_showPassword;
+                });
+              },
+            ),
+          ),
+          SizedBox(height: 20),
+          DsButton(
+            label: _loading ? "جاري التحديث..." : "حفظ كلمة المرور الجديدة",
+            onPressed: _loading ? () {} : _handleNewPassword,
+            block: true,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required TextEditingController controller,
+    required String label,
+    String? hint,
+    TextInputType? keyboard,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    String? errorText,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+        ),
+        SizedBox(height: 6),
+        TextField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboard,
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            suffixIcon: suffixIcon,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: errorText != null ? Colors.red : Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: errorText != null ? Colors.red : Theme.of(context).primaryColor, width: 1.5),
+            ),
+          ),
+        ),
+        if (errorText != null) ...[
+          SizedBox(height: 4),
+          Text(
+            errorText,
+            style: TextStyle(color: Colors.red.shade700, fontSize: 11),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildOtpBoxes() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: List.generate(6, (index) {
+        return SizedBox(
+          width: 44,
+          height: 52,
+          child: TextField(
+            controller: _otpControllers[index],
+            focusNode: _otpFocusNodes[index],
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(
+              counterText: "",
+              filled: true,
+              fillColor: Colors.grey.shade50,
+              contentPadding: EdgeInsets.zero,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+              ),
+            ),
+            onChanged: (val) {
+              if (val.length > 1) {
+                final digits = val.replaceAll(RegExp(r'\D'), '');
+                for (int i = 0; i < 6 && i < digits.length; i++) {
+                  _otpControllers[i].text = digits[i];
+                }
+                if (digits.length >= 6) {
+                  _otpFocusNodes[5].unfocus();
+                } else {
+                  FocusScope.of(context).requestFocus(_otpFocusNodes[digits.length]);
+                }
+                return;
+              }
+              if (val.length == 1) {
+                if (index < 5) {
+                  FocusScope.of(context).requestFocus(_otpFocusNodes[index + 1]);
+                } else {
+                  _otpFocusNodes[index].unfocus();
+                }
+              } else if (val.isEmpty && index > 0) {
+                FocusScope.of(context).requestFocus(_otpFocusNodes[index - 1]);
+              }
+            },
+          ),
+        );
+      }),
     );
   }
 }
@@ -418,7 +1194,7 @@ class _MainAppScreenState extends State<MainAppScreen> {
     _profilePhoneController = TextEditingController(text: widget.userProfile['phone'] ?? '');
 
     _fetchData();
-    _timer = Timer.periodic(Duration(seconds: 5), (_) {
+    _timer = Timer.periodic(Duration(seconds: 10), (_) {
       _fetchData(silent: true);
     });
   }
@@ -1649,7 +2425,7 @@ Future<bool> dsConfirm(BuildContext context, String title, String text) async {
 
 
 // ===== تحديث التطبيق (يُضاف تلقائياً) =====
-const int _apkCur = 1;
+const int _apkCur = 2;
 const String _apkUrl = 'https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/bakerycustom0ovz/update.json';
 
 void runApp(apkw.Widget app) => apkw.runApp(ApkUpdateGate(child: app));
