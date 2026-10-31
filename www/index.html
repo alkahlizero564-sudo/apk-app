@@ -8321,7 +8321,9 @@ function drawTop(){
      +'<button class="hb-ib" title="نسخة احتياطية" onclick="window._st=\'bk\';go(\'keys\')">💾</button>'
      +'<button class="hb-ib" title="الإعدادات" onclick="go(\'keys\')">⚙️</button>';
   }else if(tab==='keys'){
-    h+='<button class="hb-ib" onclick="go(window._hbBack||\'home\')">→</button><h1>⚙️ الإعدادات<small>المفاتيح، الذكاء الاصطناعي، البريد، النسخ الاحتياطي</small></h1>';
+    const g=SG.find(function(x){return x[0]===window._st});
+    h+=g?'<button class="hb-ib" onclick="window._st=\'\';render()">→</button><h1>'+g[1]+'<small>الإعدادات</small></h1>'
+        :'<button class="hb-ib" onclick="go(window._hbBack||\'home\')">→</button><h1>⚙️ الإعدادات<small>APK App</small></h1>';
   }else{
     const nm=p?p.name:'خانة العمل';
     const sub=p?(appsOf(p).filter(hasCode).length>1?'🔗 نظام · تطبيقين':'📱 تطبيق واحد'):'⚠ ما محفوظ في المشاريع';
@@ -8698,19 +8700,31 @@ function polish(){
     if(sys&&S.apps.some(hasCode))sys.style.display='none';
   }
   if(tab==='keys'){
-    const g=window._st||'keys';
-    [].slice.call(m.children).forEach(function(el){if(el.classList.contains('hb-st'))return;el.style.display=groupOf(el)===g?'':'none'});
-    if(!m.querySelector('.hb-st')){
-      const bar=document.createElement('div');bar.className='hb-st';
-      bar.innerHTML=SG.map(function(x){return '<button class="'+(g===x[0]?'on':'')+'" onclick="window._st=\''+x[0]+'\';render()">'+x[1]+'</button>'}).join('');
-      m.prepend(bar);
+    const g=window._st||'';
+    const kids=[].slice.call(m.children);
+    kids.forEach(function(el){el.style.display=(g&&groupOf(el)===g)?'':'none'});
+    if(!g){
+      const ks=kids.filter(function(el){return el.classList.contains('cx-ks')});
+      const rd=ks.filter(function(el){return /✔/.test((el.querySelector('summary')||{}).textContent||'')}).length;
+      const k=S.keys||{};
+      const bl=k.bkLast?new Date(k.bkLast).toLocaleDateString('ar'):'';
+      const it=function(id,ic,t,sub,bd,cls){return '<button class="hb-card" onclick="window._st=\''+id+'\';render()"><div class="hb-row"><div class="hb-ic">'+ic+'</div><div class="hb-t"><b>'+t+'</b><small>'+sub+'</small></div>'+(bd?'<span class="hb-bd '+(cls||'')+'">'+bd+'</span>':'')+'<span style="color:var(--mut);font-size:18px">‹</span></div></button>'};
+      const box=document.createElement('div');box.className='hb-menu';
+      box.innerHTML='<div class="hb-h3" style="margin-top:0">الأساسي</div>'
+       +it('keys','🔑','المفاتيح','GitHub، Supabase، Firebase، الذكاء الاصطناعي',rd+' من '+ks.length+' جاهز',rd===ks.length?'g':'o')
+       +it('mail','📧','بريد التأكيد','رمز 6 أرقام لإيميل الزبون',k.mailEm?'✔ مربوط':'غير مربوط',k.mailEm?'g':'')
+       +it('bk','💾','النسخ الاحتياطي','حفظ واسترجاع كل شي في GitHub',bl?'آخر نسخة '+bl:'لسه ما اتحفظت',bl?'g':'r')
+       +'<div class="hb-h3">متقدم</div>'
+       +it('design','🎨','التصميم والمحرر','أسلوب الخبير، ثيمات المحرر','')
+       +it('build','🛠','البناء والفحص','فحص قبل البناء، إصلاح آلي، السجل المباشر، الكاش','');
+      m.prepend(box);
     }
   }
 }
 
 /* ---------- العرض ---------- */
 const _go=go;
-go=function(t){if(t==='keys'&&tab!=='keys'){window._hbBack=tab;if(!window._st)window._st='keys'}if(tab==='keys'&&t!=='keys')window._st='';_go(t)};
+go=function(t){if(t==='keys'&&tab!=='keys'){window._hbBack=tab}if(tab==='keys'&&t!=='keys')window._st='';_go(t)};
 const _rH=render;
 render=function(){
   if(MINE.indexOf(tab)>-1){
@@ -8726,6 +8740,195 @@ render=function(){
   drawTop();
 };
 tab='home';
+})();
+render();
+
+/* ===== إضافة: شاشات الكود والنشر بالشكل الجديد ===== */
+(function(){
+function hasCode(a){return !!(a&&a.code&&a.code.trim())}
+function nmOf(a){return (a&&a.set&&a.set.label)||(a&&a.name)||'تطبيق'}
+function langN(a){const l=(a&&a.lang)||'html';return l==='flutter'?'Flutter':l==='python'?'Python':'HTML'}
+function verOf(a){return a&&a.vc?(a.vbase||'1.0')+'.'+a.vc:'لم يُبنَ'}
+function nextV(a){return (a.vbase||'1.0')+'.'+((a.vc||0)+1)}
+function curP(){return (S.projects||[]).find(function(p){return p.id===S.cur})}
+function el(h){const d=document.createElement('div');d.innerHTML=h;return d.firstElementChild}
+
+const st=document.createElement('style');
+st.textContent=`
+#cd{margin-bottom:10px}
+.cd-sw{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.cd-sw button{display:flex!important;align-items:center;gap:9px;text-align:right;background:rgba(19,28,49,.82)!important;border:2px solid rgba(255,255,255,.07)!important;color:var(--tx)!important;padding:9px!important;border-radius:18px!important;font-weight:400!important;box-shadow:none!important}
+.cd-sw button.on{border-color:#4f46e5!important;background:rgba(79,70,229,.14)!important}
+.cd-sw .hb-ic{width:38px;height:38px;font-size:19px;border-radius:12px}
+.cd-sw b{display:block;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cd-sw small{font-size:11px;color:var(--mut)}
+.cd-sw span.t{flex:1;min-width:0}
+.cd-seg{display:flex;gap:4px;background:#0e1730;border:1px solid var(--line);border-radius:16px;padding:4px;margin-bottom:10px}
+.cd-seg button{flex:1;background:none!important;color:var(--mut)!important;padding:10px 2px!important;font-size:12.5px!important;font-weight:800!important;border-radius:12px!important;box-shadow:none!important}
+.cd-seg button.on{background:var(--tx)!important;color:#0b1220!important}
+.cd-pane{background:rgba(19,28,49,.82);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:12px}
+.cd-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.cd-chips button{flex:none!important;width:auto!important;background:#1c2742!important;border:1px solid var(--line)!important;color:var(--tx)!important;padding:8px 12px!important;font-size:12.5px!important;font-weight:800!important;border-radius:12px!important;box-shadow:none!important}
+.cd-pane .cx-ed{margin:0}
+.cd-pane textarea.code{height:62vh}
+.cd-ph{margin:4px auto 0;max-width:340px;border:8px solid #000;border-radius:34px;overflow:hidden;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.45)}
+.cd-ph iframe{display:block!important;width:100%;height:600px;border:0;margin:0;border-radius:0}
+.cd-lbl{font-size:13px;font-weight:800;color:var(--mut);margin:12px 2px 6px}
+.cd-lbl:first-child{margin-top:0}
+.cd-pane textarea.req{height:96px}
+.cd-pane .desc{border:0;padding:0;margin:0}
+.cd-pane details{margin-top:12px}
+.cd-pane details>summary{cursor:pointer;font-weight:800;color:var(--tx)}
+.cd-pane .cx-in{display:block!important}
+.cd-foot{position:fixed;left:0;right:0;bottom:0;z-index:7;padding:10px 12px calc(12px + env(safe-area-inset-bottom));background:rgba(11,18,32,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.06);display:flex;gap:8px}
+.cd-foot button{padding:14px!important;font-size:15px!important;font-weight:900!important;border-radius:16px!important}
+.cd-foot .go{flex:2;background:linear-gradient(135deg,#4f46e5,#2f80ff)!important}
+.cd-foot .sm{flex:1;background:#1c2742!important;border:1px solid var(--line)!important}
+.bd-card{background:rgba(19,28,49,.82);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:14px;margin-bottom:10px}
+.bd-card details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.bd-card details>summary{cursor:pointer;font-weight:800;color:var(--tx);font-size:14px}
+.bd-stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.bd-stat div{background:#0e1730;border:1px solid var(--line);border-radius:14px;padding:9px 10px}
+.bd-stat small{display:block;font-size:11px;color:var(--mut);font-weight:700}.bd-stat b{font-size:16px}
+.bd-acts{display:flex;gap:8px;margin-top:12px}
+.bd-acts>*{flex:1;margin:0!important}
+.bd-hero{background:linear-gradient(135deg,rgba(79,70,229,.35),rgba(47,128,255,.18));border:1px solid rgba(99,102,241,.45);border-radius:22px;padding:16px;margin-bottom:12px}
+.bd-hero b{font-size:17px}.bd-hero p{margin:4px 0 12px;color:#c7d2fe;font-size:13px;line-height:1.7}
+.bd-tools{display:flex;gap:8px;flex-wrap:wrap}
+.bd-tools button{flex:1 1 45%;font-size:13px!important;padding:11px 6px!important}
+body.hb.hb-code{padding-bottom:calc(150px + env(safe-area-inset-bottom))}
+`;
+document.head.appendChild(st);
+
+window._cdp=window._cdp||'';
+window.cxCdApp=function(i){window._ap=i;window._cdp=hasCode(S.apps[i])?'code':'ai';render()};
+window.cxCdPane=function(p){window._cdp=p;render();if(p==='pv'){const i=window._ap|0;if(hasCode(S.apps[i]))preview(i)}};
+window.cxCdPaste=async function(i){
+  try{const t=await navigator.clipboard.readText();if(!t||!t.trim())return toast('الحافظة فاضية');
+    if(hasCode(S.apps[i])&&!confirm('تبدّل الكود الحالي بالكود الملصوق؟ (القديم بيتحفظ في النسخ السابقة)'))return;
+    if(typeof pushVersion==='function')pushVersion(i);S.apps[i].code=t;save();render();toast('تم اللصق ✔')}
+  catch(e){toast('المتصفح ما سمح. اضغط مطوّل جوه المحرر واختار «لصق»')}
+};
+
+/* ---------- شاشة الكود ---------- */
+function rebuildCode(){
+  const m=$('#main');if(!m)return;
+  const secs=m.querySelectorAll(':scope > section.card');if(secs.length<2)return;
+  let i=window._ap|0;if(i<0||i>1)i=0;
+  const a=S.apps[i],has=hasCode(a);
+  let pane=window._cdp||(has?'code':'ai');
+  if(['code','pv','ai','set'].indexOf(pane)<0)pane='code';
+  if(pane==='pv'&&!has)pane='ai';
+  const sec=secs[i];
+  const sw=function(k){const x=S.apps[k],ok=hasCode(x);return '<button class="'+(k===i?'on':'')+'" onclick="cxCdApp('+k+')"><div class="hb-ic">'+(x.icon?'<img src="'+esc(x.icon)+'">':(k?'📊':'📱'))+'</div><span class="t"><b>'+esc(ok||x.set&&x.set.label?nmOf(x):(k?'التطبيق الثاني':'التطبيق الأول'))+'</b><small>'+(ok?langN(x)+' · '+esc(verOf(x)):'فاضي')+'</small></span></button>'};
+  const seg=[['code','💻 الكود'],['pv','👁 المعاينة'],['ai','✨ الذكاء'],['set','⚙️ إعدادات']];
+  const box=el('<div id="cd"><div class="cd-sw">'+sw(0)+sw(1)+'</div><div class="cd-seg">'+seg.map(function(s){return '<button class="'+(pane===s[0]?'on':'')+'" onclick="cxCdPane(\''+s[0]+'\')"'+(s[0]==='pv'&&!has?' disabled':'')+'>'+s[1]+'</button>'}).join('')+'</div><div class="cd-pane"></div></div>');
+  const P=box.querySelector('.cd-pane');
+  const q=function(s){return sec.querySelector(s)};
+  if(pane==='code'){
+    P.appendChild(el('<div class="cd-chips"><button onclick="cxCdPaste('+i+')">📥 لصق كود</button><button onclick="cxCopy('+i+')">📋 نسخ</button><button onclick="cxBig('+i+')">⤢ تكبير</button><button onclick="cxClear('+i+')">🧹 مسح</button></div>'));
+    const ed=q('.cx-ed')||$('#code'+i);if(ed)P.appendChild(ed);
+    if(!has)P.appendChild(el('<p class="note" style="margin:8px 2px 0">المربع فاضي: الصق كود جاهز، أو افتح «✨ الذكاء» واكتب وصف التطبيق.</p>'));
+  }else if(pane==='pv'){
+    P.appendChild(el('<div class="cd-chips"><button onclick="cxRun('+i+')">🔄 تحديث</button><button onclick="cxFs('+i+')">⛶ ملء الشاشة</button><button onclick="window._cdp=\'ai\';render();setTimeout(function(){var r=$(\'#req'+i+'\');if(r)r.focus()},200)">✏️ عدّل</button></div>'));
+    const f=$('#pv'+i);
+    if(f){const ph=el('<div class="cd-ph"></div>');f.style.display='block';ph.appendChild(f);P.appendChild(ph)}
+    const er=$('#err'+i);if(er){P.appendChild(er);if(a.err)er.textContent='⚠ '+a.err}
+  }else if(pane==='ai'){
+    const dsc=$('#desc'+i);
+    if(has){
+      P.appendChild(el('<div class="cd-lbl">✏️ اكتب التعديل العايزو بكلامك</div>'));
+      const rq=$('#req'+i);if(rq){rq.placeholder='مثال: كبّر زر الحجز وخلي لونو برتقالي، وأضف زر واتساب';P.appendChild(rq)}
+      P.appendChild(el('<div class="row"><button class="acc" style="flex:2" onclick="aiEdit('+i+',this)">✨ نفّذ التعديل</button><button class="sec" onclick="aiFix('+i+',this)">🛠 صلّح خطأ</button></div>'));
+      const er=$('#err'+i);if(er)P.appendChild(er);
+      const tools=el('<div class="cd-chips" style="margin:10px 0 0"></div>');
+      if(typeof aiPro==='function')tools.appendChild(el('<button onclick="aiPro('+i+',this)">💎 ترقية التصميم Pro Max</button>'));
+      const p=curP();if(p&&typeof cxStuOpen==='function')tools.appendChild(el('<button onclick="cxStuOpen(\''+p.id+'\')">🛠 استوديو التحديث (معاينة + إرسال)</button>'));
+      if(tools.children.length)P.appendChild(tools);
+      const vs=q('#edit'+i+' details');if(vs){vs.querySelector('summary').textContent='🕘 '+vs.querySelector('summary').textContent;P.appendChild(vs)}
+      if(dsc){const d=el('<details><summary>🔁 أعد إنشاء التطبيق من وصف جديد</summary></details>');dsc.hidden=false;d.appendChild(dsc);P.appendChild(d)}
+    }else{
+      P.appendChild(el('<div class="cd-lbl">✨ اوصف التطبيق '+(i?'الثاني':'الأول')+' والذكاء يكتب الكود</div>'));
+      if(i===1&&hasCode(S.apps[0]))P.appendChild(el('<p class="note" style="margin:0 2px 8px">الذكاء بيقرا التطبيق الأول قبل ما يكتب، عشان التطبيقين يمشوا مع بعض.</p>'));
+      if(dsc){dsc.hidden=false;P.appendChild(dsc)}
+      P.appendChild(el('<p class="note" style="margin:10px 2px 0">عندك كود جاهز؟ افتح «💻 الكود» واضغط «📥 لصق كود».</p>'));
+    }
+  }else{
+    P.appendChild(el('<div class="cd-lbl">اسم التطبيق (بالإنجليزي، يصير اسم المجلد)</div>'));
+    const nm=q('input.name');if(nm){nm.style.cssText='width:100%;font-weight:700';P.appendChild(nm)}
+    const ci=q('.cx-in');if(ci){[].slice.call(ci.children).forEach(function(c){P.appendChild(c)})}
+    P.appendChild(el('<button class="sec" style="width:100%;margin-top:12px" onclick="go(\'build\')">🏗 إعدادات البناء والتحديث (في تبويب نشر) ←</button>'));
+  }
+  secs.forEach(function(s){s.style.display='none'});
+  const osw=m.querySelector(':scope > .cx-sw');if(osw)osw.style.display='none';
+  const anchor=$('#cx-sys');
+  const cp=curP();if(anchor&&cp&&cp.kind===1)anchor.style.display='none';
+  if(anchor&&anchor.style.display!=='none')anchor.after(box);else m.prepend(box);
+  let f=$('#cd-foot');
+  if(!f){f=document.createElement('div');f.id='cd-foot';f.className='cd-foot';document.body.appendChild(f)}
+  f.innerHTML=has?'<button class="sm" onclick="cxCdPane(\'pv\')">▶ عاين</button><button class="go" onclick="buildAny('+i+')">🏗 بناء APK</button>'
+    :'<button class="go" onclick="var b=$(\'#desc'+i+' button.acc\');if(b)b.click();else cxCdPane(\'ai\')">🚀 أنشئ التطبيق</button>';
+  f.style.display='flex';
+}
+
+/* ---------- شاشة النشر ---------- */
+window.cxBuildBoth=async function(btn){
+  if(window._cxBuilding)return toast('في بناء شغّال، انتظر');
+  if(btn)btn.disabled=true;
+  try{for(let i=0;i<2;i++){if(hasCode(S.apps[i])){toast('🏗 بناء '+nmOf(S.apps[i])+'…');await buildAny(i)}}}
+  catch(e){toast(arErr(e))}finally{if(btn)btn.disabled=false}
+};
+function rebuildBuild(){
+  const m=$('#main');if(!m)return;
+  const cards=[].slice.call(m.querySelectorAll(':scope > .card'));
+  const appCards=cards.filter(function(c){return c.querySelector('button[onclick^="buildAny("]')});
+  if(!appCards.length)return;
+  const tplCard=cards.find(function(c){return /حفظ كقالب/.test((c.querySelector('h2')||{}).textContent||'')});
+  const vs=$('#cx-vs');
+  const ok=S.apps.map(hasCode),p=curP();
+  const wrap=el('<div id="bd"></div>');
+  if(ok[0]&&ok[1])wrap.appendChild(el('<div class="bd-hero"><b>🔗 ابنِ النظام كامل</b><p>بيبني التطبيقين ورا بعض. لو إشعار التحديث شغّال، الزباين بيوصلهم التحديث براهو.</p><button class="acc" style="width:100%;padding:14px" onclick="cxBuildBoth(this)">🏗 ابنِ الاتنين</button></div>'));
+  if(!ok[0]&&!ok[1])wrap.appendChild(el('<div class="hb-empty"><div>🏗</div>ما في كود تبنيه لسه. افتح تبويب «كود» وأضف التطبيق.</div>'));
+  appCards.forEach(function(c,k){
+    const i=parseInt((c.querySelector('button[onclick^="buildAny("]').getAttribute('onclick').match(/\d+/)||[k])[0],10);
+    const a=S.apps[i];if(!a||!hasCode(a)){c.style.display='none';return}
+    const card=el('<div class="bd-card"><div class="hb-row"><div class="hb-ic">'+(a.icon?'<img src="'+esc(a.icon)+'">':(i?'📊':'📱'))+'</div><div class="hb-t"><b>'+esc(nmOf(a))+'</b><small dir="ltr" style="display:block;text-align:right">'+esc(a.pkg||('com.myapps.'+slugOf(a.name)))+'</small></div><span class="hb-bd">'+langN(a)+'</span></div>'
+     +'<div class="bd-stat"><div><small>الإصدار الحالي</small><b>'+esc(verOf(a))+'</b></div><div><small>البناء الجاي</small><b>'+esc(nextV(a))+'</b></div></div>'
+     +'<div class="hb-mt">'+(a.apk?'<span class="hb-bd g">✔ آخر APK جاهز</span>':'<span class="hb-bd o">لسه ما اتبنى</span>')+(a.set&&a.set.upd?'<span class="hb-bd g">🔔 إشعار التحديث شغّال</span>':'<span class="hb-bd">🔕 إشعار التحديث مقفول</span>')+(a.err?'<span class="hb-bd r">⚠ في خطأ في المعاينة</span>':'')+'</div>'
+     +'<div class="bd-acts"><button class="acc" onclick="buildAny('+i+')">🏗 بناء</button>'+(a.apk?'<a class="btn sec" href="'+esc(a.apk)+'" target="_blank">⬇ APK</a>':'')+(p&&typeof cxCF==='function'?'<button class="sec" onclick="cxCF(\''+p.id+'\')">💬 أرسل</button>':'')+'</div></div>');
+    const d=c.querySelector('details');
+    if(d){const sm=d.querySelector('summary');if(sm)sm.textContent='⚙️ إعدادات البناء والتحديث';card.appendChild(d)}
+    wrap.appendChild(card);
+    c.style.display='none';
+  });
+  const tools=el('<div class="bd-card"><div class="cd-lbl" style="margin-top:0">🧰 أدوات</div><div class="bd-tools"></div><p class="note" style="margin:10px 2px 0">«زامن الإصدارات»: لو قفلت الأداة والبناء شغّال، اضغطها عشان الإصدار يتسجّل وإشعار التحديث يوصل.</p></div>');
+  const T=tools.querySelector('.bd-tools');
+  if(typeof cxVerSync==='function')T.appendChild(el('<button class="sec" onclick="cxVerSync(this)">🔄 زامن الإصدارات</button>'));
+  appCards.forEach(function(c){c.querySelectorAll('button[onclick^="saveTpl"]').forEach(function(b){b.className='sec';T.appendChild(b)})});
+  if(tplCard){tplCard.querySelectorAll('button').forEach(function(b){b.className='sec';T.appendChild(b)});tplCard.style.display='none'}
+  if(vs)vs.style.display='none';
+  if(T.children.length)wrap.appendChild(tools);
+  m.prepend(wrap);
+}
+
+/* ---------- ربط ---------- */
+const _ca=window.cxApp;
+window.cxApp=function(n){
+  if(tab==='code'&&$('#cd')){if((window._ap|0)!==n||!$('#cd .cd-sw button.on')){window._ap=n;window._cdp=hasCode(S.apps[n])?'code':'ai';render()}return}
+  if(_ca)_ca(n);
+};
+const _td=toggleDesc;
+toggleDesc=function(i){const d=$('#desc'+i);if(d&&d.closest('#cd')){d.hidden=false;return}if(tab==='code'&&$('#cd')){window._ap=i;window._cdp='ai';render();return}_td(i)};
+const _ce=window.cxEdit;
+window.cxEdit=function(i){if(tab==='code'&&$('#cd')){window._ap=i;window._cdp='ai';render();setTimeout(function(){const r=$('#req'+i);if(r)r.focus()},150);return}if(_ce)_ce(i)};
+
+const _rB=render;
+render=function(){
+  _rB();
+  const f=$('#cd-foot');
+  if(tab==='code')rebuildCode();
+  else if(f)f.style.display='none';
+  if(tab==='build')rebuildBuild();
+};
 })();
 render();
 
