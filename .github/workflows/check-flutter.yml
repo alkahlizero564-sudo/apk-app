@@ -1,3 +1,4 @@
+# ck4
 # ck3
 # ck2
 # ck1
@@ -27,8 +28,10 @@ jobs:
           flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
           rm -rf flutter_out/test
           cp apps/$APP/main.dart flutter_out/lib/main.dart
+          if [ -f apps/$APP/push.dart ]; then cp apps/$APP/push.dart flutter_out/lib/push.dart; fi
           cd flutter_out
           if grep -q "package:url_launcher" lib/main.dart; then flutter pub add url_launcher; fi
+          if grep -qs "package:firebase_messaging" lib/push.dart; then flutter pub add firebase_core firebase_messaging; fi
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
           cd ..

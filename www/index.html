@@ -9092,8 +9092,16 @@ function pushDart(i,real){
    +"  static Future<Map> toUser(String uid, String title, String body) => _call({'to': 'user', 'uid': uid, 'title': title, 'body': body});\n"
    +"  static Future<Map> toAll(String title, String body) => _call({'to': 'customer', 'title': title, 'body': body});\n}\n";
 }
+function dropStub(s){
+  /* لو الكود فيهو class APKPush محلي (اتعمل بالغلط أثناء الإصلاح) نشيلو عشان يستعمل push.dart */
+  const m=/(^|\n)\s*class\s+APKPush\b[^{]*\{/.exec(s);if(!m)return s;
+  let i=m.index+m[0].length,d=1;
+  while(i<s.length&&d>0){const ch=s[i];if(ch==='{')d++;else if(ch==='}')d--;i++}
+  if(d!==0)return s;
+  return s.slice(0,m.index)+(m[1]||'')+s.slice(i).replace(/^\s*\n/,'');
+}
 function prepDart(c,real){
-  let s=String(c);
+  let s=dropStub(String(c));
   if(/APKPush/.test(s)||real){
     if(!/import\s+['"]push\.dart['"]/.test(s)){
       const m=s.match(/^(?:\s*import\s+[^;]+;\s*\n)+/);
