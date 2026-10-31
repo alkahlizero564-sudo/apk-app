@@ -7963,6 +7963,275 @@ render=function(){
 };
 })();
 render();
+/* ===== إضافة: ملف التطبيق (كل شي عن تطبيق الزبون في مكان واحد) ===== */
+(function(){
+const css=document.createElement('style');
+css.textContent=`
+.cf-sec{background:rgba(127,127,127,.08);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin:10px 0}
+.cf-sec h4{margin:0 0 8px;font-size:15px}
+.cf-row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:13.5px;border-bottom:1px dashed rgba(127,127,127,.18)}
+.cf-row:last-child{border-bottom:0}.cf-row span:first-child{opacity:.7}.cf-row b{direction:ltr;text-align:left;word-break:break-all}
+.cf-ok{color:#22c55e}.cf-bad{color:#f59e0b}
+.cf-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.cf-btns button{padding:11px 6px;font-size:13px}
+`;
+document.head.appendChild(css);
+
+const CODEF={html:'index.html',flutter:'main.dart',python:'main.py'};
+function hasCode(a){return !!(a&&a.code&&a.code.trim())}
+function proj(id){return (S.projects||[]).find(function(p){return p.id===id})}
+function appsOf(p){return (p.id===S.cur?S.apps:(p.apps||[])).map(function(a,i){return [a,i]}).filter(function(z){return hasCode(z[0])})}
+function langA(a,i,p){return p.id===S.cur?langOf(i):(a.lang||'html')}
+function lbl(a){return (a.set&&a.set.label)||a.name}
+function ver(a){return a.vc?(a.vbase||'1.0')+'.'+a.vc:'لم يُبنَ بعد'}
+function pkgA(a,l){const p=(a.pkg||'').trim().toLowerCase();if(p)return p;const s=slugOf(a.name);return l==='html'?'com.myapps.'+s:l==='flutter'?'com.myapps.app_'+s:'com.myapps.app'+s}
+function b64u(s){return btoa(unescape(encodeURIComponent(s)))}
+
+let PR=null;
+async function priv(){
+  if(PR)return PR;
+  if(!S.keys.ghToken)throw new Error('أدخل مفتاح GitHub أولاً');
+  const u=await gh('/user');
+  const name=(S.keys.bkRepo||'apk-app-backup').trim();
+  let r;
+  try{r=await gh('/repos/'+u.login+'/'+name)}catch(e){throw new Error('ما لقيت المستودع الخاص '+name+'. اعمله من 💾 النسخ الاحتياطي أولاً')}
+  if(!r.private)throw new Error('المستودع '+name+' عام! خلّيه خاص قبل ما تحفظ فيه مفاتيح التوقيع');
+  PR={full:u.login+'/'+name,br:r.default_branch||'main',owner:u.login};
+  return PR;
+}
+async function getF(full,br,path){try{return await gh('/repos/'+full+'/contents/'+path+'?ref='+br)}catch(e){if(e.status===404)return null;throw e}}
+async function putRaw(full,br,path,b64,msg){
+  const old=await getF(full,br,path);
+  if(old&&old.content&&old.content.replace(/\s/g,'')===b64)return false;
+  await gh('/repos/'+full+'/contents/'+path,{method:'PUT',body:JSON.stringify({message:msg||('client: '+path),content:b64,branch:br,sha:old?old.sha:undefined})});
+  return true;
+}
+async function sha12(b64){try{const bin=Uint8Array.from(atob(b64),function(c){return c.charCodeAt(0)});const h=await crypto.subtle.digest('SHA-256',bin);return Array.from(new Uint8Array(h)).slice(0,6).map(function(x){return x.toString(16).padStart(2,'0')}).join(':').toUpperCase()}catch(e){return ''}}
+
+/* حالة مفتاح التوقيع */
+async function keyInfo(slug){
+  const P=await priv();
+  let k=await getF(P.full,P.br,'clients/'+slug+'/signing.keystore'),src='clients';
+  if(!k){k=await getF(P.full,P.br,'keys/'+slug+'.keystore');src='keys'}
+  if(!k){
+    try{const pub=await repoFull();const info=await gh('/repos/'+pub);const kk=await getF(pub,info.default_branch||'main','keys/'+slug+'.keystore');if(kk)return {st:'pub'}}catch(e){}
+    return {st:'none'};
+  }
+  return {st:'ok',src:src,fp:await sha12((k.content||'').replace(/\s/g,''))};
+}
+
+function infoMd(p,a,l){
+  const c=p.client||{};
+  return '# 📦 '+lbl(a)+'\n\n'
+   +'## 👤 الزبون\n- الاسم: '+(c.name||'-')+'\n- التلفون / واتساب: '+(c.phone||'-')+'\n- السعر المتفق عليه: '+(c.price||'-')+'\n- ملاحظات: '+(c.notes||'-')+'\n\n'
+   +'## 📱 التطبيق\n- الاسم الظاهر: '+lbl(a)+'\n- الاسم الداخلي: '+a.name+'\n- اسم الحزمة: `'+pkgA(a,l)+'`\n- اللغة: '+LANGN[l]+'\n- الإصدار الحالي: '+ver(a)+'\n- آخر APK: '+(a.apk||'-')+'\n- إشعار التحديث داخل التطبيق: '+((a.set&&a.set.upd)?'مفعّل':'مقفول')+'\n\n'
+   +'## 🔑 مفتاح التوقيع\nالملفان `signing.keystore` و`signing.properties` في نفس المجلد. **لا تحذفهما ولا تشاركهما.** لو ضاعا ما بتقدر تحدّث تطبيق الزبون تاني.\n\n'
+   +'## 🗂 الملفات\n- `'+CODEF[l]+'` الكود\n- `settings.json` الإعدادات\n- `icon.png` الأيقونة\n- `VERSIONS.md` سجل الإصدارات\n\n'
+   +'_آخر تحديث: '+new Date().toLocaleString('ar')+'_\n';
+}
+
+async function saveApp(p,a,i,quiet){
+  const P=await priv(),l=langA(a,i,p),slug=slugOf(a.name);
+  if(!slug)throw new Error('التطبيق ما عنده اسم إنجليزي');
+  const dir='clients/'+slug+'/';
+  await putRaw(P.full,P.br,dir+'INFO.md',b64u(infoMd(p,a,l)));
+  await putRaw(P.full,P.br,dir+CODEF[l],b64u(a.code));
+  const st={name:a.name,label:lbl(a),pkg:pkgA(a,l),lang:l,version:ver(a),vc:a.vc||0,vbase:a.vbase||'1.0',apk:a.apk||'',set:a.set||{},client:p.client||{}};
+  await putRaw(P.full,P.br,dir+'settings.json',b64u(JSON.stringify(st,null,2)));
+  if(a.icon&&a.icon.indexOf(',')>-1)await putRaw(P.full,P.br,dir+'icon.png',a.icon.split(',')[1]);
+  /* مفتاح التوقيع */
+  let key='none';
+  for(const ext of ['keystore','properties']){
+    const have=await getF(P.full,P.br,dir+'signing.'+ext);
+    const src=await getF(P.full,P.br,'keys/'+slug+'.'+ext);
+    if(src&&src.content){await putRaw(P.full,P.br,dir+'signing.'+ext,src.content.replace(/\s/g,''),'client key: '+slug);key='ok'}
+    else if(have)key='ok';
+  }
+  /* سجل الإصدارات */
+  if(a.vc){
+    const vf=await getF(P.full,P.br,dir+'VERSIONS.md');
+    let txt=vf&&vf.content?decodeURIComponent(escape(atob(vf.content.replace(/\s/g,'')))):'# 📜 سجل إصدارات '+lbl(a)+'\n\n| الإصدار | التاريخ | الجديد | APK |\n|---|---|---|---|\n';
+    const v=ver(a);
+    if(txt.indexOf('| '+v+' |')<0){
+      txt+='| '+v+' | '+new Date().toLocaleDateString('ar')+' | '+String((a.set&&a.set.notes)||'-').replace(/\|/g,'/').replace(/\n/g,' ')+' | '+(a.apk?'[تحميل]('+a.apk+')':'-')+' |\n';
+      await putRaw(P.full,P.br,dir+'VERSIONS.md',b64u(txt));
+    }
+  }
+  p.cf=p.cf||{};p.cf[slug]=Date.now();save();
+  return key;
+}
+
+/* ---------- الشاشة ---------- */
+window.cxCF=function(id){
+  const p=proj(id);if(!p)return;
+  p.client=p.client||{};
+  const sh=$('#sheet'),c=p.client;
+  const apps=appsOf(p);
+  let h='<div class="sheetbox"><h3 style="margin:0 0 4px">📦 ملف التطبيق</h3><p class="note" style="margin:0">'+esc(p.name)+'</p>'
+   +'<div class="cf-sec"><h4>👤 الزبون</h4>'
+   +'<input placeholder="اسم الزبون" value="'+esc(c.name||'')+'" oninput="cxCFset(\''+id+'\',\'name\',this.value)">'
+   +'<input placeholder="التلفون أو الواتساب (مثلاً 2499xxxxxxxx)" dir="ltr" inputmode="tel" value="'+esc(c.phone||'')+'" oninput="cxCFset(\''+id+'\',\'phone\',this.value)" style="margin-top:8px">'
+   +'<input placeholder="السعر المتفق عليه" value="'+esc(c.price||'')+'" oninput="cxCFset(\''+id+'\',\'price\',this.value)" style="margin-top:8px">'
+   +'<textarea placeholder="ملاحظات (طلبات الزبون، مواعيد التسليم...)" rows="2" oninput="cxCFset(\''+id+'\',\'notes\',this.value)" style="margin-top:8px">'+esc(c.notes||'')+'</textarea></div>';
+  if(!apps.length)h+='<p class="note">المشروع ما فيهو تطبيقات بكود لسه.</p>';
+  apps.forEach(function(z){
+    const a=z[0],i=z[1],l=langA(a,i,p),slug=slugOf(a.name);
+    h+='<div class="cf-sec"><h4>📱 '+esc(lbl(a))+'</h4>'
+     +'<div class="cf-row"><span>اسم الحزمة</span><b>'+esc(pkgA(a,l))+'</b></div>'
+     +'<div class="cf-row"><span>اللغة</span><span>'+esc(LANGN[l])+'</span></div>'
+     +'<div class="cf-row"><span>الإصدار</span><b>'+esc(ver(a))+'</b></div>'
+     +'<div class="cf-row"><span>إشعار التحديث</span><span>'+((a.set&&a.set.upd)?'🔔 مفعّل':'🔕 مقفول')+'</span></div>'
+     +'<div class="cf-row"><span>🔑 مفتاح التوقيع</span><span id="cfk-'+slug+'">⏳ جاري الفحص...</span></div>'
+     +'<div class="cf-row"><span>📦 ملف التطبيق</span><span>'+(p.cf&&p.cf[slug]?'☁️ محفوظ '+esc(new Date(p.cf[slug]).toLocaleDateString('ar')):'لسه ما اتحفظ')+'</span></div>'
+     +'<div class="cf-btns">'
+     +(a.apk?'<button class="acc" onclick="window.open(\''+esc(a.apk)+'\',\'_blank\')">⬇ آخر APK</button><button class="sec" onclick="cxCFcopy(\''+esc(a.apk)+'\',\'اتنسخ رابط التحميل\')">🔗 انسخ الرابط</button>':'<button class="sec" disabled style="grid-column:1/-1;opacity:.6">ابنِ التطبيق عشان يظهر رابط APK</button>')
+     +'<button class="sec" onclick="cxCFopen(\''+slug+'\')">📂 افتح المجلد</button><button class="sec" onclick="cxCFwa(\''+id+'\','+i+')">💬 أرسل للزبون</button>'
+     +'</div></div>';
+  });
+  h+='<button class="acc" style="width:100%;margin-top:6px;padding:14px" onclick="cxCFsave(\''+id+'\',this)">☁️ احفظ ملف التطبيق في المستودع الخاص</button>'
+   +'<button class="sec" style="width:100%;margin-top:8px" onclick="cxCFcard(\''+id+'\')">📋 انسخ بطاقة التطبيق</button>'
+   +'<p class="note">كل تطبيق ليهو مجلد خاص clients/اسم-التطبيق في مستودعك الخاص، فيهو: الكود، والإعدادات، والأيقونة، ومفتاح التوقيع، وسجل الإصدارات، وبيانات الزبون. الملف بيتحدّث براهو بعد كل بناء ناجح.</p>'
+   +'<button class="ghost" onclick="cxProj()">رجوع</button></div>';
+  sh.innerHTML=h;sh.classList.add('on');
+  apps.forEach(function(z){
+    const slug=slugOf(z[0].name),el=function(){return document.getElementById('cfk-'+slug)};
+    keyInfo(slug).then(function(k){const e=el();if(!e)return;
+      e.innerHTML=k.st==='ok'?'<span class="cf-ok">✔ محفوظ (خاص)</span> <small dir="ltr">'+k.fp+'</small>':k.st==='pub'?'<span class="cf-bad">⚠ قديم في المستودع العام — ابنِ التطبيق مرة</span>':'<span class="cf-bad">⚠ لسه ما اتعمل — ابنِ التطبيق مرة</span>'})
+    .catch(function(e){const x=el();if(x)x.innerHTML='<span class="cf-bad">'+esc(String(e.message||e).slice(0,80))+'</span>'});
+  });
+};
+window.cxCFset=function(id,k,v){const p=proj(id);if(!p)return;p.client=p.client||{};p.client[k]=v;save()};
+window.cxCFcopy=function(t,msg){
+  const ok=function(){toast(msg||'اتنسخ ✔')};
+  const fb=function(){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');ok()}catch(e){toast('تعذّر النسخ')}ta.remove()};
+  if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb();
+};
+window.cxCFopen=async function(slug){
+  try{const P=await priv();window.open('https://github.com/'+P.full+'/tree/'+P.br+'/clients/'+slug,'_blank')}catch(e){toast(e.message||String(e))}
+};
+function cardText(p){
+  const c=p.client||{};
+  let t='📦 '+p.name+'\n';
+  if(c.name)t+='👤 الزبون: '+c.name+(c.phone?' — '+c.phone:'')+'\n';
+  appsOf(p).forEach(function(z){const a=z[0],l=langA(a,z[1],p);t+='\n📱 '+lbl(a)+'\nالإصدار: '+ver(a)+'\nالحزمة: '+pkgA(a,l)+'\n'+(a.apk?'⬇ التحميل: '+a.apk+'\n':'')});
+  return t;
+}
+window.cxCFcard=function(id){const p=proj(id);if(p)cxCFcopy(cardText(p),'اتنسخت بطاقة التطبيق ✔')};
+window.cxCFwa=function(id,i){
+  const p=proj(id);if(!p)return;const a=(p.id===S.cur?S.apps:p.apps)[i],c=p.client||{};
+  const msg='السلام عليكم'+(c.name?' '+c.name:'')+' 👋\nتطبيق «'+lbl(a)+'» جاهز ✅\nالإصدار: '+ver(a)+(a.apk?'\n⬇ رابط التحميل:\n'+a.apk:'')+'\n\nلو ظهرت رسالة «تثبيت من مصادر غير معروفة» اسمح بيها واضغط تثبيت.';
+  const ph=String(c.phone||'').replace(/[^\d]/g,'').replace(/^0+/,'');
+  window.open('https://wa.me/'+(ph?ph:'')+'?text='+encodeURIComponent(msg),'_blank');
+};
+window.cxCFsave=function(id,btn){
+  busy(btn,async function(){
+    const p=proj(id);if(!p)return;
+    const apps=appsOf(p);if(!apps.length)throw new Error('ما في تطبيق بكود');
+    const res=[];
+    for(const z of apps){res.push([lbl(z[0]),await saveApp(p,z[0],z[1])])}
+    toast('☁️ اتحفظ ملف التطبيق'+(res.some(function(r){return r[1]!=='ok'})?' (مفتاح التوقيع لسه ما موجود، ابنِ التطبيق مرة)':' مع مفتاح التوقيع ✔'));
+    cxCF(id);
+  });
+};
+
+/* حفظ تلقائي بعد كل بناء ناجح */
+const _bCF=buildAny;
+buildAny=async function(i){
+  const before=S.apps[i]&&S.apps[i].apk;
+  const r=await _bCF(i);
+  try{
+    const a=S.apps[i];
+    if(a&&a.apk&&a.apk!==before&&S.keys.ghToken){
+      const p=S.cur?proj(S.cur):null;
+      if(p){await saveApp(p,a,i,true);toast('📦 اتحدّث ملف التطبيق في المستودع الخاص')}
+    }
+  }catch(e){}
+  return r;
+};
+
+/* زر 📦 في كل مشروع وفي شريط صفحة الكود */
+const _pCF=window.cxProj;
+window.cxProj=function(){
+  _pCF.apply(this,arguments);
+  const box=document.querySelector('#sheet .sheetbox');if(!box)return;
+  const cards=box.querySelectorAll(':scope > .card');
+  if(cards.length!==(S.projects||[]).length)return;
+  cards.forEach(function(c,n){
+    const p=S.projects[n],row=c.querySelector('.row:last-child');
+    if(!row||row.querySelector('.cf-btn')||!appsOf(p).length)return;
+    row.insertAdjacentHTML('afterbegin','<button class="sec cf-btn" onclick="cxCF(\''+p.id+'\')">📦</button>');
+  });
+};
+const _rCF=render;
+render=function(){
+  _rCF();
+  if(tab!=='code')return;
+  const bar=$('#pj-bar');
+  if(bar&&S.cur&&!bar.querySelector('.cf-b'))bar.insertAdjacentHTML('beforeend','<button class="sec cf-b" style="width:auto;padding:8px 12px;font-size:13px" onclick="cxCF(\''+S.cur+'\')">📦 ملف التطبيق</button>');
+};
+})();
+render();
+/* ===== إضافة: مزامنة الإصدارات الضائعة (عشان إشعار التحديث يوصل دايماً) ===== */
+(function(){
+function busyX(){return !!(window._sysBusy||window._preN||window._preN3||window._pre||window._rvBusy||window._cxBuilding)}
+const _bV=buildAny;
+buildAny=async function(i){window._cxBuilding=true;try{return await _bV(i)}finally{window._cxBuilding=false}};
+
+function prefixOf(i){const l=langOf(i),s=slugOf(S.apps[i].name);return l==='flutter'?'flutter-'+s+'-build-':l==='python'?'python-'+s+'-build-':s+'-build-'}
+
+async function reconcile(manual){
+  if(!S.keys.ghToken||busyX())return 0;
+  const repo=await repoFull();
+  const rels=await gh('/repos/'+repo+'/releases?per_page=40');
+  let fixed=0;
+  for(let i=0;i<S.apps.length;i++){
+    const a=S.apps[i];
+    if(!a||!a.code||!a.code.trim()||!slugOf(a.name))continue;
+    const pre=prefixOf(i);
+    const mine=(rels||[]).filter(function(r){return r.tag_name&&r.tag_name.indexOf(pre)===0&&/^\d+$/.test(r.tag_name.slice(pre.length))&&(r.assets||[]).some(function(x){return /\.apk$/.test(x.name)})})
+      .sort(function(x,y){return new Date(y.published_at)-new Date(x.published_at)});
+    const last=mine[0];if(!last)continue;
+    const url=last.assets.find(function(x){return /\.apk$/.test(x.name)}).browser_download_url;
+    const t=new Date(last.published_at).getTime();
+    if(url===a.apk||t<=(a.vt||0))continue;
+    /* بناء نجح والأداة ما كانت متابعة: سجّله وارفع الإصدار وانشر التحديث */
+    a.apk=url;a.vc=(a.vc||0)+1;a.apkc=url;a.vt=t;save();
+    fixed++;
+    try{
+      const l=langOf(i);
+      if(a.set&&a.set.upd){
+        if(l==='html'&&typeof cxPubNow==='function')await cxPubNow(i);
+        else if(l==='flutter'&&typeof cxPubNow2==='function')await cxPubNow2(i);
+      }
+    }catch(e){}
+    toast('🔄 لقيت بناء ناجح ما اتسجّل لـ «'+((a.set&&a.set.label)||a.name)+'»، اتسجّل كإصدار '+(a.vbase||'1.0')+'.'+a.vc+(a.set&&a.set.upd?' واتنشر التحديث':''));
+  }
+  if(manual&&!fixed)toast('✔ كل الإصدارات متزامنة');
+  if(fixed&&tab==='build')render();
+  return fixed;
+}
+window.cxVerSync=function(btn){if(btn)busy(btn,function(){return reconcile(true)});else reconcile(true).catch(function(e){toast(arErr(e))})};
+
+let lastRun=0;
+function auto(){
+  if(Date.now()-lastRun<10*60000)return;
+  lastRun=Date.now();
+  reconcile(false).catch(function(){});
+}
+setTimeout(auto,15000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(auto,4000)});
+
+/* زر في شاشة البناء */
+const _rV=render;
+render=function(){
+  _rV();
+  if(tab!=='build')return;
+  const m=$('#main');if(!m||$('#cx-vs'))return;
+  const d=document.createElement('div');d.className='card';d.id='cx-vs';
+  d.innerHTML='<h2>🔄 مزامنة الإصدارات</h2><p class="note" style="margin-top:0">لو قفلت الأداة أو التلفون نام والبناء شغّال، الأداة ممكن ما تسجّل الإصدار الجديد، فإشعار التحديث ما بيوصل للتطبيق. الأداة بتراجع ده براها كل ما تفتحها، وتقدر تضغط هنا كمان.</p><button class="sec" style="width:100%" onclick="cxVerSync(this)">🔄 زامن الإصدارات وانشر التحديثات الفايتة</button>';
+  m.appendChild(d);
+};
+})();
+render();
 </script>
 </body>
 </html>
