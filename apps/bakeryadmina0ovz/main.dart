@@ -20,6 +20,22 @@ void main() {
   ));
 }
 
+class LocalStorage {
+  static final Map<String, dynamic> _memory = {};
+
+  static dynamic get(String key, dynamic def) {
+    return _memory[key] ?? def;
+  }
+
+  static void set(String key, dynamic val) {
+    if (val == null) {
+      _memory.remove(key);
+    } else {
+      _memory[key] = val;
+    }
+  }
+}
+
 class SupabaseService {
   static const String supabaseUrl = "https://qlvmxnoewxzykgbneadv.supabase.co";
   static const String anonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFsdm14bm9ld3h6eWtnYm5lYWR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE2NDAwMjIsImV4cCI6MjEwNzIxNjAyMn0.WtsiO0PrUrwxKjpcyB3949kXSZeijtlJYySSbh0ieRk";
@@ -95,7 +111,7 @@ class _AdminEntryPointState extends State<AdminEntryPoint> {
   }
 
   Future<void> _checkSession() async {
-    final sessionStr = DS.get('admin_session', null);
+    final sessionStr = LocalStorage.get('admin_session', null);
     if (sessionStr != null) {
       try {
         final data = json.decode(sessionStr);
@@ -118,11 +134,11 @@ class _AdminEntryPointState extends State<AdminEntryPoint> {
       _adminProfile = profile;
       _isLoggedIn = true;
     });
-    DS.set('admin_session', json.encode(profile));
+    LocalStorage.set('admin_session', json.encode(profile));
   }
 
   void _onLoggedOut() {
-    DS.set('admin_session', null);
+    LocalStorage.set('admin_session', null);
     setState(() {
       _adminProfile = null;
       _isLoggedIn = false;
@@ -155,10 +171,18 @@ class AdminAuthScreen extends StatefulWidget {
 }
 
 class _AdminAuthScreenState extends State<AdminAuthScreen> {
-  final TextEditingController _nameController = TextEditingController(text: "مدير المخبز");
-  final TextEditingController _emailController = TextEditingController(text: "admin@bakery.com");
-  final TextEditingController _passController = TextEditingController();
+  late final TextEditingController _nameController;
+  late final TextEditingController _emailController;
+  late final TextEditingController _passController;
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: "مدير المخبز");
+    _emailController = TextEditingController(text: "admin@bakery.com");
+    _passController = TextEditingController();
+  }
 
   @override
   void dispose() {
@@ -289,9 +313,14 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
   int _reportDays = 7;
   Timer? _timer;
 
+  late final TextEditingController _profileNameController;
+  late final TextEditingController _profilePhoneController;
+
   @override
   void initState() {
     super.initState();
+    _profileNameController = TextEditingController(text: widget.adminProfile['full_name'] ?? '');
+    _profilePhoneController = TextEditingController(text: widget.adminProfile['phone'] ?? '');
     _fetchAllData();
     _timer = Timer.periodic(Duration(seconds: 5), (_) {
       _fetchAllData(silent: true);
@@ -301,6 +330,8 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _profileNameController.dispose();
+    _profilePhoneController.dispose();
     super.dispose();
   }
 
@@ -442,7 +473,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                 child: Column(
                   children: [
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.between,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -798,9 +829,6 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
   }
 
   Widget _buildProfileTab() {
-    final nameController = TextEditingController(text: widget.adminProfile['full_name']);
-    final phoneController = TextEditingController(text: widget.adminProfile['phone']);
-
     return ListView(
       padding: EdgeInsets.zero,
       children: [
@@ -813,12 +841,12 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                 child: Column(
                   children: [
                     DsField(
-                      controller: nameController,
+                      controller: _profileNameController,
                       label: "الاسم الكامل",
                     ),
                     SizedBox(height: 16),
                     DsField(
-                      controller: phoneController,
+                      controller: _profilePhoneController,
                       label: "رقم الهاتف",
                       keyboard: TextInputType.phone,
                     ),
@@ -826,8 +854,8 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
                     DsButton(
                       label: "حفظ التعديلات",
                       onPressed: () async {
-                        final newName = nameController.text.trim();
-                        final newPhone = phoneController.text.trim();
+                        final newName = _profileNameController.text.trim();
+                        final newPhone = _profilePhoneController.text.trim();
 
                         final success = await SupabaseService.updateRow('s2x7rw_profiles', 'id=eq.${widget.adminProfile['id']}', {
                           'full_name': newName,
