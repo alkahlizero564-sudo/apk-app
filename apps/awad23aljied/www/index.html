@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl" data-theme="dark" data-x="fintech">
+<html lang="ar" dir="rtl" data-theme="dark" data-x="emerald">
 <head><style id="ds-pro">:root{--h:250;--s:86%;--p:hsl(var(--h) var(--s) 60%);--p2:hsl(calc(var(--h) + 38) var(--s) 62%);--pg:linear-gradient(135deg,var(--p),var(--p2));--pt:hsl(var(--h) var(--s) 60%/.14);--glow:0 10px 26px hsl(var(--h) var(--s) 55%/.38);--bg:#f3f5fb;--sf:#fff;--sf2:#eef1f8;--tx:#0f172a;--mu:#64748b;--ln:rgba(15,23,42,.08);--gl:rgba(255,255,255,.74);--nav:rgba(255,255,255,.86);--sh1:0 1px 2px rgba(15,23,42,.05),0 6px 18px rgba(15,23,42,.07);--sh2:0 16px 44px rgba(15,23,42,.18);--ok:#16a34a;--bad:#e11d48;--warn:#f59e0b}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0b1020;--sf:#141b32;--sf2:#1c2540;--tx:#eef2ff;--mu:#97a3c7;--ln:rgba(255,255,255,.09);--gl:rgba(20,27,50,.66);--nav:rgba(16,22,42,.82);--sh1:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.28);--sh2:0 16px 44px rgba(0,0,0,.55)}}
 :root[data-theme=dark]{--bg:#0b1020;--sf:#141b32;--sf2:#1c2540;--tx:#eef2ff;--mu:#97a3c7;--ln:rgba(255,255,255,.09);--gl:rgba(20,27,50,.66);--nav:rgba(16,22,42,.82);--sh1:0 1px 2px rgba(0,0,0,.35),0 8px 22px rgba(0,0,0,.28);--sh2:0 16px 44px rgba(0,0,0,.55)}
@@ -109,34 +109,53 @@ try{new MutationObserver(function(){D.icons()}).observe(document.documentElement
 - «اختبار الاتصال»: يتحقق من صحة المفتاح ويظهر رسالة
 - «تبديل الوضع الداكن/الفاتح»: يغير ثيم التطبيق
 -->
-<!-- DESIGN: تحليل الشارت بالذكاء الاصطناعي | فخامة، ذكاء، تداول | قيمة --h: 155 | العنصر المميز: بطاقة القرار الملونة والشريط الدائري للثقة -->
+<!-- DESIGN: تحليل الشارت بالذكاء الاصطناعي | فخامة ذهبية وخضراء، ذكاء، تداول | قيمة --h: 42 | العنصر المميز: بطاقة القرار الملونة والشريط الدائري للثقة -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>محلل الشارت الذكي</title>
 <style>
-:root { --h: 155; --s: 85%; }
+:root { --h: 42; --s: 90%; }
 body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--tx); margin: 0; padding: 0; }
 .app-container { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 70px; }
 .screen { display: none; flex: 1; flex-direction: column; }
 .screen.active { display: flex; }
 .tabbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--sf); border-top: 1px solid var(--ln); display: flex; justify-content: space-around; padding: 8px 0; z-index: 100; backdrop-filter: blur(10px); }
 .tabbar button { background: none; border: none; color: var(--mu); display: flex; flex-direction: column; align-items: center; font-size: 12px; gap: 6px; flex: 1; cursor: pointer; min-height: 44px; justify-content: center; position: relative; }
-.tabbar button.on { color: hsl(var(--h), var(--s), 45%); }
-.tabbar button.on i { background: hsla(var(--h), var(--s), 50%, 0.15); color: hsl(var(--h), var(--s), 45%); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+.tabbar button.on { color: hsl(var(--h), var(--s), 60%); }
+.tabbar button.on i { background: hsla(var(--h), var(--s), 50%, 0.15); color: hsl(var(--h), var(--s), 60%); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
 .tabbar button i { font-size: 20px; transition: all 0.2s ease; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
 .hero { padding: 24px 16px 20px; text-align: center; }
-.hero h1 { margin: 0 0 8px; font-size: 22px; line-height: 1.5; }
-.preview-box { width: 100%; min-height: 240px; padding: 24px 16px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; background: var(--sf2); cursor: pointer; margin-top: 8px; margin-bottom: 16px; backdrop-filter: blur(12px); border: 1px solid rgba(var(--h), 40%, 40%, 0.3); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2); box-sizing: border-box; }
+.hero h1 { margin: 0 0 8px; font-size: 22px; line-height: 1.5; color: var(--tx); }
+.preview-box { width: 100%; min-height: 240px; padding: 24px 16px; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; background: var(--sf2); cursor: pointer; margin-top: 8px; margin-bottom: 16px; backdrop-filter: blur(12px); border: 1px solid rgba(212, 175, 55, 0.3); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3); box-sizing: border-box; }
 .preview-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0; }
 .welcome-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; padding: 24px; justify-content: center; overflow-y: auto; }
-.price-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--sf2); border-radius: 8px; margin-bottom: 8px; }
-.badge-ok { background: rgba(40,167,69,0.15); color: #28a745; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
-.badge-bad { background: rgba(220,53,69,0.15); color: #dc3545; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
-.badge-warn { background: rgba(255,193,7,0.15); color: #ffc107; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
-.mu, small, .fld span, .hero p, .tabbar button { color: #b0bec5 !important; }
-.card.glass, .fld .in, select.in, textarea.in { color: var(--tx); }
-.seg button.btn.sm.soft { background: var(--sf2); color: #b0bec5; border: 1px solid var(--ln); transition: all 0.2s ease; min-height: 44px; height: 44px; display: flex; align-items: center; justify-content: center; width: 100%; box-sizing: border-box; }
-.seg button.btn.sm.soft.on { background: hsla(var(--h), var(--s), 50%, 0.15) !important; color: hsl(var(--h), var(--s), 50%) !important; border: 2px solid hsl(var(--h), var(--s), 50%) !important; font-weight: bold; box-shadow: 0 0 10px hsla(var(--h), var(--s), 50%, 0.3); }
+.price-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--sf2); border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--ln); }
+.badge-ok { background: rgba(40,167,69,0.2); color: #2ecc71; padding: 4px 10px; border-radius: 6px; font-weight: bold; border: 1px solid rgba(46,204,113,0.3); }
+.badge-bad { background: rgba(220,53,69,0.2); color: #e74c3c; padding: 4px 10px; border-radius: 6px; font-weight: bold; border: 1px solid rgba(231,76,60,0.3); }
+.badge-warn { background: rgba(255,193,7,0.2); color: #f1c40f; padding: 4px 10px; border-radius: 6px; font-weight: bold; border: 1px solid rgba(241,196,15,0.3); }
+.mu, small, .fld span, .hero p, .tabbar button { color: #9db3a6 !important; }
+.card.glass, .fld .in, select.in, textarea.in { color: var(--tx); background: var(--sf); border: 1px solid var(--ln); }
+.seg button.btn.sm.soft { background: var(--sf2); color: #9db3a6; border: 1px solid var(--ln); transition: all 0.2s ease; min-height: 44px; height: 44px; display: flex; align-items: center; justify-content: center; width: 100%; box-sizing: border-box; }
+.seg button.btn.sm.soft.on { background: hsla(var(--h), var(--s), 50%, 0.2) !important; color: #f0d78c !important; border: 2px solid #d4af37 !important; font-weight: bold; box-shadow: 0 0 12px rgba(212,175,55,0.4); }
+.btn { background: linear-gradient(135deg, #f0d78c, #b8892b); color: #06140f; font-weight: bold; border: none; border-radius: 12px; padding: 12px 20px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(212,175,55,0.3); }
+.btn:active { transform: scale(0.98); }
+.btn.soft { background: var(--sf2); color: var(--tx); border: 1px solid var(--ln); box-shadow: none; }
+.btn.ghost { background: transparent; color: var(--tx); border: 1px solid var(--ln); box-shadow: none; }
+.card { background: var(--sf); border-radius: 16px; padding: 16px; border: 1px solid var(--ln); margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+.in { width: 100%; padding: 12px; border-radius: 10px; box-sizing: border-box; outline: none; font-size: 14px; }
+.in:focus { border-color: #d4af37; box-shadow: 0 0 0 3px rgba(212,175,55,0.2); }
+.fld { display: flex; flex-direction: column; gap: 6px; }
+.hide { display: none !important; }
+.wrap { padding: 16px; }
+.appbar { display: flex; align-items: center; justify-content: space-between; padding: 16px; background: var(--sf); border-bottom: 1px solid var(--ln); }
+.appbar h1 { margin: 0; font-size: 18px; color: var(--tx); }
+.icb { background: none; border: none; color: var(--tx); font-size: 20px; cursor: pointer; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; }
+.tgl { position: relative; display: inline-block; width: 50px; height: 26px; }
+.tgl input { opacity: 0; width: 0; height: 0; }
+.tgl i { position: absolute; cursor: pointer; inset: 0; background-color: var(--sf2); transition: .3s; border-radius: 34px; border: 1px solid var(--ln); }
+.tgl i:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 3px; background-color: var(--mu); transition: .3s; border-radius: 50%; }
+.tgl input:checked + i { background-color: #d4af37; }
+.tgl input:checked + i:before { transform: translateX(24px); background-color: #06140f; }
 </style>
 <style id="xm-kit">html[data-x=mono]{--bg:#f5f5f4;--sf:#fff;--sf2:#efefee;--tx:#0a0a0a;--mu:#737373;--ln:rgba(0,0,0,.08);--p:#0a0a0a;--p2:#3f3f46;--pg:linear-gradient(135deg,#0a0a0a,#3f3f46);--pt:rgba(0,0,0,.06);--glow:0 12px 28px rgba(0,0,0,.25)}
 html[data-x=neon]{--bg:#050505;--sf:#111113;--sf2:#18181b;--tx:#fafafa;--mu:#8b8b94;--ln:rgba(255,255,255,.08);--p:#b6ff3b;--p2:#22d3a6;--pg:linear-gradient(135deg,#b6ff3b,#22d3a6);--pt:rgba(182,255,59,.12);--glow:0 0 30px rgba(182,255,59,.35);color-scheme:dark}
@@ -279,17 +298,17 @@ var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimatio
     <!-- بطاقات أفقية موحدة لتوفير المساحة البصرية -->
     <div style="display: flex; gap: 8px; margin-bottom: 20px;">
       <div class="card glass" style="flex: 1; padding: 12px; text-align: center; margin-bottom: 0;">
-        <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--sf2); color: var(--p); display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; font-size: 12px;">1</div>
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--sf2); color: #d4af37; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; font-size: 12px;">1</div>
         <b style="font-size: 13px; display: block; margin-bottom: 4px;">اختر الشارت</b>
         <small class="mu" style="font-size: 12px; display: block; line-height: 1.3;">من معرض الصور</small>
       </div>
       <div class="card glass" style="flex: 1; padding: 12px; text-align: center; margin-bottom: 0;">
-        <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--sf2); color: var(--p); display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; font-size: 12px;">2</div>
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--sf2); color: #d4af37; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; font-size: 12px;">2</div>
         <b style="font-size: 13px; display: block; margin-bottom: 4px;">حدد السوق</b>
         <small class="mu" style="font-size: 12px; display: block; line-height: 1.3;">ذهب، فوركس، كريبتو</small>
       </div>
       <div class="card glass" style="flex: 1; padding: 12px; text-align: center; margin-bottom: 0;">
-        <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--sf2); color: var(--p); display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; font-size: 12px;">3</div>
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: var(--sf2); color: #d4af37; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-weight: bold; font-size: 12px;">3</div>
         <b style="font-size: 13px; display: block; margin-bottom: 4px;">التوصية</b>
         <small class="mu" style="font-size: 12px; display: block; line-height: 1.3;">أهداف دقيقة ونجاح</small>
       </div>
@@ -312,7 +331,7 @@ var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimatio
       <div class="preview-box" onclick="document.getElementById('imageInput').click()">
         <img id="imagePreview" class="hide" alt="معاينة الشارت">
         <div id="previewPlaceholder" style="text-align: center; z-index: 2;">
-          <i data-i="image" style="font-size: 40px; color: var(--p);"></i>
+          <i data-i="image" style="font-size: 40px; color: #d4af37;"></i>
           <p style="margin: 8px 0 0; font-weight: bold; font-size: 14px;">📷 حلّل شارت</p>
           <small class="mu" style="font-size: 12px;">اضغط لاختيار صورة من المعرض</small>
         </div>
@@ -372,37 +391,37 @@ var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimatio
       <button class="icb ghost" onclick="switchScreen('home')"><i data-i="x"></i></button>
     </div>
     <div class="wrap">
-      <div id="resultCard" class="card glass" style="text-align: center; margin-bottom: 16px; border-top: 4px solid var(--ok);">
+      <div id="resultCard" class="card glass" style="text-align: center; margin-bottom: 16px; border-top: 4px solid #2ecc71;">
         <span id="resultBadge" class="badge-ok" style="font-size: 16px; padding: 6px 16px; display: inline-block; margin-bottom: 12px;">شراء (BUY)</span>
         <h2 id="resultMarket" style="margin: 0 0 4px; font-size: 18px;">ذهب (XAU/USD) - 1س</h2>
         <p class="mu" style="margin: 0 0 16px; font-size: 12px;">نسبة الثقة: <b id="resultConfidence">92%</b></p>
         <div class="bar" style="background: var(--sf2); height: 6px; border-radius: 3px; overflow: hidden; margin-bottom: 16px;">
-          <i id="resultConfidenceBar" style="display: block; height: 100%; background: var(--ok); width: 92%;"></i>
+          <i id="resultConfidenceBar" style="display: block; height: 100%; background: #2ecc71; width: 92%;"></i>
         </div>
       </div>
 
       <div class="card glass" style="margin-bottom: 16px;">
-        <h3 class="sec" style="margin-top: 0; font-size: 14px;">مستويات التداول الدقيقة (تحليل حقيقي)</h3>
+        <h3 class="sec" style="margin-top: 0; font-size: 14px; color: #f0d78c;">مستويات التداول الدقيقة (تحليل حقيقي)</h3>
         <div class="price-row">
           <div><small class="mu" style="font-size: 12px;">سعر الدخول</small><div id="resEntry" style="font-weight: bold; font-size: 16px;">2345.50</div></div>
           <button class="btn sm soft" onclick="copyText(document.getElementById('resEntry').innerText)" style="font-size: 12px;"><i data-i="check"></i> نسخ</button>
         </div>
         <div class="price-row">
-          <div><small class="mu" style="font-size: 12px;">جني الأرباح 1 (TP1)</small><div id="resTP1" style="font-weight: bold; font-size: 16px; color: var(--ok);">2355.00</div></div>
+          <div><small class="mu" style="font-size: 12px;">جني الأرباح 1 (TP1)</small><div id="resTP1" style="font-weight: bold; font-size: 16px; color: #2ecc71;">2355.00</div></div>
           <button class="btn sm soft" onclick="copyText(document.getElementById('resTP1').innerText)" style="font-size: 12px;"><i data-i="check"></i> نسخ</button>
         </div>
         <div class="price-row">
-          <div><small class="mu" style="font-size: 12px;">جني الأرباح 2 (TP2)</small><div id="resTP2" style="font-weight: bold; font-size: 16px; color: var(--ok);">2365.00</div></div>
+          <div><small class="mu" style="font-size: 12px;">جني الأرباح 2 (TP2)</small><div id="resTP2" style="font-weight: bold; font-size: 16px; color: #2ecc71;">2365.00</div></div>
           <button class="btn sm soft" onclick="copyText(document.getElementById('resTP2').innerText)" style="font-size: 12px;"><i data-i="check"></i> نسخ</button>
         </div>
         <div class="price-row">
-          <div><small class="mu" style="font-size: 12px;">وقف الخسارة (SL)</small><div id="resSL" style="font-weight: bold; font-size: 16px; color: var(--bad);">2338.00</div></div>
+          <div><small class="mu" style="font-size: 12px;">وقف الخسارة (SL)</small><div id="resSL" style="font-weight: bold; font-size: 16px; color: #e74c3c;">2338.00</div></div>
           <button class="btn sm soft" onclick="copyText(document.getElementById('resSL').innerText)" style="font-size: 12px;"><i data-i="check"></i> نسخ</button>
         </div>
       </div>
 
       <div class="card glass" style="margin-bottom: 16px;">
-        <h3 class="sec" style="margin-top: 0; font-size: 14px;">أسباب التوصية الحقيقية</h3>
+        <h3 class="sec" style="margin-top: 0; font-size: 14px; color: #f0d78c;">أسباب التوصية الحقيقية</h3>
         <ul id="resReasons" style="margin: 0; padding-right: 20px; line-height: 1.8; font-size: 12px;">
           <li>تم تحليل الشموع الحالية واستخراج أهداف جني الأرباح ووقف الخسارة بدقة تامة من بيانات الشارت المرفوع.</li>
           <li>تحديد مستويات السيولة والدعم والمقاومة الفعلية الظاهرة في الصورة المرفقة.</li>
@@ -449,10 +468,10 @@ var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimatio
       <button class="btn block" onclick="calculatePosition()" style="margin-bottom: 16px;">حساب حجم الصفقة</button>
 
       <div id="calcResultCard" class="card glass hide">
-        <h3 class="sec" style="margin-top: 0; font-size: 14px;">النتيجة المقترحة</h3>
+        <h3 class="sec" style="margin-top: 0; font-size: 14px; color: #f0d78c;">النتيجة المقترحة</h3>
         <div class="stats" style="display: flex; justify-content: space-between; text-align: center;">
           <div class="stat" style="flex: 1;"><small class="mu" style="font-size: 12px;">المبلغ المخاطر به</small><br><b id="riskAmount" style="font-size: 18px;">$100</b></div>
-          <div class="stat" style="flex: 1;"><small class="mu" style="font-size: 12px;">حجم العقود (Lots)</small><br><b id="lotSize" style="font-size: 18px; color: var(--p);">0.13 لوت</b></div>
+          <div class="stat" style="flex: 1;"><small class="mu" style="font-size: 12px;">حجم العقود (Lots)</small><br><b id="lotSize" style="font-size: 18px; color: #f0d78c;">0.13 لوت</b></div>
         </div>
       </div>
     </div>
@@ -472,11 +491,11 @@ var pend=0;new MutationObserver(function(){if(pend)return;pend=1;requestAnimatio
         <!-- يتم تعبئتها ديناميكياً أو عرض الحالة الفارغة -->
       </div>
       
-      <div id="historyEmpty" class="empty" style="display: none;">
-        <span class="e">📭</span>
-        <b>لا توجد تحليلات سابقة</b>
+      <div id="historyEmpty" class="empty" style="display: none; text-align: center; padding: 40px 0;">
+        <span class="e" style="font-size: 40px;">📭</span>
+        <b style="display: block; margin-top: 10px;">لا توجد تحليلات سابقة</b>
         <p class="mu" style="font-size: 12px;">ابدأ بتحليل أول شارت لتظهر النتائج هنا</p>
-        <button class="btn sm" onclick="switchScreen('home')" style="font-size: 12px;">حلّل الآن</button>
+        <button class="btn sm" onclick="switchScreen('home')" style="font-size: 12px; margin-top: 10px;">حلّل الآن</button>
       </div>
     </div>
   </div>
@@ -555,7 +574,7 @@ window.DS = {
   },
   toast: (msg) => {
     let t = document.createElement('div');
-    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--sf);color:var(--tx);padding:10px 20px;border-radius:20px;box-shadow:0 4px 12px rgba(0,0,0,0.2);z-index:9999;font-size:13px;border:1px solid var(--ln);';
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--sf);color:var(--tx);padding:10px 20px;border-radius:20px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:9999;font-size:13px;border:1px solid var(--ln);';
     t.innerText = msg;
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2500);
@@ -725,7 +744,7 @@ async function startAnalysis() {
     if(resConfidence) resConfidence.innerText = (analysis.confidence || 85) + '%';
     if(resConfidenceBar) resConfidenceBar.style.width = (analysis.confidence || 85) + '%';
     if(resultCard) {
-      resultCard.style.borderTopColor = analysis.decision === 'شراء' ? 'var(--ok)' : (analysis.decision === 'بيع' ? 'var(--bad)' : 'var(--mu)');
+      resultCard.style.borderTopColor = analysis.decision === 'شراء' ? '#2ecc71' : (analysis.decision === 'بيع' ? '#e74c3c' : '#f1c40f');
     }
 
     let resEntry = document.getElementById('resEntry');
@@ -934,7 +953,7 @@ function toggleTheme(el) {
 }
 </script>
 <script id="apk-upd">(function(){
-var CUR=5,U="https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/awad23aljied/update.json";
+var CUR=6,U="https://raw.githubusercontent.com/alkahlizero564-sudo/apk-app/main/apps/awad23aljied/update.json";
 function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){}return null}
 function show(j){
   var force=!!j.force;
