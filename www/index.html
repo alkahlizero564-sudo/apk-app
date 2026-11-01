@@ -6089,7 +6089,7 @@ async function diagnose(){
         item(E,own?'ok':'warn',w[0]+': '+(v?'v'+v:'إصدار غير معروف')+' — '+(own?'مفتاح لكل تطبيق':'مفتاح عشوائي أو مشترك'));
       }
       const cf=await ghFile(repo,br,'.github/workflows/check-flutter.yml');
-      item(E,(cf!==null&&cf.indexOf('# ck4')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck4')>-1?'الأحدث (ck4)':'قديم، بيتحدث تلقائياً عند أول فحص')));
+      item(E,(cf!==null&&cf.indexOf('# ck5')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck5')>-1?'الأحدث (ck5)':'قديم، بيتحدث تلقائياً عند أول فحص')));
       try{
         const ks=await gh('/repos/'+repo+'/contents/keys?ref='+br);
         const n=(Array.isArray(ks)?ks:[]).filter(function(f){return /\.keystore$/.test(f.name)});
@@ -6204,7 +6204,8 @@ render=function(){
 function maxFix(){const v=parseInt(S.keys.maxFix3,10);return (v>=1&&v<=100)?v:30}
 function stallN(){const v=parseInt(S.keys.stall3,10);return (v>=3&&v<=50)?v:10}
 
-const CK_FL=`# ck4
+const CK_FL=`# ck5
+# ck4
 # ck3
 # ck2
 # ck1
@@ -6236,8 +6237,14 @@ jobs:
           cp apps/$APP/main.dart flutter_out/lib/main.dart
           if [ -f apps/$APP/push.dart ]; then cp apps/$APP/push.dart flutter_out/lib/push.dart; fi
           cd flutter_out
-          if grep -q "package:url_launcher" lib/main.dart; then flutter pub add url_launcher; fi
-          if grep -qs "package:firebase_messaging" lib/push.dart; then flutter pub add firebase_core firebase_messaging; fi
+          ALLOW="http shared_preferences path_provider path sqflite intl url_launcher provider google_fonts fl_chart image_picker file_picker share_plus uuid connectivity_plus package_info_plus device_info_plus geolocator permission_handler cached_network_image flutter_svg lottie audioplayers video_player webview_flutter mobile_scanner qr_flutter local_auth flutter_local_notifications timezone collection crypto table_calendar shimmer flutter_animate animations pdf printing csv firebase_core firebase_messaging"
+          PKGS=$(cat lib/*.dart | grep -oE "^[[:space:]]*(import|export)[[:space:]]+['\\"]package:[a-z0-9_]+/" | grep -oE "package:[a-z0-9_]+" | cut -d: -f2 | sort -u)
+          ADD=""; BAD=""
+          for p in $PKGS; do
+            case "$p" in flutter|flutter_test|app_$APP) continue ;; flutter_localizations) flutter pub add flutter_localizations --sdk=flutter; continue ;; esac
+            if echo " $ALLOW " | grep -q " $p "; then ADD="$ADD $p"; else BAD="$BAD $p"; fi
+          done
+          if [ -n "$ADD" ]; then flutter pub add $ADD; fi
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
           cd ..
@@ -6245,6 +6252,10 @@ jobs:
           DSL=$(grep -n "^// ===== نظام التصميم الجاهز" $F | head -n 1 | cut -d: -f1)
           UPL=$(grep -n "^// ===== تحديث التطبيق" $F | head -n 1 | cut -d: -f1)
           : > errs.txt
+          for p in $BAD; do
+            L=$(grep -n "package:$p/" $F | head -n 1 | cut -d: -f1)
+            echo "[APP]   error • Package '$p' is not available in this builder. Remove it and use only: $ALLOW • lib/main.dart:\${L:-1}:1 • unsupported_package" >> errs.txt
+          done
           grep -E "^[[:space:]]*error" analyze.txt | while IFS= read -r line; do
             L=$(echo "$line" | grep -o "main.dart:[0-9]*" | head -n 1 | cut -d: -f2)
             T=APP
@@ -6264,7 +6275,8 @@ jobs:
           fi
 `;
 
-const CK_PY=`# ck1
+const CK_PY=`# ck2
+# ck1
 name: check-python
 on:
   workflow_dispatch:
@@ -6291,6 +6303,25 @@ jobs:
           : > errs.txt
           python -m py_compile apps/$APP/main.py 2> comp.txt || cat comp.txt >> errs.txt
           python -m pyflakes apps/$APP/main.py 2>&1 | grep -v -E "imported but unused|unable to detect undefined names|may be undefined, or defined from star|redefinition of unused|assigned to but never used|f-string is missing placeholders" >> errs.txt || true
+          python - apps/$APP/main.py >> errs.txt <<'EOF' || true
+          import ast, sys
+          p = sys.argv[1]
+          OK = {'kivy', 'kivymd', 'certifi', 'requests', 'PIL', 'plyer', 'arabic_reshaper', 'bidi', 'apkar', 'jnius', 'android', 'numpy', 'dateutil', 'qrcode', 'pytz', 'six'}
+          std = set(sys.stdlib_module_names)
+          try:
+              t = ast.parse(open(p, encoding='utf-8').read())
+          except Exception:
+              sys.exit(0)
+          for n in ast.walk(t):
+              ms = []
+              if isinstance(n, ast.Import):
+                  ms = [a.name.split('.')[0] for a in n.names]
+              elif isinstance(n, ast.ImportFrom) and n.module and not n.level:
+                  ms = [n.module.split('.')[0]]
+              for m in ms:
+                  if m not in OK and m not in std:
+                      print(p + ':' + str(n.lineno) + ": module '" + m + "' is not available in this builder. Use only the standard library and: " + ', '.join(sorted(OK)))
+          EOF
           if [ -s errs.txt ]; then
             echo APKERR_START
             cat errs.txt
@@ -6300,8 +6331,8 @@ jobs:
 `;
 
 const CK={
-  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck4',main:'main.dart',name:'Flutter',min:'2-4'},
-  python:{file:'check-python.yml',yaml:CK_PY,mk:'# ck1',main:'main.py',name:'Python',min:'1'}
+  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck5',main:'main.dart',name:'Flutter',min:'2-4'},
+  python:{file:'check-python.yml',yaml:CK_PY,mk:'# ck2',main:'main.py',name:'Python',min:'1'}
 };
 
 const DS_SIG=[
@@ -9465,9 +9496,10 @@ render=function(){
   }
 };
 })();
-/* ===== إضافة: ملفات بناء Flutter الأحدث (v7: الإشعارات + fcm_config.py) ===== */
+/* ===== إضافة: ملفات البناء الأحدث (Flutter v8 وPython v8: مكتبات تلقائية + دعم العربي) ===== */
 (function(){
-const WF_FLUTTER7=`# v7
+const WF_FLUTTER8=`# v8
+# v7 compatible
 # v6 compatible
 # v5 compatible
 # v4 compatible
@@ -9545,9 +9577,6 @@ jobs:
           flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
           cp apps/$APP/main.dart flutter_out/lib/main.dart
           if [ -f apps/$APP/push.dart ]; then cp apps/$APP/push.dart flutter_out/lib/push.dart; fi
-          if grep -q "package:url_launcher" apps/$APP/main.dart; then
-            (cd flutter_out && flutter pub add url_launcher)
-          fi
           MF=flutter_out/android/app/src/main/AndroidManifest.xml
           sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/><application|' $MF
           sed -i "/applicationId/s|com.myapps.app_$APP|$PKG|" flutter_out/android/app/build.gradle*
@@ -9602,6 +9631,44 @@ jobs:
               cp apps/$APP/icon.png flutter_out/android/app/src/main/res/$d/ic_launcher.png
             done
           fi
+      - name: packages
+        run: |
+          ALLOW="http shared_preferences path_provider path sqflite intl url_launcher provider google_fonts fl_chart image_picker file_picker share_plus uuid connectivity_plus package_info_plus device_info_plus geolocator permission_handler cached_network_image flutter_svg lottie audioplayers video_player webview_flutter mobile_scanner qr_flutter local_auth flutter_local_notifications timezone collection crypto table_calendar shimmer flutter_animate animations pdf printing csv firebase_core firebase_messaging"
+          PKGS=$(cat flutter_out/lib/*.dart | grep -oE "^[[:space:]]*(import|export)[[:space:]]+['\\"]package:[a-z0-9_]+/" | grep -oE "package:[a-z0-9_]+" | cut -d: -f2 | sort -u)
+          ADD=""; BAD=""; LOC=0
+          for p in $PKGS; do
+            case "$p" in flutter|flutter_test|app_$APP) continue ;; flutter_localizations) LOC=1; continue ;; esac
+            if echo " $ALLOW " | grep -q " $p "; then ADD="$ADD $p"; else BAD="$BAD $p"; fi
+          done
+          if [ -n "$BAD" ]; then echo "::error::unsupported packages:$BAD"; exit 1; fi
+          echo "packages:$ADD"
+          cd flutter_out
+          if [ -n "$ADD" ]; then flutter pub add $ADD; fi
+          if [ "$LOC" = "1" ]; then flutter pub add flutter_localizations --sdk=flutter; fi
+          [ -z "$ADD" ] && exit 0
+          MF=android/app/src/main/AndroidManifest.xml
+          G=$(ls android/app/build.gradle* | head -n 1)
+          has(){ echo " $ADD " | grep -q " $1 "; }
+          perm(){ grep -q "android.permission.$1\\"" $MF || sed -i "s|<application|<uses-permission android:name=\\"android.permission.$1\\"/><application|" $MF; }
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = maxOf(flutter.minSdkVersion, 23)/; s/minSdkVersion flutter.minSdkVersion/minSdkVersion Math.max(flutter.minSdkVersion, 23)/' "$G"
+          if has geolocator; then perm ACCESS_FINE_LOCATION; perm ACCESS_COARSE_LOCATION; fi
+          if has image_picker || has mobile_scanner; then perm CAMERA; fi
+          if has flutter_local_notifications; then perm POST_NOTIFICATIONS; perm RECEIVE_BOOT_COMPLETED; perm VIBRATE; fi
+          if has local_auth; then
+            perm USE_BIOMETRIC
+            for f in $(find android/app/src/main -name "MainActivity.*"); do sed -i 's/\\bFlutterActivity\\b/FlutterFragmentActivity/g' "$f"; done
+          fi
+          if has url_launcher; then
+            sed -i 's|</manifest>|<queries><intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent><intent><action android:name="android.intent.action.DIAL"/><data android:scheme="tel"/></intent><intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="mailto"/></intent><intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="smsto"/></intent></queries></manifest>|' $MF
+          fi
+          if has flutter_local_notifications; then
+            if [[ "$G" == *.kts ]]; then
+              printf '\\nandroid {\\n    compileOptions {\\n        isCoreLibraryDesugaringEnabled = true\\n    }\\n}\\ndependencies {\\n    add("coreLibraryDesugaring", "com.android.tools:desugar_jdk_libs:2.1.4")\\n}\\n' >> "$G"
+            else
+              printf '\\nandroid {\\n    compileOptions {\\n        coreLibraryDesugaringEnabled true\\n    }\\n}\\ndependencies {\\n    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"\\n}\\n' >> "$G"
+            fi
+          fi
+          echo "--- manifest ---"; grep -o 'android.permission.[A-Z_]*' $MF | sort -u
       - name: push notifications (FCM)
         run: |
           if ! grep -qs on apps/$APP/push.txt; then echo "push notifications: off"; exit 0; fi
@@ -9616,11 +9683,11 @@ jobs:
           if [[ "$SG" == *.kts ]]; then
             grep -q google-services "$SG" || sed -i 's|^\\(\\s*\\)id("com.android.application") version\\(.*\\)$|&\\n\\1id("com.google.gms.google-services") version "4.4.2" apply false|' "$SG"
             grep -q google-services "$G" || sed -i '0,/id("com.android.application")/s//id("com.android.application")\\n    id("com.google.gms.google-services")/' "$G"
-            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = maxOf(flutter.minSdkVersion, 23)/' "$G"
           else
             grep -q google-services "$SG" || sed -i 's|^\\(\\s*\\)id "com.android.application" version\\(.*\\)$|&\\n\\1id "com.google.gms.google-services" version "4.4.2" apply false|' "$SG"
             grep -q google-services "$G" || sed -i '0,/id "com.android.application"/s//id "com.android.application"\\n    id "com.google.gms.google-services"/' "$G"
-            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/; s/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
+            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion Math.max(flutter.minSdkVersion, 23)/; s/minSdk = flutter.minSdkVersion/minSdk = maxOf(flutter.minSdkVersion, 23)/' "$G"
           fi
           echo "--- gradle ---"; grep -n "google-services\\|minSdk" "$SG" "$G" || true
           MF=flutter_out/android/app/src/main/AndroidManifest.xml
@@ -9646,10 +9713,257 @@ jobs:
           echo "keystore: $K"
           if [ -n "$A" ] && [ "$A" = "$K" ]; then echo "SIGNING OK: this app uses its own key"; else echo "SIGNING MISMATCH"; fi
       - name: release
+        if: github.ref_name == github.event.repository.default_branch
         uses: softprops/action-gh-release@v2
         with:
           tag_name: flutter-\${{ inputs.app }}-build-\${{ github.run_number }}
           files: flutter_out/build/app/outputs/flutter-apk/app-release.apk
+`;
+const WF_PYTHON8=`# v8
+# v7 compatible
+# v6 compatible
+# v5 compatible
+# v4 compatible
+# v3 compatible
+# v2 compatible
+name: build-python
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk autoconf libtool pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.36 virtualenv
+      - name: restore buildozer global cache
+        id: gcache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-global-v5
+      - name: cache app build
+        uses: actions/cache@v4
+        with:
+          path: apps/\${{ inputs.app }}/.buildozer
+          key: buildozer-app-v5-\${{ inputs.app }}
+      - name: app signing key
+        env:
+          KEYS_TOKEN: \${{ secrets.KEYS_TOKEN }}
+        run: |
+          if [ -z "$KEYS_TOKEN" ]; then echo "::error::KEYS_TOKEN secret is missing (Settings > Secrets and variables > Actions)"; exit 1; fi
+          OWNER="\${GITHUB_REPOSITORY%%/*}"
+          KR="$RUNNER_TEMP/keysrepo"
+          rm -rf "$KR"
+          git clone --depth 1 "https://x-access-token:$KEYS_TOKEN@github.com/$OWNER/apk-app-backup.git" "$KR" || { echo "::error::cannot open private repo $OWNER/apk-app-backup"; exit 1; }
+          mkdir -p "$KR/keys" keys
+          KS="$KR/keys/$APP.keystore"
+          PR="$KR/keys/$APP.properties"
+          if [ ! -f "$KS" ] || [ ! -f "$PR" ]; then
+            PASS=$(openssl rand -hex 12)
+            rm -f "$KS" "$PR"
+            keytool -genkeypair -keystore "$KS" -storetype PKCS12 -storepass "$PASS" -keypass "$PASS" -alias appkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=$APP, O=MyApps, C=SD"
+            echo "pass=$PASS" > "$PR"
+            cd "$KR"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -f "keys/$APP.keystore" "keys/$APP.properties"
+            git commit -m "add signing key for $APP"
+            BR=$(git rev-parse --abbrev-ref HEAD)
+            PUSHED=0
+            for n in 1 2 3 4 5; do
+              git pull --rebase origin "$BR" && git push origin "HEAD:$BR" && { PUSHED=1; break; }
+              echo "push attempt $n failed"
+              sleep 5
+            done
+            cd "$GITHUB_WORKSPACE"
+            if [ "$PUSHED" != "1" ]; then echo "::error::failed to save the signing key to apk-app-backup"; exit 1; fi
+            echo "NEW private signing key created for $APP"
+          else
+            echo "using private signing key for $APP"
+          fi
+          echo "::add-mask::$(grep '^pass=' "$PR" | cut -d= -f2)"
+          rm -f "keys/$APP.keystore" "keys/$APP.properties"
+          cp "$KS" "keys/$APP.keystore"
+          cp "$PR" "keys/$APP.properties"
+      - name: signing key
+        run: |
+          PASS=$(grep '^pass=' keys/$APP.properties | cut -d= -f2)
+          mkdir -p ~/.android
+          rm -f ~/.android/debug.keystore
+          keytool -importkeystore -noprompt -srckeystore keys/$APP.keystore -srcstorepass "$PASS" -srcalias appkey -srckeypass "$PASS" -destkeystore ~/.android/debug.keystore -deststorepass android -destalias androiddebugkey -destkeypass android -deststoretype PKCS12 || { echo "signing key import FAILED"; exit 1; }
+          echo "signing key imported for $APP"
+      - name: libraries and arabic support
+        working-directory: apps/\${{ inputs.app }}
+        run: |
+          python3 - <<'EOF'
+          import ast, sys, json
+          src = open('main.py', encoding='utf-8').read()
+          mods = set()
+          for n in ast.walk(ast.parse(src)):
+              if isinstance(n, ast.Import):
+                  mods.update(a.name.split('.')[0] for a in n.names)
+              elif isinstance(n, ast.ImportFrom) and n.module and not n.level:
+                  mods.add(n.module.split('.')[0])
+          MAP = {
+              'requests': ['requests', 'urllib3', 'charset-normalizer', 'idna'],
+              'kivymd': ['kivymd==1.2.0', 'pillow'],
+              'PIL': ['pillow'],
+              'plyer': ['plyer'],
+              'sqlite3': ['sqlite3'],
+              'numpy': ['numpy'],
+              'dateutil': ['python-dateutil'],
+              'qrcode': ['qrcode', 'pillow'],
+              'pytz': ['pytz'],
+              'jnius': ['pyjnius'],
+              'android': ['android'],
+          }
+          req = ['python3', 'kivy==2.3.0', 'certifi', 'six', 'arabic-reshaper==3.0.0', 'python-bidi==0.4.2']
+          for m in sorted(mods):
+              for r in MAP.get(m, []):
+                  if r not in req:
+                      req.append(r)
+          perms = ['INTERNET']
+          low = src.lower()
+          if 'plyer' in mods and ('gps' in low or 'location' in low):
+              perms += ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION']
+          if 'camera' in low and ('plyer' in mods or 'kivy.uix.camera' in src):
+              perms += ['CAMERA']
+          if 'vibrator' in low:
+              perms += ['VIBRATE']
+          if 'notification' in low and 'plyer' in mods:
+              perms += ['POST_NOTIFICATIONS']
+          if 'audio' in low and 'plyer' in mods:
+              perms += ['RECORD_AUDIO']
+          open('/tmp/req.txt', 'w').write(','.join(req))
+          open('/tmp/perms.txt', 'w').write(','.join(dict.fromkeys(perms)))
+          print('requirements:', ','.join(req))
+          print('permissions:', ','.join(dict.fromkeys(perms)))
+          lines = src.split('\\n')
+          if not any(l.strip() in ('import apkar',) or l.strip().startswith('from apkar import') for l in lines):
+              i = 0
+              while i < len(lines) and (lines[i].startswith('#') or lines[i].startswith('from __future__') or not lines[i].strip()):
+                  i += 1
+              lines.insert(i, 'import apkar')
+              open('main.py', 'w', encoding='utf-8').write('\\n'.join(lines))
+          EOF
+          cat > apkar.py <<'EOF'
+          # Arabic support for Kivy (added automatically by the builder)
+          import os
+          from kivy.core.text import LabelBase, DEFAULT_FONT
+          _d = os.path.dirname(os.path.abspath(__file__))
+          _r = os.path.join(_d, 'apk_font_regular.ttf')
+          _b = os.path.join(_d, 'apk_font_bold.ttf')
+          FONT = _r if os.path.exists(_r) else None
+          if FONT:
+              LabelBase.register(DEFAULT_FONT, _r, fn_bold=_b if os.path.exists(_b) else _r)
+              LabelBase.register('Arabic', _r, fn_bold=_b if os.path.exists(_b) else _r)
+          try:
+              import arabic_reshaper
+              from bidi.algorithm import get_display
+              def ar(text):
+                  text = '' if text is None else str(text)
+                  return '\\n'.join(get_display(arabic_reshaper.reshape(t)) for t in text.split('\\n'))
+          except Exception:
+              def ar(text):
+                  return '' if text is None else str(text)
+          EOF
+          GF=https://github.com/google/fonts/raw/main/ofl/tajawal
+          if curl -fsSL --retry 3 -o apk_font_regular.ttf "$GF/Tajawal-Regular.ttf" && curl -fsSL --retry 3 -o apk_font_bold.ttf "$GF/Tajawal-Bold.ttf"; then
+            echo "font: Tajawal"
+          else
+            cp /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf apk_font_regular.ttf
+            cp /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf apk_font_bold.ttf
+            echo "font: DejaVu (fallback)"
+          fi
+          head -n 5 main.py
+      - name: write spec
+        working-directory: apps/\${{ inputs.app }}
+        run: |
+          PKG=$(cat pkg.txt 2>/dev/null | tr -d '[:space:]')
+          if [ -z "$PKG" ]; then PKG=com.myapps.app$APP; fi
+          NAM=$(echo "$PKG" | awk -F. '{print $NF}')
+          DOM=$(echo "$PKG" | sed 's/\\.[^.]*$//')
+          LABEL=$(jq -r '.label // empty' settings.json 2>/dev/null || true)
+          if [ -z "$LABEL" ]; then LABEL=$APP; fi
+          ORI=$(jq -r '.ori // "auto"' settings.json 2>/dev/null || echo auto)
+          case "$ORI" in
+            portrait) OR=portrait ;;
+            landscape) OR=landscape ;;
+            *) OR=all ;;
+          esac
+          VN=$(jq -r '.versionName // "1.0"' settings.json 2>/dev/null || echo 1.0)
+          VC=$(jq -r '.versionCode // 1' settings.json 2>/dev/null || echo 1)
+          REQ=$(cat /tmp/req.txt)
+          PERMS=$(cat /tmp/perms.txt)
+          cat > buildozer.spec <<EOF
+          [app]
+          title = $LABEL
+          package.name = $NAM
+          package.domain = $DOM
+          source.dir = .
+          source.include_exts = py,png,jpg,kv,atlas,json,ttf
+          version = $VN
+          requirements = $REQ
+          orientation = $OR
+          fullscreen = 0
+          android.numeric_version = $VC
+          android.permissions = $PERMS
+          android.api = 33
+          android.minapi = 24
+          android.archs = arm64-v8a
+          android.accept_sdk_license = True
+          [buildozer]
+          log_level = 2
+          warn_on_root = 1
+          EOF
+          sed -i 's/^ *//' buildozer.spec
+          if [ -f icon.png ]; then sed -i '/^\\[app\\]/a icon.filename = %(source.dir)s/icon.png' buildozer.spec; fi
+      - name: build
+        working-directory: apps/\${{ inputs.app }}
+        run: buildozer -v android debug
+      - name: verify signing
+        if: always()
+        continue-on-error: true
+        run: |
+          APK=$(ls apps/$APP/bin/*.apk 2>/dev/null | head -n 1)
+          if [ -z "$APK" ]; then echo "no apk to verify"; exit 0; fi
+          AS=$(ls ~/.buildozer/android/platform/android-sdk/build-tools/*/apksigner 2>/dev/null | tail -n 1)
+          if [ -z "$AS" ]; then echo "apksigner not found"; exit 0; fi
+          PASS=$(grep '^pass=' keys/$APP.properties | cut -d= -f2)
+          A=$("$AS" verify --print-certs "$APK" | grep -i "SHA-256 digest" | head -n 1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          K=$(keytool -list -v -keystore keys/$APP.keystore -storepass "$PASS" -alias appkey 2>/dev/null | grep -i "SHA256:" | head -n 1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          echo "apk:      $A"
+          echo "keystore: $K"
+          if [ -n "$A" ] && [ "$A" = "$K" ]; then echo "SIGNING OK: this app uses its own key"; else echo "SIGNING MISMATCH"; fi
+      - name: save buildozer global cache
+        if: always() && steps.gcache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.buildozer
+          key: buildozer-global-v5
+      - name: release
+        if: github.ref_name == github.event.repository.default_branch
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: python-\${{ inputs.app }}-build-\${{ github.run_number }}
+          files: apps/\${{ inputs.app }}/bin/*.apk
 `;
 const FCM_PY=`# يجيب google-services.json لتطبيق أندرويد من مشروع Firebase (عبر مفتاح Service account)
 import json, sys, time, base64, subprocess, urllib.request, urllib.parse, urllib.error, tempfile, os
@@ -9695,21 +10009,41 @@ elif apps:
 else:
     sys.exit("no android app in firebase project " + P + " and could not create one. Add any Android app in Firebase console.")
 `;
-if(typeof WF!=='undefined'&&WF.flutter)WF.flutter.yaml=WF_FLUTTER7;
-async function ensureWf7(){
-  if(typeof WF==='undefined'||!WF.flutter)return;
+if(typeof WF!=='undefined'){if(WF.flutter)WF.flutter.yaml=WF_FLUTTER8;if(WF.python)WF.python.yaml=WF_PYTHON8}
+async function ensureWf8(l){
+  if(typeof WF==='undefined'||!WF[l])return;
   const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
   async function cur(p){try{const f=await gh('/repos/'+repo+'/contents/'+p+'?ref='+br);const t=atob(String(f.content||'').replace(/\s/g,''));try{return decodeURIComponent(escape(t))}catch(_){return t}}catch(e){if(e.status!==404)throw e;return null}}
   let ch=false;
-  if((await cur('.github/fcm_config.py'))===null){await put(repo,br,'.github/fcm_config.py',FCM_PY);ch=true}
-  const w=await cur('.github/workflows/'+WF.flutter.file);
-  if(w===null||w.indexOf('# v7')<0){await put(repo,br,'.github/workflows/'+WF.flutter.file,WF_FLUTTER7);ch=true}
+  if(l==='flutter'&&(await cur('.github/fcm_config.py'))===null){await put(repo,br,'.github/fcm_config.py',FCM_PY);ch=true}
+  const w=await cur('.github/workflows/'+WF[l].file);
+  if(w===null||w.indexOf('# v8')<0){await put(repo,br,'.github/workflows/'+WF[l].file,WF[l].yaml);ch=true}
   if(ch)await sleep(5000);
 }
-const _bn7=buildNative;
+const _bn8=buildNative;
 buildNative=async function(i,l){
-  if(l==='flutter'&&S.keys.ghToken){try{await ensureWf7()}catch(e){return toast(arErr(e))}}
-  return _bn7(i,l);
+  if((l==='flutter'||l==='python')&&S.keys.ghToken){try{await ensureWf8(l)}catch(e){return toast(arErr(e))}}
+  return _bn8(i,l);
+};
+
+/* تعريف الذكاء الاصطناعي بالمكتبات المتاحة */
+const FL_LIBS='\n\n=== مكتبات Flutter المتاحة (تُنزَّل وتُضبط تلقائياً وقت البناء مع صلاحيات أندرويد اللازمة) ===\nيمكنك استخدام هذه الحزم فقط عند الحاجة الفعلية (import \'package:الاسم/...\'): http, shared_preferences, path_provider, path, sqflite, intl, url_launcher, provider, google_fonts, fl_chart, image_picker, file_picker, share_plus, uuid, connectivity_plus, package_info_plus, device_info_plus, geolocator, permission_handler, cached_network_image, flutter_svg, lottie, audioplayers, video_player, webview_flutter, mobile_scanner, qr_flutter, local_auth, flutter_local_notifications, timezone, collection, crypto, table_calendar, shimmer, flutter_animate, animations, pdf, printing, csv, flutter_localizations.\nأمثلة: shared_preferences أو sqflite للحفظ الدائم، intl للتواريخ والأرقام، fl_chart للرسوم البيانية، image_picker للصور، url_launcher للاتصال والروابط وواتساب، share_plus للمشاركة، geolocator للموقع، pdf وprinting للفواتير، flutter_local_notifications للتنبيهات المحلية، google_fonts لخطوط عربية جميلة (مثل GoogleFonts.cairo أو tajawal). أي حزمة غير هذه ممنوعة. استخدم واجهة الحزم الحديثة (الإصدارات الأخيرة).';
+const PY_LIBS='\n\n=== مكتبات Python المتاحة (تُنزَّل تلقائياً وقت البناء) ===\nالمكتبة القياسية لبايثون، وkivy 2.3، وkivymd 1.2، وcertifi، وrequests، وPIL (pillow)، وplyer (gps وcamera وvibrator وnotification...)، وsqlite3، وnumpy، وdateutil، وqrcode، وpytz. أي مكتبة غير هذه ممنوعة.\nالعربي (مهم جداً): الخط العربي مضبوط تلقائياً كخط افتراضي، لكن Kivy لا يربط الحروف العربية بنفسه، لذلك أضف from apkar import ar في أول الملف ومرّر كل نص عربي معروض عبر ar() مثل Label(text=ar("مرحباً")) وButton(text=ar("حفظ"))، ولا تمرر النص عبر ar() مرتين، ولا تستخدمها مع النصوص المخزنة أو المرسلة للسيرفر.';
+function libsOn(p){
+  return p.replace(/بدون أي حزم خارجية غير flutter\/material\.dart/g,'مستخدماً flutter/material.dart والحزم المتاحة المذكورة في آخر الطلب فقط')
+   .replace(/وبدون حزم خارجية غير flutter\/material\.dart/g,'وبدون حزم غير flutter/material.dart والحزم المتاحة المذكورة في آخر الطلب')
+   .replace(/لا حزم خارجية غير flutter\/material\.dart/g,'لا حزم غير flutter/material.dart والحزم المتاحة المذكورة في آخر الطلب')
+   .replace(/ومن غير أي حزم خارجية\./g,'.');
+}
+const _ai8=ai;
+ai=function(p){
+  try{
+    if(typeof p==='string'&&!S.keys.noLibs8){
+      if(p.indexOf(BT+'dart')>-1&&p.indexOf('=== مكتبات Flutter المتاحة')<0)p=libsOn(p)+FL_LIBS;
+      else if(p.indexOf(BT+'python')>-1&&p.indexOf('=== مكتبات Python المتاحة')<0)p=p+PY_LIBS;
+    }
+  }catch(e){}
+  return _ai8(p);
 };
 })();
 render();

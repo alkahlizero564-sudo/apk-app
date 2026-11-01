@@ -1,4 +1,6 @@
 import json
+import requests
+from apkar import ar
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -92,7 +94,7 @@ class OrderScreen(Screen):
         card = CardLayout(size_hint_y=None)
         card.bind(minimum_height=card.setter('height'))
 
-        card.add_widget(Label(text='اسم المتبوع / الموظف:', font_size='14sp', color=GRAY_TEXT, size_hint_y=None, height=25, halign='right'))
+        card.add_widget(Label(text=ar('اسم المتبوع / الموظف:'), font_size='14sp', color=GRAY_TEXT, size_hint_y=None, height=25, halign='right'))
         self.name_input = TextInput(
             hint_text='أدخل اسمك الثلاثي',
             multiline=False,

@@ -1,4 +1,5 @@
-# v7
+# v8
+# v7 compatible
 # v6 compatible
 # v5 compatible
 # v4 compatible
@@ -76,9 +77,6 @@ jobs:
           flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
           cp apps/$APP/main.dart flutter_out/lib/main.dart
           if [ -f apps/$APP/push.dart ]; then cp apps/$APP/push.dart flutter_out/lib/push.dart; fi
-          if grep -q "package:url_launcher" apps/$APP/main.dart; then
-            (cd flutter_out && flutter pub add url_launcher)
-          fi
           MF=flutter_out/android/app/src/main/AndroidManifest.xml
           sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/><application|' $MF
           sed -i "/applicationId/s|com.myapps.app_$APP|$PKG|" flutter_out/android/app/build.gradle*
@@ -133,6 +131,44 @@ jobs:
               cp apps/$APP/icon.png flutter_out/android/app/src/main/res/$d/ic_launcher.png
             done
           fi
+      - name: packages
+        run: |
+          ALLOW="http shared_preferences path_provider path sqflite intl url_launcher provider google_fonts fl_chart image_picker file_picker share_plus uuid connectivity_plus package_info_plus device_info_plus geolocator permission_handler cached_network_image flutter_svg lottie audioplayers video_player webview_flutter mobile_scanner qr_flutter local_auth flutter_local_notifications timezone collection crypto table_calendar shimmer flutter_animate animations pdf printing csv firebase_core firebase_messaging"
+          PKGS=$(cat flutter_out/lib/*.dart | grep -oE "^[[:space:]]*(import|export)[[:space:]]+['\"]package:[a-z0-9_]+/" | grep -oE "package:[a-z0-9_]+" | cut -d: -f2 | sort -u)
+          ADD=""; BAD=""; LOC=0
+          for p in $PKGS; do
+            case "$p" in flutter|flutter_test|app_$APP) continue ;; flutter_localizations) LOC=1; continue ;; esac
+            if echo " $ALLOW " | grep -q " $p "; then ADD="$ADD $p"; else BAD="$BAD $p"; fi
+          done
+          if [ -n "$BAD" ]; then echo "::error::unsupported packages:$BAD"; exit 1; fi
+          echo "packages:$ADD"
+          cd flutter_out
+          if [ -n "$ADD" ]; then flutter pub add $ADD; fi
+          if [ "$LOC" = "1" ]; then flutter pub add flutter_localizations --sdk=flutter; fi
+          [ -z "$ADD" ] && exit 0
+          MF=android/app/src/main/AndroidManifest.xml
+          G=$(ls android/app/build.gradle* | head -n 1)
+          has(){ echo " $ADD " | grep -q " $1 "; }
+          perm(){ grep -q "android.permission.$1\"" $MF || sed -i "s|<application|<uses-permission android:name=\"android.permission.$1\"/><application|" $MF; }
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = maxOf(flutter.minSdkVersion, 23)/; s/minSdkVersion flutter.minSdkVersion/minSdkVersion Math.max(flutter.minSdkVersion, 23)/' "$G"
+          if has geolocator; then perm ACCESS_FINE_LOCATION; perm ACCESS_COARSE_LOCATION; fi
+          if has image_picker || has mobile_scanner; then perm CAMERA; fi
+          if has flutter_local_notifications; then perm POST_NOTIFICATIONS; perm RECEIVE_BOOT_COMPLETED; perm VIBRATE; fi
+          if has local_auth; then
+            perm USE_BIOMETRIC
+            for f in $(find android/app/src/main -name "MainActivity.*"); do sed -i 's/\bFlutterActivity\b/FlutterFragmentActivity/g' "$f"; done
+          fi
+          if has url_launcher; then
+            sed -i 's|</manifest>|<queries><intent><action android:name="android.intent.action.VIEW"/><data android:scheme="https"/></intent><intent><action android:name="android.intent.action.DIAL"/><data android:scheme="tel"/></intent><intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="mailto"/></intent><intent><action android:name="android.intent.action.SENDTO"/><data android:scheme="smsto"/></intent></queries></manifest>|' $MF
+          fi
+          if has flutter_local_notifications; then
+            if [[ "$G" == *.kts ]]; then
+              printf '\nandroid {\n    compileOptions {\n        isCoreLibraryDesugaringEnabled = true\n    }\n}\ndependencies {\n    add("coreLibraryDesugaring", "com.android.tools:desugar_jdk_libs:2.1.4")\n}\n' >> "$G"
+            else
+              printf '\nandroid {\n    compileOptions {\n        coreLibraryDesugaringEnabled true\n    }\n}\ndependencies {\n    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:2.1.4"\n}\n' >> "$G"
+            fi
+          fi
+          echo "--- manifest ---"; grep -o 'android.permission.[A-Z_]*' $MF | sort -u
       - name: push notifications (FCM)
         run: |
           if ! grep -qs on apps/$APP/push.txt; then echo "push notifications: off"; exit 0; fi
@@ -147,11 +183,11 @@ jobs:
           if [[ "$SG" == *.kts ]]; then
             grep -q google-services "$SG" || sed -i 's|^\(\s*\)id("com.android.application") version\(.*\)$|&\n\1id("com.google.gms.google-services") version "4.4.2" apply false|' "$SG"
             grep -q google-services "$G" || sed -i '0,/id("com.android.application")/s//id("com.android.application")\n    id("com.google.gms.google-services")/' "$G"
-            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = maxOf(flutter.minSdkVersion, 23)/' "$G"
           else
             grep -q google-services "$SG" || sed -i 's|^\(\s*\)id "com.android.application" version\(.*\)$|&\n\1id "com.google.gms.google-services" version "4.4.2" apply false|' "$SG"
             grep -q google-services "$G" || sed -i '0,/id "com.android.application"/s//id "com.android.application"\n    id "com.google.gms.google-services"/' "$G"
-            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/; s/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
+            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion Math.max(flutter.minSdkVersion, 23)/; s/minSdk = flutter.minSdkVersion/minSdk = maxOf(flutter.minSdkVersion, 23)/' "$G"
           fi
           echo "--- gradle ---"; grep -n "google-services\|minSdk" "$SG" "$G" || true
           MF=flutter_out/android/app/src/main/AndroidManifest.xml
@@ -177,6 +213,7 @@ jobs:
           echo "keystore: $K"
           if [ -n "$A" ] && [ "$A" = "$K" ]; then echo "SIGNING OK: this app uses its own key"; else echo "SIGNING MISMATCH"; fi
       - name: release
+        if: github.ref_name == github.event.repository.default_branch
         uses: softprops/action-gh-release@v2
         with:
           tag_name: flutter-${{ inputs.app }}-build-${{ github.run_number }}

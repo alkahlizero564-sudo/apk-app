@@ -1,3 +1,4 @@
+# ck5
 # ck4
 # ck3
 # ck2
@@ -30,8 +31,14 @@ jobs:
           cp apps/$APP/main.dart flutter_out/lib/main.dart
           if [ -f apps/$APP/push.dart ]; then cp apps/$APP/push.dart flutter_out/lib/push.dart; fi
           cd flutter_out
-          if grep -q "package:url_launcher" lib/main.dart; then flutter pub add url_launcher; fi
-          if grep -qs "package:firebase_messaging" lib/push.dart; then flutter pub add firebase_core firebase_messaging; fi
+          ALLOW="http shared_preferences path_provider path sqflite intl url_launcher provider google_fonts fl_chart image_picker file_picker share_plus uuid connectivity_plus package_info_plus device_info_plus geolocator permission_handler cached_network_image flutter_svg lottie audioplayers video_player webview_flutter mobile_scanner qr_flutter local_auth flutter_local_notifications timezone collection crypto table_calendar shimmer flutter_animate animations pdf printing csv firebase_core firebase_messaging"
+          PKGS=$(cat lib/*.dart | grep -oE "^[[:space:]]*(import|export)[[:space:]]+['\"]package:[a-z0-9_]+/" | grep -oE "package:[a-z0-9_]+" | cut -d: -f2 | sort -u)
+          ADD=""; BAD=""
+          for p in $PKGS; do
+            case "$p" in flutter|flutter_test|app_$APP) continue ;; flutter_localizations) flutter pub add flutter_localizations --sdk=flutter; continue ;; esac
+            if echo " $ALLOW " | grep -q " $p "; then ADD="$ADD $p"; else BAD="$BAD $p"; fi
+          done
+          if [ -n "$ADD" ]; then flutter pub add $ADD; fi
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
           cd ..
@@ -39,6 +46,10 @@ jobs:
           DSL=$(grep -n "^// ===== نظام التصميم الجاهز" $F | head -n 1 | cut -d: -f1)
           UPL=$(grep -n "^// ===== تحديث التطبيق" $F | head -n 1 | cut -d: -f1)
           : > errs.txt
+          for p in $BAD; do
+            L=$(grep -n "package:$p/" $F | head -n 1 | cut -d: -f1)
+            echo "[APP]   error • Package '$p' is not available in this builder. Remove it and use only: $ALLOW • lib/main.dart:${L:-1}:1 • unsupported_package" >> errs.txt
+          done
           grep -E "^[[:space:]]*error" analyze.txt | while IFS= read -r line; do
             L=$(echo "$line" | grep -o "main.dart:[0-9]*" | head -n 1 | cut -d: -f2)
             T=APP

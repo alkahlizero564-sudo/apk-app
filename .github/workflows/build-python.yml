@@ -1,4 +1,5 @@
-# v7
+# v8
+# v7 compatible
 # v6 compatible
 # v5 compatible
 # v4 compatible
@@ -87,6 +88,90 @@ jobs:
           rm -f ~/.android/debug.keystore
           keytool -importkeystore -noprompt -srckeystore keys/$APP.keystore -srcstorepass "$PASS" -srcalias appkey -srckeypass "$PASS" -destkeystore ~/.android/debug.keystore -deststorepass android -destalias androiddebugkey -destkeypass android -deststoretype PKCS12 || { echo "signing key import FAILED"; exit 1; }
           echo "signing key imported for $APP"
+      - name: libraries and arabic support
+        working-directory: apps/${{ inputs.app }}
+        run: |
+          python3 - <<'EOF'
+          import ast, sys, json
+          src = open('main.py', encoding='utf-8').read()
+          mods = set()
+          for n in ast.walk(ast.parse(src)):
+              if isinstance(n, ast.Import):
+                  mods.update(a.name.split('.')[0] for a in n.names)
+              elif isinstance(n, ast.ImportFrom) and n.module and not n.level:
+                  mods.add(n.module.split('.')[0])
+          MAP = {
+              'requests': ['requests', 'urllib3', 'charset-normalizer', 'idna'],
+              'kivymd': ['kivymd==1.2.0', 'pillow'],
+              'PIL': ['pillow'],
+              'plyer': ['plyer'],
+              'sqlite3': ['sqlite3'],
+              'numpy': ['numpy'],
+              'dateutil': ['python-dateutil'],
+              'qrcode': ['qrcode', 'pillow'],
+              'pytz': ['pytz'],
+              'jnius': ['pyjnius'],
+              'android': ['android'],
+          }
+          req = ['python3', 'kivy==2.3.0', 'certifi', 'six', 'arabic-reshaper==3.0.0', 'python-bidi==0.4.2']
+          for m in sorted(mods):
+              for r in MAP.get(m, []):
+                  if r not in req:
+                      req.append(r)
+          perms = ['INTERNET']
+          low = src.lower()
+          if 'plyer' in mods and ('gps' in low or 'location' in low):
+              perms += ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION']
+          if 'camera' in low and ('plyer' in mods or 'kivy.uix.camera' in src):
+              perms += ['CAMERA']
+          if 'vibrator' in low:
+              perms += ['VIBRATE']
+          if 'notification' in low and 'plyer' in mods:
+              perms += ['POST_NOTIFICATIONS']
+          if 'audio' in low and 'plyer' in mods:
+              perms += ['RECORD_AUDIO']
+          open('/tmp/req.txt', 'w').write(','.join(req))
+          open('/tmp/perms.txt', 'w').write(','.join(dict.fromkeys(perms)))
+          print('requirements:', ','.join(req))
+          print('permissions:', ','.join(dict.fromkeys(perms)))
+          lines = src.split('\n')
+          if not any(l.strip() in ('import apkar',) or l.strip().startswith('from apkar import') for l in lines):
+              i = 0
+              while i < len(lines) and (lines[i].startswith('#') or lines[i].startswith('from __future__') or not lines[i].strip()):
+                  i += 1
+              lines.insert(i, 'import apkar')
+              open('main.py', 'w', encoding='utf-8').write('\n'.join(lines))
+          EOF
+          cat > apkar.py <<'EOF'
+          # Arabic support for Kivy (added automatically by the builder)
+          import os
+          from kivy.core.text import LabelBase, DEFAULT_FONT
+          _d = os.path.dirname(os.path.abspath(__file__))
+          _r = os.path.join(_d, 'apk_font_regular.ttf')
+          _b = os.path.join(_d, 'apk_font_bold.ttf')
+          FONT = _r if os.path.exists(_r) else None
+          if FONT:
+              LabelBase.register(DEFAULT_FONT, _r, fn_bold=_b if os.path.exists(_b) else _r)
+              LabelBase.register('Arabic', _r, fn_bold=_b if os.path.exists(_b) else _r)
+          try:
+              import arabic_reshaper
+              from bidi.algorithm import get_display
+              def ar(text):
+                  text = '' if text is None else str(text)
+                  return '\n'.join(get_display(arabic_reshaper.reshape(t)) for t in text.split('\n'))
+          except Exception:
+              def ar(text):
+                  return '' if text is None else str(text)
+          EOF
+          GF=https://github.com/google/fonts/raw/main/ofl/tajawal
+          if curl -fsSL --retry 3 -o apk_font_regular.ttf "$GF/Tajawal-Regular.ttf" && curl -fsSL --retry 3 -o apk_font_bold.ttf "$GF/Tajawal-Bold.ttf"; then
+            echo "font: Tajawal"
+          else
+            cp /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf apk_font_regular.ttf
+            cp /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf apk_font_bold.ttf
+            echo "font: DejaVu (fallback)"
+          fi
+          head -n 5 main.py
       - name: write spec
         working-directory: apps/${{ inputs.app }}
         run: |
@@ -104,6 +189,8 @@ jobs:
           esac
           VN=$(jq -r '.versionName // "1.0"' settings.json 2>/dev/null || echo 1.0)
           VC=$(jq -r '.versionCode // 1' settings.json 2>/dev/null || echo 1)
+          REQ=$(cat /tmp/req.txt)
+          PERMS=$(cat /tmp/perms.txt)
           cat > buildozer.spec <<EOF
           [app]
           title = $LABEL
@@ -112,11 +199,11 @@ jobs:
           source.dir = .
           source.include_exts = py,png,jpg,kv,atlas,json,ttf
           version = $VN
-          requirements = python3,kivy==2.3.0,certifi
+          requirements = $REQ
           orientation = $OR
           fullscreen = 0
           android.numeric_version = $VC
-          android.permissions = INTERNET
+          android.permissions = $PERMS
           android.api = 33
           android.minapi = 24
           android.archs = arm64-v8a
@@ -151,6 +238,7 @@ jobs:
           path: ~/.buildozer
           key: buildozer-global-v5
       - name: release
+        if: github.ref_name == github.event.repository.default_branch
         uses: softprops/action-gh-release@v2
         with:
           tag_name: python-${{ inputs.app }}-build-${{ github.run_number }}
