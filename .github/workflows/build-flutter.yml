@@ -1,4 +1,5 @@
-# v8
+# v9
+# v8 compatible
 # v7 compatible
 # v6 compatible
 # v5 compatible
@@ -143,7 +144,7 @@ jobs:
           if [ -n "$BAD" ]; then echo "::error::unsupported packages:$BAD"; exit 1; fi
           echo "packages:$ADD"
           cd flutter_out
-          if [ -n "$ADD" ]; then flutter pub add $ADD; fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; *) echo "$x" ;; esac; done); fi
           if [ "$LOC" = "1" ]; then flutter pub add flutter_localizations --sdk=flutter; fi
           [ -z "$ADD" ] && exit 0
           MF=android/app/src/main/AndroidManifest.xml

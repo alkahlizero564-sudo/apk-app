@@ -1,3 +1,4 @@
+# ck6
 # ck5
 # ck4
 # ck3
@@ -38,7 +39,7 @@ jobs:
             case "$p" in flutter|flutter_test|app_$APP) continue ;; flutter_localizations) flutter pub add flutter_localizations --sdk=flutter; continue ;; esac
             if echo " $ALLOW " | grep -q " $p "; then ADD="$ADD $p"; else BAD="$BAD $p"; fi
           done
-          if [ -n "$ADD" ]; then flutter pub add $ADD; fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; *) echo "$x" ;; esac; done); fi
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
           cd ..

@@ -6089,7 +6089,7 @@ async function diagnose(){
         item(E,own?'ok':'warn',w[0]+': '+(v?'v'+v:'إصدار غير معروف')+' — '+(own?'مفتاح لكل تطبيق':'مفتاح عشوائي أو مشترك'));
       }
       const cf=await ghFile(repo,br,'.github/workflows/check-flutter.yml');
-      item(E,(cf!==null&&cf.indexOf('# ck5')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck5')>-1?'الأحدث (ck5)':'قديم، بيتحدث تلقائياً عند أول فحص')));
+      item(E,(cf!==null&&cf.indexOf('# ck6')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck6')>-1?'الأحدث (ck6)':'قديم، بيتحدث تلقائياً عند أول فحص')));
       try{
         const ks=await gh('/repos/'+repo+'/contents/keys?ref='+br);
         const n=(Array.isArray(ks)?ks:[]).filter(function(f){return /\.keystore$/.test(f.name)});
@@ -6204,7 +6204,8 @@ render=function(){
 function maxFix(){const v=parseInt(S.keys.maxFix3,10);return (v>=1&&v<=100)?v:30}
 function stallN(){const v=parseInt(S.keys.stall3,10);return (v>=3&&v<=50)?v:10}
 
-const CK_FL=`# ck5
+const CK_FL=`# ck6
+# ck5
 # ck4
 # ck3
 # ck2
@@ -6244,7 +6245,7 @@ jobs:
             case "$p" in flutter|flutter_test|app_$APP) continue ;; flutter_localizations) flutter pub add flutter_localizations --sdk=flutter; continue ;; esac
             if echo " $ALLOW " | grep -q " $p "; then ADD="$ADD $p"; else BAD="$BAD $p"; fi
           done
-          if [ -n "$ADD" ]; then flutter pub add $ADD; fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; *) echo "$x" ;; esac; done); fi
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
           cd ..
@@ -6331,7 +6332,7 @@ jobs:
 `;
 
 const CK={
-  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck5',main:'main.dart',name:'Flutter',min:'2-4'},
+  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck6',main:'main.dart',name:'Flutter',min:'2-4'},
   python:{file:'check-python.yml',yaml:CK_PY,mk:'# ck2',main:'main.py',name:'Python',min:'1'}
 };
 
@@ -9498,7 +9499,8 @@ render=function(){
 })();
 /* ===== إضافة: ملفات البناء الأحدث (Flutter v8 وPython v8: مكتبات تلقائية + دعم العربي) ===== */
 (function(){
-const WF_FLUTTER8=`# v8
+const WF_FLUTTER8=`# v9
+# v8 compatible
 # v7 compatible
 # v6 compatible
 # v5 compatible
@@ -9643,7 +9645,7 @@ jobs:
           if [ -n "$BAD" ]; then echo "::error::unsupported packages:$BAD"; exit 1; fi
           echo "packages:$ADD"
           cd flutter_out
-          if [ -n "$ADD" ]; then flutter pub add $ADD; fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; *) echo "$x" ;; esac; done); fi
           if [ "$LOC" = "1" ]; then flutter pub add flutter_localizations --sdk=flutter; fi
           [ -z "$ADD" ] && exit 0
           MF=android/app/src/main/AndroidManifest.xml
@@ -10010,6 +10012,7 @@ else:
     sys.exit("no android app in firebase project " + P + " and could not create one. Add any Android app in Firebase console.")
 `;
 if(typeof WF!=='undefined'){if(WF.flutter)WF.flutter.yaml=WF_FLUTTER8;if(WF.python)WF.python.yaml=WF_PYTHON8}
+const WF_MK8={flutter:'# v9',python:'# v8'};
 async function ensureWf8(l){
   if(typeof WF==='undefined'||!WF[l])return;
   const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
@@ -10017,7 +10020,7 @@ async function ensureWf8(l){
   let ch=false;
   if(l==='flutter'&&(await cur('.github/fcm_config.py'))===null){await put(repo,br,'.github/fcm_config.py',FCM_PY);ch=true}
   const w=await cur('.github/workflows/'+WF[l].file);
-  if(w===null||w.indexOf('# v8')<0){await put(repo,br,'.github/workflows/'+WF[l].file,WF[l].yaml);ch=true}
+  if(w===null||w.indexOf(WF_MK8[l])<0){await put(repo,br,'.github/workflows/'+WF[l].file,WF[l].yaml);ch=true}
   if(ch)await sleep(5000);
 }
 const _bn8=buildNative;
