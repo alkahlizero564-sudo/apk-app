@@ -131,9 +131,10 @@ class _CyberHomePageState extends State<CyberHomePage> {
   String wifiCrackResult = "";
   Map<String, dynamic>? selectedDevice;
 
-  final TextEditingController lhostController = TextEditingController(text: '192.168.1.105');
-  final TextEditingController lportController = TextEditingController(text: '4444');
-  final TextEditingController shellCmdController = TextEditingController();
+  late final TextEditingController lhostController;
+  late final TextEditingController lportController;
+  late final TextEditingController shellCmdController;
+
   String selectedPayloadType = 'android/meterpreter/reverse_tcp';
   String selectedWifiTarget = 'Home_Router_5G';
 
@@ -147,6 +148,10 @@ class _CyberHomePageState extends State<CyberHomePage> {
   @override
   void initState() {
     super.initState();
+    lhostController = TextEditingController(text: '192.168.1.105');
+    lportController = TextEditingController(text: '4444');
+    shellCmdController = TextEditingController();
+
     activeSession = DS.get('active_session', null);
     _requestAllPermissions();
   }
