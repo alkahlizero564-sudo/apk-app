@@ -9721,7 +9721,8 @@ jobs:
           tag_name: flutter-\${{ inputs.app }}-build-\${{ github.run_number }}
           files: flutter_out/build/app/outputs/flutter-apk/app-release.apk
 `;
-const WF_PYTHON8=`# v9
+const WF_PYTHON8=`# v10
+# v9 compatible
 # v8 compatible
 # v7 compatible
 # v6 compatible
@@ -9765,7 +9766,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: apps/\${{ inputs.app }}/.buildozer
-          key: buildozer-app-v5-\${{ inputs.app }}
+          key: buildozer-app-v6-\${{ inputs.app }}
       - name: app signing key
         env:
           KEYS_TOKEN: \${{ secrets.KEYS_TOKEN }}
@@ -9932,6 +9933,7 @@ jobs:
           android.minapi = 24
           android.archs = arm64-v8a
           android.accept_sdk_license = True
+          p4a.branch = v2024.01.21
           [buildozer]
           log_level = 2
           warn_on_root = 1
@@ -10013,7 +10015,7 @@ else:
     sys.exit("no android app in firebase project " + P + " and could not create one. Add any Android app in Firebase console.")
 `;
 if(typeof WF!=='undefined'){if(WF.flutter)WF.flutter.yaml=WF_FLUTTER8;if(WF.python)WF.python.yaml=WF_PYTHON8}
-const WF_MK8={flutter:'# v9',python:'# v9'};
+const WF_MK8={flutter:'# v9',python:'# v10'};
 async function ensureWf8(l){
   if(typeof WF==='undefined'||!WF[l])return;
   const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
