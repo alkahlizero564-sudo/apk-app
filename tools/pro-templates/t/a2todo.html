@@ -1,0 +1,50 @@
+<!--META {"name":"✅ مهامي برو","desc":"منظم مهام أنيق: شريط أيام الأسبوع، بطاقة إنجاز بحلقة، مشاريع ملونة، أولويات، وحركة إنجاز ممتعة مع تراجع.","tag":"☀️ فاتح نيلي","c":"#6366f1","cat":"prod","h":245,"theme":"light","title":"مهامي","ord":12,"replaces":"✅ المهام"}-->
+<style>
+.prog{display:flex;align-items:center;gap:16px}.prog .rg{position:relative;width:78px;height:78px;flex:none}.prog .rg b{position:absolute;inset:0;display:grid;place-items:center;font-size:18px}
+.tk{display:flex;align-items:center;gap:13px;padding:14px;background:var(--sf);border:1px solid var(--ln);border-radius:20px;margin-bottom:10px;box-shadow:var(--sh1);position:relative;overflow:hidden;transition:opacity .3s,transform .14s}
+.tk:before{content:"";position:absolute;inset-inline-start:0;top:14px;bottom:14px;width:4px;border-radius:0 4px 4px 0;background:var(--pc)}
+.tk.dn{opacity:.55}.tk.dn .tt{text-decoration:line-through;color:var(--mu)}
+.cb{width:28px;height:28px;flex:none;border-radius:10px;border:2px solid var(--pc);display:grid;place-items:center;color:#fff;transition:all .25s var(--ease)}
+.tk.dn .cb{background:var(--pc);animation:pkCheck .4s var(--ease)}.cb svg.i{width:16px;height:16px;stroke-width:3;opacity:0}.tk.dn .cb svg.i{opacity:1}
+.tt{font-weight:750;font-size:15px}.meta{display:flex;gap:8px;margin-top:3px;font-size:12px;color:var(--mu);align-items:center}.meta svg.i{width:14px;height:14px}
+.pj{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 18px}.pj div{padding:14px;border-radius:20px;color:#fff;position:relative;overflow:hidden}.pj div:after{content:"";position:absolute;width:90px;height:90px;border-radius:50%;background:rgba(255,255,255,.15);top:-30px;left:-25px}
+.pj b{display:block;font-size:22px}.pj small{opacity:.9;font-weight:700;font-size:12.5px}
+</style>
+<section class="scr on" id="s-home">
+<div class="top"><div class="ttl"><small id="dt"></small><h1>مهامي اليوم</h1></div><button class="icb pr"><i data-i="bell"></i><span class="dot"></span></button></div>
+<div class="dstrip" id="ds"></div>
+<div class="hero" style="margin-top:8px"><div class="prog"><div class="rg" id="rg"></div><div class="sp"><small>إنجاز اليوم</small><div style="font-size:21px;font-weight:850;margin:2px 0" id="pt"></div><span class="pill" id="pm"></span></div></div></div>
+<div class="sec"><h3>المشاريع</h3></div>
+<div class="pj" id="pj"></div>
+<div class="sec"><h3>المهام</h3></div>
+<div class="chips" id="fl"></div>
+<div class="wrap" id="lst" style="margin-top:8px"></div>
+</section>
+<button class="fab" onclick="openAdd()"><i data-i="plus"></i></button>
+<nav class="tabbar"><button class="on" data-t="home" onclick="tabs('home')"><i data-i="list"></i>المهام</button><button onclick="F=3;draw();toast('عرض المنجزة')"><i data-i="check"></i>المنجزة</button><button onclick="openAdd()"><i data-i="calendar"></i>جدولة</button></nav>
+<div class="ov" id="o-add"><div class="sheet"><div class="grab"></div><h2>مهمة جديدة</h2>
+<label class="fld"><span>العنوان</span><input class="in" id="tn" placeholder="مثلاً: مراجعة تقرير المبيعات"></label>
+<label class="fld"><span>الأولوية</span></label><div class="seg" id="pr" style="margin-bottom:14px"></div>
+<label class="fld"><span>المشروع</span></label><div class="chips" id="pjc" style="padding:0 0 12px"></div>
+<label class="fld"><span>الوقت</span><input class="in" id="tm" type="time"></label>
+<button class="btn bl" onclick="add()"><i data-i="plus"></i>إضافة المهمة</button></div></div>
+<script>
+var PR=[['عادية','#22c55e'],['مهمة','#f59e0b'],['عاجلة','#ef4444']],PJ=[['العمل','linear-gradient(135deg,#6366f1,#8b5cf6)'],['شخصي','linear-gradient(135deg,#ec4899,#f97316)'],['دراسة','linear-gradient(135deg,#06b6d4,#3b82f6)'],['صحة','linear-gradient(135deg,#10b981,#84cc16)']];
+var T=DB.get('pk_todo',null),F=0,SEL=dkey(),pr=0,pj=0;
+if(!T){T=[];var k=dkey();[['اجتماع الفريق الأسبوعي',1,0,'10:00'],['تصميم شاشة الدخول',2,0,'12:30'],['قراءة 20 صفحة',0,2,'21:00'],['المشي 30 دقيقة',0,3,'18:00'],['شراء هدية عيد ميلاد',1,1,'']].forEach(function(r,i){T.push({id:uid(),n:r[0],p:r[1],j:r[2],tm:r[3],d:k,dn:i==3})});DB.set('pk_todo',T)}
+var n=new Date();$('dt').textContent=DAYS[n.getDay()]+'، '+n.getDate()+' '+MONTHS[n.getMonth()];
+function save(){DB.set('pk_todo',T);draw()}
+function strip(){var h='';for(var i=-2;i<12;i++){var d=new Date(Date.now()+i*864e5),k=dkey(d);h+='<button class="pr '+(k==SEL?'on':'')+'" onclick="SEL=\''+k+'\';strip();draw()"><small>'+SDAYS[d.getDay()]+'</small><b>'+d.getDate()+'</b></button>'}$('ds').innerHTML=h;var on=$('ds').querySelector('.on');if(on)on.scrollIntoView({inline:'center',block:'nearest'})}
+function draw(){var day=T.filter(function(t){return t.d==SEL}),dn=day.filter(function(t){return t.dn}).length,p=day.length?dn/day.length:0;
+$('rg').innerHTML=ring(p,78,9,'#fff','rgba(255,255,255,.25)')+'<b>'+Math.round(p*100)+'%</b>';$('pt').textContent=dn+' من '+day.length+' مهام';$('pm').innerHTML=I('flame')+(p==1&&day.length?'يوم مثالي!':p>=.5?'أداء رائع، كمّل':'يلا نبدأ 💪');
+$('pj').innerHTML=PJ.map(function(x,i){var c=T.filter(function(t){return t.j==i&&!t.dn}).length;return '<div class="pr" style="background:'+x[1]+'"><b>'+c+'</b><small>'+x[0]+' • متبقية</small></div>'}).join('');
+var fs=['الكل','عاجلة','لم تنجز','منجزة'];$('fl').innerHTML=fs.map(function(f,i){return '<button class="chip '+(i==F?'on':'')+'" onclick="F='+i+';draw()">'+f+'</button>'}).join('');
+var L=day.filter(function(t){return F==0||(F==1&&t.p==2)||(F==2&&!t.dn)||(F==3&&t.dn)}).sort(function(a,b){return a.dn-b.dn||b.p-a.p});
+$('lst').innerHTML=L.map(function(t){return '<div class="tk '+(t.dn?'dn':'')+'" style="--pc:'+PR[t.p][1]+'"><button class="cb" onclick="tg(\''+t.id+'\')">'+I('check')+'</button><div class="sp"><div class="tt">'+E(t.n)+'</div><div class="meta"><span class="badge" style="padding:2px 8px">'+PJ[t.j][0]+'</span>'+(t.tm?I('clock')+t.tm:'')+'<span style="color:'+PR[t.p][1]+';font-weight:800">● '+PR[t.p][0]+'</span></div></div><button class="icb" style="width:38px;height:38px;border-radius:13px;box-shadow:none" onclick="del(\''+t.id+'\')"><i data-i="trash"></i></button></div>'}).join('')||'<div class="empty"><div class="ill">🎯</div><b>يومك فاضي</b>أضف مهمة وابدأ الإنجاز<br><button class="btn" onclick="openAdd()">'+I('plus')+'مهمة جديدة</button></div>';stagger($('lst'))}
+function tg(id){var t=T.find(function(x){return x.id==id});t.dn=!t.dn;vib();save();if(t.dn)toast('أحسنت! تم إنجاز المهمة 🎉')}
+function del(id){var i=T.findIndex(function(x){return x.id==id}),it=T[i];T.splice(i,1);save();toast('تم حذف المهمة',function(){T.splice(i,0,it);save()})}
+function sheetUI(){$('pr').innerHTML=PR.map(function(x,i){return '<button class="'+(i==pr?'on':'')+'" onclick="pr='+i+';sheetUI()" style="'+(i==pr?'color:'+x[1]:'')+'">'+x[0]+'</button>'}).join('');$('pjc').innerHTML=PJ.map(function(x,i){return '<button class="chip '+(i==pj?'on':'')+'" onclick="pj='+i+';sheetUI()">'+x[0]+'</button>'}).join('')}
+function openAdd(){$('tn').value='';$('tm').value='';pr=0;pj=0;sheetUI();openS('o-add');setTimeout(function(){$('tn').focus()},300)}
+function add(){var v=$('tn').value.trim();if(!v){toast('اكتب عنوان المهمة');return}T.unshift({id:uid(),n:v,p:pr,j:pj,tm:$('tm').value,d:SEL,dn:false});closeS();save();toast('تمت إضافة المهمة')}
+strip();draw();
+</script>

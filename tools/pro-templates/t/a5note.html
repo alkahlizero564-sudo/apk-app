@@ -1,0 +1,39 @@
+<!--META {"name":"📝 ملاحظاتي برو","desc":"ملاحظات بتصميم زجاجي داكن: مثبتة، ألوان ووسوم، تخطيط بطاقات متدرج، بحث فوري، ومحرر بملء الشاشة.","tag":"💜 داكن زجاجي","c":"#8b5cf6","cat":"prod","h":265,"theme":"dark","title":"ملاحظاتي","ord":15,"replaces":"📝 الملاحظات"}-->
+<style>
+body{background:radial-gradient(90% 50% at 90% 0,hsl(265 70% 22%),transparent 70%),radial-gradient(70% 40% at 0 30%,hsl(200 70% 16%),transparent 70%),var(--bg)}
+.ms{columns:2;column-gap:12px;padding:0 18px}.nt{break-inside:avoid;margin-bottom:12px;padding:16px;border-radius:22px;background:color-mix(in srgb,var(--nc) 16%,var(--sf));border:1px solid color-mix(in srgb,var(--nc) 30%,transparent);position:relative;overflow:hidden}
+.nt:before{content:"";position:absolute;top:-40px;left:-40px;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--nc) 40%,transparent),transparent 70%)}
+.nt b{display:block;font-size:15.5px;position:relative}.nt p{font-size:13.5px;color:var(--mu);margin-top:6px;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden;position:relative}
+.nt .ft{display:flex;align-items:center;justify-content:space-between;margin-top:12px;font-size:11px;color:var(--mu);position:relative}.nt .tg{padding:3px 9px;border-radius:99px;background:color-mix(in srgb,var(--nc) 25%,transparent);color:var(--tx);font-weight:700}
+.pn svg.i{width:15px;height:15px;color:var(--nc);fill:var(--nc)}
+.ed .tt{width:100%;border:0;background:none;outline:none;font-size:24px;font-weight:850;margin-bottom:8px}.ed textarea{width:100%;border:0;background:none;outline:none;min-height:240px;resize:none;font-size:16px;line-height:1.9;color:var(--tx)}
+.tb{display:flex;align-items:center;gap:10px;padding-top:12px;border-top:1px solid var(--ln)}.tb .cs{display:flex;gap:8px;flex:1}.tb .cs button{width:30px;height:30px;border-radius:50%;border:2px solid transparent}.tb .cs button.on{border-color:var(--tx);transform:scale(1.15)}
+</style>
+<section class="scr on" id="s-home">
+<div class="top"><div class="ttl"><small id="cnt"></small><h1>ملاحظاتي</h1></div><button class="icb pr" onclick="grid=!grid;draw()"><i data-i="grid"></i></button></div>
+<div class="search"><i data-i="search"></i><input id="q" placeholder="ابحث في ملاحظاتك" oninput="draw()"></div>
+<div class="chips" id="tgs" style="margin-top:8px"></div>
+<div id="pin"></div><div class="sec" id="oh"><h3>كل الملاحظات</h3></div><div class="ms" id="lst"></div>
+</section>
+<button class="fab" onclick="edit(null)"><i data-i="edit"></i></button>
+<nav class="tabbar"><button class="on" data-t="home" onclick="tabs('home')"><i data-i="note"></i>الملاحظات</button><button onclick="TG='مهم';draw()"><i data-i="star"></i>مهمة</button><button onclick="edit(null)"><i data-i="plus"></i>جديدة</button></nav>
+<div class="ov" id="o-ed"><div class="sheet ed" style="min-height:78vh"><div class="grab"></div><input class="tt" id="et" placeholder="العنوان"><textarea id="eb" placeholder="ابدأ الكتابة..."></textarea>
+<div class="chips" id="etg" style="padding:0 0 12px"></div>
+<div class="tb"><div class="cs" id="ec"></div><button class="icb" id="ep" onclick="pinT()"><i data-i="pinS"></i></button><button class="icb" id="edl" onclick="del()" style="color:var(--bad)"><i data-i="trash"></i></button><button class="btn sm" onclick="ok()">حفظ</button></div></div></div>
+<script>
+var CL=['#a78bfa','#f472b6','#38bdf8','#34d399','#fbbf24','#fb7185'],TGS=['شخصي','عمل','أفكار','مهم'];
+var N=DB.get('pk_notes',null),TG='',cur=null,ec=0,et='شخصي',ep=false,grid=true;
+if(!N){var t=Date.now();N=[{id:uid(),t:'أفكار التطبيق الجديد ✨',b:'• وضع داكن تلقائي\n• إشعارات ذكية\n• مزامنة بين الأجهزة\n• تصدير PDF',c:0,g:'أفكار',p:true,d:t-3e5},{id:uid(),t:'قائمة المشتريات',b:'حليب، خبز، بن، فواكه، عسل',c:3,g:'شخصي',p:false,d:t-36e5},{id:uid(),t:'اجتماع الأحد',b:'مراجعة خطة الربع القادم ومناقشة الميزانية مع الفريق.',c:2,g:'عمل',p:true,d:t-72e5},{id:uid(),t:'اقتباس اليوم',b:'«النجاح هو مجموع جهود صغيرة تتكرر يوماً بعد يوم.»',c:1,g:'مهم',p:false,d:t-864e5},{id:uid(),t:'كتب أقرأها',b:'1. العادات الذرية\n2. فن اللامبالاة\n3. قوة الآن',c:4,g:'شخصي',p:false,d:t-2*864e5}];DB.set('pk_notes',N)}
+function save(){DB.set('pk_notes',N);draw()}
+function card(n){return '<div class="nt pr" style="--nc:'+CL[n.c]+'" onclick="edit(\''+n.id+'\')"><b>'+E(n.t||'بدون عنوان')+'</b><p>'+E(n.b)+'</p><div class="ft"><span class="tg">'+E(n.g)+'</span><span>'+(n.p?'<span class="pn">'+I('pinS')+'</span> ':'')+ago(n.d)+'</span></div></div>'}
+function draw(){var q=$('q').value.trim();$('cnt').textContent=N.length+' ملاحظة';$('tgs').innerHTML=['الكل'].concat(TGS).map(function(g,i){var v=i?g:'';return '<button class="chip '+(TG==v?'on':'')+'" onclick="TG=\''+v+'\';draw()">'+g+'</button>'}).join('');
+var L=N.filter(function(n){return (!TG||n.g==TG)&&(!q||(n.t+n.b).indexOf(q)>-1)}).sort(function(a,b){return b.d-a.d}),P=L.filter(function(n){return n.p}),O=L.filter(function(n){return !n.p});
+$('lst').style.columns=grid?2:1;$('pin').innerHTML=P.length?'<div class="sec"><h3>📌 مثبتة</h3></div><div class="ms" style="columns:'+(grid?2:1)+'">'+P.map(card).join('')+'</div>':'';$('oh').style.display=O.length&&P.length?'flex':'none';
+$('lst').innerHTML=O.map(card).join('')||(P.length?'':'<div class="empty" style="column-span:all"><div class="ill">🗒</div><b>'+(q?'ما في نتائج':'ابدأ أول ملاحظة')+'</b>'+(q?'جرّب كلمة تانية':'اكتب أفكارك قبل ما تطير')+'</div>');stagger($('lst'));icons($('pin'))}
+function ui(){$('ec').innerHTML=CL.map(function(c,i){return '<button class="'+(i==ec?'on':'')+'" style="background:'+c+'" onclick="ec='+i+';ui()"></button>'}).join('');$('etg').innerHTML=TGS.map(function(g){return '<button class="chip '+(g==et?'on':'')+'" onclick="et=\''+g+'\';ui()">'+g+'</button>'}).join('');$('ep').style.color=ep?'var(--p)':''}
+function edit(id){cur=id;var n=id?N.find(function(x){return x.id==id}):{t:'',b:'',c:0,g:'شخصي',p:false};$('et').value=n.t;$('eb').value=n.b;ec=n.c;et=n.g;ep=n.p;$('edl').style.display=id?'grid':'none';ui();openS('o-ed')}
+function pinT(){ep=!ep;ui()}
+function ok(){var t=$('et').value.trim(),b=$('eb').value.trim();if(!t&&!b){closeS();return}if(cur){var n=N.find(function(x){return x.id==cur});Object.assign(n,{t:t,b:b,c:ec,g:et,p:ep,d:Date.now()})}else N.unshift({id:uid(),t:t,b:b,c:ec,g:et,p:ep,d:Date.now()});closeS();save();toast('تم الحفظ')}
+function del(){var i=N.findIndex(function(x){return x.id==cur}),it=N[i];N.splice(i,1);closeS();save();toast('تم حذف الملاحظة',function(){N.splice(i,0,it);save()})}
+draw();
+</script>

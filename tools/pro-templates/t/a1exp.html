@@ -1,0 +1,67 @@
+<!--META {"name":"💰 مصاريفي برو","desc":"إدارة مصاريف فاخرة: بطاقة ميزانية بحلقة تقدم، رسم دائري للتصنيفات، أعمدة أسبوعية، لوحة أرقام للإضافة السريعة، وتراجع عن الحذف.","tag":"🌙 داكن زمردي","c":"#10b981","cat":"prod","h":158,"theme":"dark","title":"مصاريفي","ord":11,"replaces":"💰 المصاريف"}-->
+<style>
+.bud{display:flex;align-items:center;gap:16px;margin-top:16px}.bud .rg{position:relative;width:86px;height:86px;flex:none}.bud .rg b{position:absolute;inset:0;display:grid;place-items:center;font-size:17px}
+.bud p{font-size:13px;opacity:.85}.bud .bar{background:rgba(255,255,255,.22);margin-top:8px}.bud .bar i{background:#fff}
+.qk{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:16px 18px 0}.qk button{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:12px;font-weight:750;color:var(--mu)}
+.qk span{font-size:26px;width:58px;height:58px;border-radius:20px;background:var(--sf);border:1px solid var(--ln);display:grid;place-items:center;color:var(--p);box-shadow:var(--sh1)}
+.day{font-size:12.5px;font-weight:800;color:var(--mu);margin:16px 4px 9px}
+.amt{font-weight:850;font-size:15.5px}.amt.n{color:var(--tx)}
+.donut{display:flex;align-items:center;gap:18px}.lg{flex:1}.lg div{display:flex;align-items:center;gap:8px;font-size:13px;margin:7px 0}.lg i{width:10px;height:10px;border-radius:4px;flex:none}.lg span{flex:1}
+.wk{display:flex;align-items:flex-end;gap:10px;height:150px;padding-top:10px}.wk div{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+.wk i{width:100%;border-radius:10px 10px 6px 6px;background:var(--sf2);transition:height .9s var(--ease)}.wk i.on{background:var(--grad);box-shadow:0 8px 18px var(--glow)}.wk small{font-size:11px;color:var(--mu);font-weight:700}
+.disp{text-align:center;font-size:46px;font-weight:900;margin:2px 0 4px;letter-spacing:0}.disp em{font-size:16px;font-style:normal;color:var(--mu);margin-inline-start:6px}
+.kp{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:14px 0}.kp button{height:56px;border-radius:18px;background:var(--sf2);font-size:22px;font-weight:800;transition:transform .1s}.kp button:active{transform:scale(.93);background:var(--soft)}
+.cg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.cg button{padding:10px 4px;border-radius:16px;background:var(--sf2);border:1.5px solid transparent;font-size:12px;font-weight:750;display:flex;flex-direction:column;align-items:center;gap:4px}.cg button span{font-size:22px}.cg button.on{border-color:var(--p);background:var(--soft);color:var(--p)}
+</style>
+<section class="scr on" id="s-home">
+<div class="top"><div class="ttl"><small id="hi">مساء الخير</small><h1>مصاريفي</h1></div><button class="icb pr" onclick="openS('o-bud')"><i data-i="target"></i></button></div>
+<div class="hero"><small>مصروف آخر 30 يوم</small><div class="big"><span id="tot">0</span><em>ج</em></div>
+<div class="bud"><div class="rg" id="rg"></div><div class="sp"><p id="bt">من ميزانية 0</p><div class="bar"><i id="bb" style="width:0"></i></div><p id="left" style="margin-top:8px;font-weight:700"></p></div></div></div>
+<div class="qk"><button class="pr" onclick="quick(0)"><span>🍔</span>أكل</button><button class="pr" onclick="quick(1)"><span>🚕</span>مواصلات</button><button class="pr" onclick="quick(2)"><span>🛒</span>تسوق</button><button class="pr" onclick="quick(3)"><span>💡</span>فواتير</button></div>
+<div class="sec"><h3>آخر العمليات</h3><button onclick="tabs('an')">التحليلات</button></div>
+<div class="wrap" id="lst"></div>
+</section>
+<section class="scr" id="s-an">
+<div class="top"><div class="ttl"><small>نظرة عامة</small><h1>التحليلات</h1></div></div>
+<div class="wrap"><div class="seg" id="per"><button class="on" onclick="setPer(7,this)">أسبوع</button><button onclick="setPer(30,this)">شهر</button><button onclick="setPer(365,this)">سنة</button></div>
+<div class="card" style="margin-top:14px"><div class="row"><div class="sp"><small class="mu">الإجمالي</small><div style="font-size:28px;font-weight:900"><span id="ptot">0</span> <small class="mu">ج</small></div></div><span class="badge" id="pavg"></span></div><div class="wk" id="wk"></div></div>
+<div class="sec" style="margin-inline:4px"><h3>حسب التصنيف</h3></div>
+<div class="card donut"><div id="dn"></div><div class="lg" id="lg"></div></div></div>
+</section>
+<button class="fab" onclick="openAdd()"><i data-i="plus"></i></button>
+<nav class="tabbar"><button class="on" data-t="home" onclick="tabs('home')"><i data-i="home"></i>الرئيسية</button><button data-t="an" onclick="tabs('an')"><i data-i="pie"></i>التحليلات</button></nav>
+<div class="ov" id="o-add"><div class="sheet"><div class="grab"></div><h2>مصروف جديد</h2>
+<div class="disp"><span id="dv">0</span><em>ج</em></div>
+<div class="cg" id="cg"></div>
+<input class="in" id="nt" placeholder="ملاحظة (اختياري)" style="margin-top:12px">
+<div class="kp" id="kp"></div><button class="btn bl" onclick="add()"><i data-i="check"></i>حفظ المصروف</button></div></div>
+<div class="ov" id="o-bud"><div class="sheet"><div class="grab"></div><h2>الميزانية الشهرية</h2><label class="fld"><span>المبلغ</span><input class="in" id="bi" type="number" inputmode="numeric"></label><button class="btn bl" onclick="setBud()">حفظ</button></div></div>
+<script>
+var CT=[['🍔','أكل','#f97316'],['🚕','مواصلات','#38bdf8'],['🛒','تسوق','#a78bfa'],['💡','فواتير','#facc15'],['💊','صحة','#f43f5e'],['🎮','ترفيه','#22d3ee'],['🏠','بيت','#34d399'],['📦','أخرى','#94a3b8']];
+var D=DB.get('pk_exp',[]),BUD=DB.get('pk_exp_bud',5000),cat=0,val='',PER=7;
+if(!DB.get('pk_exp_seed')){var nw=Date.now();[[0,85,'فطور',0.1],[1,40,'ركشة',0.3],[2,650,'سوق الأسبوع',1.2],[3,1200,'كهرباء',2.1],[5,150,'سينما',3.4],[0,120,'غداء',4.2],[4,300,'صيدلية',5.5],[6,900,'غاز',8]].forEach(function(r){D.push({id:uid(),c:r[0],a:r[1],n:r[2],t:nw-r[3]*864e5})});DB.set('pk_exp',D);DB.set('pk_exp_seed',1)}
+var h=new Date().getHours();$('hi').textContent=h<12?'صباح الخير ☀️':'مساء الخير 🌙';
+function save(){DB.set('pk_exp',D);draw()}
+function monthSum(){var n=Date.now(),s=0;D.forEach(function(x){if(n-x.t<30*864e5)s+=x.a});return s}
+function draw(){var s=monthSum(),p=BUD?s/BUD:0;countUp($('tot'),s);$('rg').innerHTML=ring(p,86,9,'#fff','rgba(255,255,255,.22)')+'<b>'+Math.round(p*100)+'%</b>';
+$('bt').textContent='من ميزانية '+money(BUD)+' ج';$('bb').style.width=Math.min(100,p*100)+'%';$('left').textContent=s>BUD?'تجاوزت الميزانية بـ '+money(s-BUD)+' ج':'متبقي '+money(BUD-s)+' ج';
+var h='',last='';D.slice(0,40).forEach(function(x){var d=new Date(x.t),k=dkey(d),lb=k==dkey()?'اليوم':(k==dkey(new Date(Date.now()-864e5))?'أمس':DAYS[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()]);if(lb!=last){h+='<div class="day">'+lb+'</div>';last=lb}var c=CT[x.c];
+h+='<div class="li"><div class="av" style="background:'+c[2]+'22">'+c[0]+'</div><div class="bd"><b>'+E(x.n||c[1])+'</b><small>'+c[1]+' • '+d.toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'})+'</small></div><div class="amt n">−'+money(x.a)+'</div><button class="icb" style="width:38px;height:38px;border-radius:13px" onclick="del(\''+x.id+'\')"><i data-i="trash"></i></button></div>'});
+$('lst').innerHTML=h||'<div class="empty"><div class="ill">🧾</div><b>ما في مصاريف لسه</b>سجّل أول مصروف وخلّي التطبيق يرتّب ليك كل شي<br><button class="btn" onclick="openAdd()">'+I('plus')+'أضف مصروف</button></div>';stagger($('lst'));an()}
+function an(){var now=Date.now(),inP=D.filter(function(x){return now-x.t<PER*864e5}),t=0,by=CT.map(function(){return 0});inP.forEach(function(x){t+=x.a;by[x.c]+=x.a});$('ptot').textContent=money(t);$('pavg').textContent='متوسط يومي '+money(t/PER);
+var bars=[],lb=[];if(PER==7){for(var i=6;i>=0;i--){var d=new Date(now-i*864e5),k=dkey(d),s=0;D.forEach(function(x){if(dkey(new Date(x.t))==k)s+=x.a});bars.push(s);lb.push(SDAYS[d.getDay()])}}else{var n=PER==30?4:12;for(var j=n-1;j>=0;j--){var span=PER/n*864e5,s2=0;D.forEach(function(x){var a=now-x.t;if(a>=j*span&&a<(j+1)*span)s2+=x.a});bars.push(s2);lb.push(PER==30?'أ'+(n-j):MONTHS[(new Date().getMonth()-j+12)%12].slice(0,3))}}
+var mx=Math.max.apply(null,bars.concat([1]));$('wk').innerHTML=bars.map(function(v,i){return '<div><i class="'+(i==bars.length-1?'on':'')+'" style="height:'+Math.max(6,v/mx*110)+'px"></i><small>'+lb[i]+'</small></div>'}).join('');
+var C=2*Math.PI*48,off=0,seg='';by.forEach(function(v,i){if(!v||!t)return;var L=v/t*C;seg+='<circle cx="60" cy="60" r="48" fill="none" stroke="'+CT[i][2]+'" stroke-width="16" stroke-dasharray="'+L+' '+(C-L)+'" stroke-dashoffset="'+(-off)+'"/>';off+=L});
+$('dn').innerHTML='<svg width="128" height="128" viewBox="0 0 120 120" style="transform:rotate(-90deg)"><circle cx="60" cy="60" r="48" fill="none" stroke="var(--sf2)" stroke-width="16"/>'+seg+'</svg>';
+$('lg').innerHTML=by.map(function(v,i){return v?'<div><i style="background:'+CT[i][2]+'"></i><span>'+CT[i][0]+' '+CT[i][1]+'</span><b>'+Math.round(v/t*100)+'%</b></div>':''}).join('')||'<span class="mu">لا توجد بيانات في هذه الفترة</span>'}
+function setPer(n,b){PER=n;document.querySelectorAll('#per button').forEach(function(x){x.classList.toggle('on',x==b)});an()}
+function cg(){$('cg').innerHTML=CT.map(function(c,i){return '<button class="'+(i==cat?'on':'')+'" onclick="cat='+i+';cg()"><span>'+c[0]+'</span>'+c[1]+'</button>'}).join('')}
+function kp(){$('kp').innerHTML=['1','2','3','4','5','6','7','8','9','.','0','⌫'].map(function(k){return '<button onclick="key(\''+k+'\')">'+k+'</button>'}).join('')}
+function key(k){if(k=='⌫')val=val.slice(0,-1);else if(k=='.'&&val.indexOf('.')>-1)return;else if(val.length<9)val+=k;$('dv').textContent=val||'0';vib()}
+function openAdd(c){cat=c||0;val='';$('dv').textContent='0';$('nt').value='';cg();kp();openS('o-add')}
+function quick(c){openAdd(c)}
+function add(){var a=parseFloat(val);if(!a){toast('اكتب المبلغ أولاً');return}D.unshift({id:uid(),a:a,c:cat,n:$('nt').value.trim(),t:Date.now()});closeS();save();toast('تم حفظ '+money(a)+' ج')}
+function del(id){var i=D.findIndex(function(x){return x.id==id}),it=D[i];D.splice(i,1);save();toast('تم الحذف',function(){D.splice(i,0,it);save()})}
+function setBud(){var v=parseFloat($('bi').value);if(!v)return;BUD=v;DB.set('pk_exp_bud',v);closeS();draw();toast('تم تحديث الميزانية')}
+$('bi').value=BUD;draw();
+</script>

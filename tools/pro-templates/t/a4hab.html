@@ -1,0 +1,45 @@
+<!--META {"name":"🔥 عاداتي برو","desc":"بناء عادات بأسلوب احترافي: حلقة إنجاز اليوم، بطاقات عادات بألوان وسلاسل أيام، خريطة حرارية لآخر 5 أسابيع، ورسائل تحفيز.","tag":"🌿 فاتح منعش","c":"#14b8a6","cat":"life","h":168,"theme":"light","title":"عاداتي","ord":14,"replaces":"🔥 العادات"}-->
+<style>
+.today{display:flex;align-items:center;gap:18px}.today .rg{position:relative;width:104px;height:104px;flex:none}.today .rg div{position:absolute;inset:0;display:grid;place-items:center;text-align:center;line-height:1.2}.today .rg b{font-size:26px;display:block}.today .rg small{font-size:11px;opacity:.85}
+.hb{padding:15px;border-radius:24px;background:var(--sf);border:1px solid var(--ln);box-shadow:var(--sh1);margin-bottom:12px}
+.hb .tp{display:flex;align-items:center;gap:12px}.hb .em{width:50px;height:50px;border-radius:17px;display:grid;place-items:center;font-size:25px;background:color-mix(in srgb,var(--hc) 16%,transparent)}
+.chk{width:50px;height:50px;border-radius:17px;border:2px dashed color-mix(in srgb,var(--hc) 55%,transparent);display:grid;place-items:center;color:var(--hc);transition:all .3s var(--ease)}
+.chk.on{background:var(--hc);border:2px solid var(--hc);color:#fff;box-shadow:0 10px 20px color-mix(in srgb,var(--hc) 40%,transparent);animation:pkCheck .45s var(--ease)}.chk svg.i{width:26px;height:26px;stroke-width:2.6}
+.wkd{display:flex;gap:6px;margin-top:13px}.wkd div{flex:1;text-align:center;font-size:9.5px;color:var(--mu);font-weight:700}.wkd i{display:block;height:30px;border-radius:10px;background:var(--sf2);margin-bottom:4px;transition:all .3s}.wkd i.on{background:var(--hc)}
+.str{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:800;color:#f97316}.str svg.i{width:15px;height:15px;fill:#fdba74}
+.hm{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.hm i{aspect-ratio:1;border-radius:8px;background:var(--sf2)}
+.emj{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}.emj button{width:46px;height:46px;border-radius:15px;background:var(--sf2);font-size:22px;border:2px solid transparent}.emj button.on{border-color:var(--p);background:var(--soft)}
+.cls{display:flex;gap:10px;margin-bottom:16px}.cls button{width:36px;height:36px;border-radius:50%;border:3px solid var(--sf);box-shadow:0 0 0 2px transparent}.cls button.on{box-shadow:0 0 0 2px var(--tx)}
+</style>
+<section class="scr on" id="s-home">
+<div class="top"><div class="ttl"><small id="gr"></small><h1>عاداتي اليومية</h1></div><button class="icb pr" onclick="tabs('st')"><i data-i="chart"></i></button></div>
+<div class="hero"><div class="today"><div class="rg" id="rg"></div><div class="sp"><small>إنجاز اليوم</small><div style="font-size:20px;font-weight:850;margin:4px 0 8px" id="msg"></div><span class="pill" id="bs"></span></div></div></div>
+<div class="sec"><h3>عادات اليوم</h3><button onclick="openAdd()">+ عادة</button></div>
+<div class="wrap" id="lst"></div>
+</section>
+<section class="scr" id="s-st"><div class="top"><div class="ttl"><small>آخر 5 أسابيع</small><h1>الإحصائيات</h1></div></div>
+<div class="stats" id="sts"></div>
+<div class="sec"><h3>خريطة الالتزام</h3></div><div class="wrap"><div class="card"><div class="hm" id="hm"></div><div class="row mu" style="font-size:11px;margin-top:10px;justify-content:flex-end;gap:5px">أقل <i style="width:12px;height:12px;border-radius:4px;background:var(--sf2);display:inline-block"></i><i style="width:12px;height:12px;border-radius:4px;background:hsl(168 70% 75%);display:inline-block"></i><i style="width:12px;height:12px;border-radius:4px;background:var(--p);display:inline-block"></i> أكثر</div></div></div></section>
+<button class="fab" onclick="openAdd()"><i data-i="plus"></i></button>
+<nav class="tabbar"><button class="on" data-t="home" onclick="tabs('home')"><i data-i="home"></i>اليوم</button><button data-t="st" onclick="tabs('st')"><i data-i="chart"></i>الإحصائيات</button></nav>
+<div class="ov" id="o-add"><div class="sheet"><div class="grab"></div><h2>عادة جديدة</h2><label class="fld"><span>اسم العادة</span><input class="in" id="hn" placeholder="مثلاً: أشرب 8 أكواب ماء"></label><label class="fld"><span>الأيقونة</span></label><div class="emj" id="ej"></div><label class="fld"><span>اللون</span></label><div class="cls" id="cl"></div><button class="btn bl" onclick="add()"><i data-i="check"></i>ابدأ العادة</button></div></div>
+<script>
+var EM=['💧','📖','🏃','🧘','🥗','😴','🙏','💪','🎯','🚭','✍️','🎸'],CL=['#14b8a6','#6366f1','#f97316','#ec4899','#eab308','#3b82f6','#22c55e','#a855f7'];
+var H=DB.get('pk_hab',null),em=0,cl=0;
+if(!H){H=[];[['أشرب 8 أكواب ماء',0,0],['قراءة 20 صفحة',1,1],['المشي 30 دقيقة',2,2],['تأمل 10 دقائق',3,3]].forEach(function(r,j){var d={};for(var i=1;i<30;i++)if(Math.random()<.72-j*.08)d[dkey(new Date(Date.now()-i*864e5))]=1;if(j<2)d[dkey()]=1;H.push({id:uid(),n:r[0],e:EM[r[1]],c:CL[r[2]],d:d})});DB.set('pk_hab',H)}
+var hr=new Date().getHours();$('gr').textContent=(hr<12?'صباح الخير':'مساء الخير')+' 👋';
+function save(){DB.set('pk_hab',H);draw()}
+function streak(h){var s=0,o=h.d[dkey()]?0:1;while(h.d[dkey(new Date(Date.now()-o*864e5))]){s++;o++}return s}
+function draw(){var k=dkey(),dn=H.filter(function(h){return h.d[k]}).length,p=H.length?dn/H.length:0;
+$('rg').innerHTML=ring(p,104,11,'#fff','rgba(255,255,255,.25)')+'<div><span><b>'+dn+'/'+H.length+'</b><small>اليوم</small></span></div>';
+$('msg').textContent=p==1?'يوم مثالي! 🏆':p>=.5?'ممتاز، قربت تكمّل':'كل خطوة صغيرة تفرق';var best=H.reduce(function(m,h){return Math.max(m,streak(h))},0);$('bs').innerHTML=I('flame')+'أطول سلسلة: '+best+' يوم';
+$('lst').innerHTML=H.map(function(h){var on=h.d[k],w='';for(var o=6;o>=0;o--){var d=new Date(Date.now()-o*864e5);w+='<div><i class="'+(h.d[dkey(d)]?'on':'')+'"></i>'+SDAYS[d.getDay()]+'</div>'}
+return '<div class="hb" style="--hc:'+h.c+'"><div class="tp"><div class="em">'+h.e+'</div><div class="sp"><b style="display:block;font-size:15.5px">'+E(h.n)+'</b><span class="str">'+I('flame')+streak(h)+' يوم متتالي</span></div><button class="chk '+(on?'on':'')+'" onclick="tg(\''+h.id+'\')">'+(on?I('check'):I('plus'))+'</button></div><div class="wkd">'+w+'</div></div>'}).join('')||'<div class="empty"><div class="ill">🌱</div><b>ابدأ أول عادة</b>العادات الصغيرة تصنع فرق كبير<br><button class="btn" onclick="openAdd()">'+I('plus')+'عادة جديدة</button></div>';stagger($('lst'));stats()}
+function stats(){var tot=0,days=35,cells='';for(var o=days-1;o>=0;o--){var kk=dkey(new Date(Date.now()-o*864e5)),c=H.filter(function(h){return h.d[kk]}).length;tot+=c;var r=H.length?c/H.length:0;cells+='<i style="background:'+(r==0?'var(--sf2)':r<.5?'hsl(168 70% 82%)':r<1?'hsl(168 70% 62%)':'var(--p)')+'"></i>'}$('hm').innerHTML=cells;
+var best=H.reduce(function(m,h){return Math.max(m,streak(h))},0);$('sts').innerHTML='<div class="stat"><small>عادات</small><b>'+H.length+'</b></div><div class="stat"><small>إنجازات</small><b>'+tot+'</b></div><div class="stat"><small>أطول سلسلة</small><b>'+best+'</b></div>'}
+function tg(id){var h=H.find(function(x){return x.id==id}),k=dkey();if(h.d[k])delete h.d[k];else{h.d[k]=1;toast('رائع! '+streak(Object.assign({},h))+' يوم متتالي 🔥')}save()}
+function ui(){$('ej').innerHTML=EM.map(function(e,i){return '<button class="'+(i==em?'on':'')+'" onclick="em='+i+';ui()">'+e+'</button>'}).join('');$('cl').innerHTML=CL.map(function(c,i){return '<button class="'+(i==cl?'on':'')+'" style="background:'+c+'" onclick="cl='+i+';ui()"></button>'}).join('')}
+function openAdd(){$('hn').value='';em=0;cl=0;ui();openS('o-add')}
+function add(){var n=$('hn').value.trim();if(!n){toast('اكتب اسم العادة');return}H.push({id:uid(),n:n,e:EM[em],c:CL[cl],d:{}});closeS();save();toast('بالتوفيق! بدأت عادة جديدة 🌱')}
+draw();
+</script>

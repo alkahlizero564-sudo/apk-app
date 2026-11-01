@@ -1,0 +1,45 @@
+<!--META {"name":"🛒 متجر: زبون + إدارة","desc":"نظام متجر متكامل: تطبيق زبون بعروض وتصنيفات وسلة وتتبع الطلب بخط زمني، وتطبيق إدارة بلوحة مبيعات وإدارة الطلبات والمخزون.","tag":"🌹 وردي فاتح + 🖤 داكن","c":"#e11d48","cat":"biz","h":345,"theme":"light","title":"متجرنا","ord":1,"replaces":"🛒 زبون + إدارة المتجر"}-->
+<style>
+.cats{display:flex;gap:8px;overflow-x:auto;padding:2px 18px 6px;scrollbar-width:none}
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 18px}.pc{background:var(--sf);border:1px solid var(--ln);border-radius:24px;padding:10px;box-shadow:var(--sh1)}
+.pc .im{height:120px;border-radius:18px;display:grid;place-items:center;font-size:56px;position:relative}.pc .im .so{position:absolute;inset:0;border-radius:18px;background:rgba(255,255,255,.7);display:grid;place-items:center;font-size:13px;font-weight:800;color:var(--bad)}
+.pc h4{font-size:14px;font-weight:800;margin:9px 4px 0}.pc .ft{display:flex;align-items:center;justify-content:space-between;margin:6px 4px 0}.pc .ft b{font-size:16px;font-weight:900}
+.add{width:36px;height:36px;border-radius:13px;background:var(--grad);color:#fff;display:grid;place-items:center;box-shadow:0 8px 16px var(--glow)}.add svg.i{width:18px;height:18px;stroke-width:2.4}
+.tl{position:relative;padding-inline-start:26px;margin-top:12px}.tl:before{content:"";position:absolute;inset-inline-start:9px;top:6px;bottom:6px;width:2px;background:var(--ln)}
+.tl div{position:relative;margin-bottom:12px;font-size:13.5px;color:var(--mu);font-weight:700}.tl div:before{content:"";position:absolute;inset-inline-start:-22px;top:5px;width:12px;height:12px;border-radius:50%;background:var(--sf2);border:2px solid var(--ln)}
+.tl div.on{color:var(--tx)}.tl div.on:before{background:var(--p);border-color:var(--p);box-shadow:0 0 0 4px var(--soft)}
+.ci{display:flex;align-items:center;gap:12px;padding:12px;background:var(--sf);border:1px solid var(--ln);border-radius:20px;margin-bottom:10px}.ci .im{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;font-size:30px;flex:none}
+</style>
+<section class="scr on" id="s-home">
+<div class="top"><div class="ttl"><small id="hi">أهلاً بيك 👋</small><h1>متجرنا</h1></div><button class="icb pr" onclick="tabs('cart')"><i data-i="bag"></i><span class="dot" id="cd" style="display:none"></span></button></div>
+<div class="search"><i data-i="search"></i><input id="q" placeholder="ابحث عن منتج" oninput="draw()"></div>
+<div class="hero" style="margin-top:12px;display:flex;align-items:center"><div class="sp"><span class="pill">عرض الأسبوع</span><h2 style="font-size:22px;font-weight:900;margin-top:10px;line-height:1.35">خصم 25% على<br>تشكيلة الشتاء</h2></div><span style="font-size:74px;filter:drop-shadow(0 12px 16px rgba(0,0,0,.2))">🧥</span></div>
+<div class="sec"><h3>تسوّق حسب التصنيف</h3></div><div class="cats" id="ct"></div>
+<div class="pg" id="g" style="margin-top:8px"></div>
+</section>
+<section class="scr" id="s-cart"><div class="top"><div class="ttl"><small>راجع طلبك</small><h1>السلة</h1></div></div><div class="wrap" id="cl"></div></section>
+<section class="scr" id="s-ord"><div class="top"><div class="ttl"><small>تابع حالة طلباتك</small><h1>طلباتي</h1></div></div><div class="wrap" id="ol"></div></section>
+<nav class="tabbar"><button class="on" data-t="home" onclick="tabs('home')"><i data-i="home"></i>المتجر</button><button data-t="cart" onclick="tabs('cart')"><i data-i="bag"></i>السلة<span class="bdg" id="cb" style="display:none"></span></button><button data-t="ord" onclick="tabs('ord')"><i data-i="box"></i>طلباتي</button></nav>
+<div class="ov" id="o-co"><div class="sheet"><div class="grab"></div><h2>بيانات التوصيل</h2><label class="fld"><span>الاسم</span><input class="in" id="nm"></label><label class="fld"><span>رقم الجوال</span><input class="in" id="ph" type="tel" inputmode="tel"></label><label class="fld"><span>العنوان</span><input class="in" id="ad" placeholder="الحي، الشارع، أقرب معلم"></label><button class="btn bl" onclick="place()"><i data-i="send"></i>تأكيد الطلب</button></div></div>
+<script>
+var ST=['جديد','قيد التجهيز','في الطريق','تم التسليم'];
+var DEF=[{id:'p1',e:'🧥',n:'جاكيت شتوي',p:380,s:12,c:'ملابس',bg:'#ffe4e6'},{id:'p2',e:'👟',n:'حذاء رياضي',p:520,s:8,c:'أحذية',bg:'#e0f2fe'},{id:'p3',e:'🎧',n:'سماعة لاسلكية',p:450,s:5,c:'إلكترونيات',bg:'#ede9fe'},{id:'p4',e:'⌚',n:'ساعة ذكية',p:890,s:3,c:'إلكترونيات',bg:'#fef3c7'},{id:'p5',e:'👜',n:'حقيبة جلد',p:640,s:0,c:'إكسسوار',bg:'#dcfce7'},{id:'p6',e:'🕶',n:'نظارة شمسية',p:180,s:20,c:'إكسسوار',bg:'#fce7f3'}];
+var P=DB.get('pk2_shop_prods',null);if(!P){P=DEF;DB.set('pk2_shop_prods',P)}
+var Q={},C='الكل',ME=DB.get('pk2_shop_me',{});
+function cats(){var cs=['الكل'];P.forEach(function(p){if(cs.indexOf(p.c)<0)cs.push(p.c)});$('ct').innerHTML=cs.map(function(c){return '<button class="chip '+(c==C?'on':'')+'" onclick="C=\''+c+'\';draw()">'+c+'</button>'}).join('')}
+function badge(){var n=0;for(var k in Q)n+=Q[k];$('cb').style.display=n?'grid':'none';$('cb').textContent=n;$('cd').style.display=n?'block':'none'}
+function draw(){P=DB.get('pk2_shop_prods',P);cats();var q=$('q').value.trim();
+$('g').innerHTML=P.filter(function(p){return (C=='الكل'||p.c==C)&&(!q||p.n.indexOf(q)>-1)}).map(function(p){return '<div class="pc"><div class="im" style="background:'+(p.bg||'var(--soft)')+'">'+p.e+(p.s<=0?'<div class="so">نفدت الكمية</div>':'')+'</div><h4>'+E(p.n)+'</h4><div class="ft"><b>'+money(p.p)+' <small class="mu" style="font-size:11px">ج</small></b>'+(p.s>0?'<button class="add pr" onclick="add(\''+p.id+'\')">'+I('plus')+'</button>':'')+'</div></div>'}).join('')||'<div class="empty" style="grid-column:1/-1"><div class="ill">🔍</div><b>ما في منتجات</b></div>';stagger($('g'))}
+function pById(id){return P.find(function(p){return p.id==id})}
+function add(id){var p=pById(id);if((Q[id]||0)>=p.s){toast('الكمية المتاحة '+p.s+' فقط');return}Q[id]=(Q[id]||0)+1;badge();toast('أضيف للسلة')}
+function ch(id,d){Q[id]=(Q[id]||0)+d;if(Q[id]<=0)delete Q[id];badge();cart()}
+function cart(){var h='',s=0;for(var k in Q){var p=pById(k);if(!p)continue;s+=p.p*Q[k];h+='<div class="ci"><div class="im" style="background:'+(p.bg||'var(--soft)')+'">'+p.e+'</div><div class="sp"><b style="display:block">'+E(p.n)+'</b><b style="color:var(--p)">'+money(p.p)+' ج</b></div><div class="step"><button onclick="ch(\''+k+'\',-1)">'+I('minus')+'</button><b>'+Q[k]+'</b><button onclick="ch(\''+k+'\',1)">'+I('plus')+'</button></div></div>'}
+$('cl').innerHTML=h?'<div id="cil">'+h+'</div><div class="card row" style="margin:6px 0 14px"><span class="sp mu">الإجمالي</span><b style="font-size:22px;font-weight:900">'+money(s)+' ج</b></div><button class="btn bl" onclick="checkout()">'+I('check')+'متابعة للتوصيل</button>':'<div class="empty"><div class="ill">🛍</div><b>سلتك فاضية</b>أضف منتجات من المتجر<br><button class="btn" onclick="tabs(\'home\')">'+I('home')+'تسوق الآن</button></div>';stagger($('cil'))}
+function checkout(){$('nm').value=ME.n||'';$('ph').value=ME.p||'';$('ad').value=ME.a||'';openS('o-co')}
+function place(){var n=$('nm').value.trim(),ph=$('ph').value.replace(/\D/g,''),a=$('ad').value.trim();if(!n||ph.length<9||!a){toast('أكمل الاسم والجوال والعنوان');return}ME={n:n,p:ph,a:a};DB.set('pk2_shop_me',ME);
+var it=[],s=0;for(var k in Q){var p=pById(k);it.push({id:k,n:p.n,e:p.e,q:Q[k],p:p.p});s+=p.p*Q[k]}var O=DB.get('pk2_shop_orders',[]);O.unshift({id:uid(),no:1000+O.length+1,cn:n,ph:ph,ad:a,it:it,t:s,st:0,d:Date.now()});DB.set('pk2_shop_orders',O);Q={};badge();closeS();toast('تم إرسال طلبك للمتجر ✔');tabs('ord')}
+function orders(){var O=DB.get('pk2_shop_orders',[]).filter(function(o){return o.ph==ME.p});
+$('ol').innerHTML=O.map(function(o){return '<div class="card" style="margin-bottom:12px"><div class="row"><div class="av g">'+I('box')+'</div><div class="sp"><b>طلب #'+o.no+'</b><small class="mu" style="display:block">'+o.it.length+' منتجات • '+ago(o.d)+'</small></div><b>'+money(o.t)+' ج</b></div><div class="tl">'+ST.map(function(s,i){return '<div class="'+(i<=o.st?'on':'')+'">'+s+'</div>'}).join('')+'</div></div>'}).join('')||'<div class="empty"><div class="ill">📦</div><b>ما عندك طلبات لسه</b>طلباتك بتظهر هنا مع حالتها لحظة بلحظة</div>';stagger($('ol'))}
+window.onTab=function(t){if(t=='cart')cart();if(t=='ord')orders();if(t=='home')draw()};
+draw();badge();
+</script>

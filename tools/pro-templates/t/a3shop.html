@@ -1,0 +1,51 @@
+<!--META {"name":"🛍 متجري برو","desc":"متجر إلكتروني بمستوى التطبيقات العالمية: عروض متحركة، تصنيفات، شبكة منتجات بتدرجات، صفحة منتج، مفضلة، وسلة بخطوات دفع.","tag":"🧡 فاتح دافئ","c":"#f97316","cat":"biz","h":22,"theme":"light","title":"متجري","ord":13,"replaces":"🛍 المتجر"}-->
+<style>
+.promo{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 18px 4px;scrollbar-width:none}.promo::-webkit-scrollbar{display:none}
+.promo .hero{flex:none;width:86%;margin:0;scroll-snap-align:center;min-height:150px;display:flex;align-items:center;gap:10px}.promo .hero .e{font-size:76px;filter:drop-shadow(0 10px 16px rgba(0,0,0,.2));margin-inline-start:auto}
+.promo h2{font-size:22px;font-weight:900;line-height:1.35}.cats{display:flex;gap:14px;overflow-x:auto;padding:4px 18px;scrollbar-width:none}.cats::-webkit-scrollbar{display:none}
+.cats button{flex:none;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12.5px;font-weight:750;color:var(--mu)}.cats span{width:62px;height:62px;border-radius:22px;background:var(--sf);border:1px solid var(--ln);display:grid;place-items:center;font-size:28px;box-shadow:var(--sh1);transition:all .25s}
+.cats button.on{color:var(--p)}.cats button.on span{background:var(--grad);border-color:transparent;box-shadow:0 10px 22px var(--glow)}
+.pg{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 18px}
+.pc{background:var(--sf);border:1px solid var(--ln);border-radius:24px;padding:10px;box-shadow:var(--sh1);position:relative}
+.pc .im{height:132px;border-radius:18px;display:grid;place-items:center;font-size:62px;position:relative}.pc .im .e{filter:drop-shadow(0 12px 14px rgba(0,0,0,.18));transition:transform .3s var(--ease)}.pc:active .im .e{transform:scale(1.08) rotate(-4deg)}
+.fav{position:absolute;top:8px;left:8px;width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,.85);display:grid;place-items:center;color:#94a3b8}.fav.on{color:#f43f5e}.fav.on svg.i{fill:currentColor}.fav svg.i{width:18px;height:18px}
+.pc h4{font-size:14.5px;font-weight:800;margin:10px 4px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc .rt{font-size:12px;color:var(--mu);margin:0 4px;display:flex;align-items:center;gap:3px}.pc .rt svg.i{width:13px;height:13px;color:#f59e0b;fill:#f59e0b}
+.pc .ft{display:flex;align-items:center;justify-content:space-between;margin:8px 4px 2px}.pc .ft b{font-size:17px;font-weight:900}.pc .ft b small{font-size:11px;color:var(--mu)}
+.add{width:36px;height:36px;border-radius:13px;background:var(--tx);color:var(--bg);display:grid;place-items:center}.add svg.i{width:18px;height:18px;stroke-width:2.4}
+.pdi{height:250px;border-radius:30px;display:grid;place-items:center;font-size:130px;margin-bottom:16px}.ci{display:flex;align-items:center;gap:12px;padding:12px;background:var(--sf);border:1px solid var(--ln);border-radius:22px;margin-bottom:10px}
+.ci .im{width:68px;height:68px;border-radius:18px;display:grid;place-items:center;font-size:34px;flex:none}
+.sum{padding:16px;border-radius:24px;background:var(--sf);border:1px solid var(--ln)}.sum div{display:flex;justify-content:space-between;margin:6px 0;color:var(--mu)}.sum div.t{color:var(--tx);font-size:18px;font-weight:900;border-top:1px dashed var(--ln);padding-top:12px;margin-top:10px}
+</style>
+<section class="scr on" id="s-home">
+<div class="top"><div class="ttl"><small>التوصيل إلى</small><h1 style="font-size:19px;display:flex;align-items:center;gap:6px">الخرطوم، الرياض <i data-i="pin"></i></h1></div><button class="icb pr" onclick="tabs('cart')"><i data-i="bag"></i><span class="dot" id="cd" style="display:none"></span></button></div>
+<div class="search"><i data-i="search"></i><input id="q" placeholder="ابحث عن منتج، ماركة..." oninput="draw()"><i data-i="filter"></i></div>
+<div class="promo" id="pr"><div class="hero"><div><span class="pill">عرض اليوم</span><h2 style="margin-top:10px">خصم 30%<br>على السماعات</h2></div><span class="e">🎧</span></div><div class="hero" style="background:linear-gradient(135deg,#0ea5e9,#6366f1)"><div><span class="pill">جديد</span><h2 style="margin-top:10px">ساعات ذكية<br>بأسعار مميزة</h2></div><span class="e">⌚</span></div><div class="hero" style="background:linear-gradient(135deg,#10b981,#14b8a6)"><div><span class="pill">توصيل مجاني</span><h2 style="margin-top:10px">لأي طلب<br>فوق 500 ج</h2></div><span class="e">🚚</span></div></div>
+<div class="sec"><h3>التصنيفات</h3></div><div class="cats" id="ct"></div>
+<div class="sec"><h3>الأكثر مبيعاً</h3><button onclick="C=0;draw()">عرض الكل</button></div><div class="pg" id="g"></div>
+</section>
+<section class="scr" id="s-fav"><div class="top"><div class="ttl"><small>اللي عجبك</small><h1>المفضلة</h1></div></div><div class="pg" id="fg"></div></section>
+<section class="scr" id="s-cart"><div class="top"><div class="ttl"><small>جاهز للدفع</small><h1>سلة المشتريات</h1></div></div><div class="wrap" id="cl"></div></section>
+<nav class="tabbar"><button class="on" data-t="home" onclick="tabs('home')"><i data-i="home"></i>الرئيسية</button><button data-t="fav" onclick="tabs('fav')"><i data-i="heart"></i>المفضلة</button><button data-t="cart" onclick="tabs('cart')"><i data-i="bag"></i>السلة<span class="bdg" id="cb" style="display:none"></span></button></nav>
+<div class="ov" id="o-p"><div class="sheet" id="pd"></div></div>
+<script>
+var CA=[['✨','الكل'],['👕','ملابس'],['🎧','إلكترونيات'],['👟','أحذية'],['💄','جمال'],['🏠','منزل']];
+var P=[[2,'🎧','سماعة لاسلكية برو',450,4.8,'#ffedd5'],[1,'🧥','جاكيت شتوي فاخر',380,4.6,'#e0e7ff'],[3,'👟','حذاء رياضي خفيف',520,4.9,'#dcfce7'],[2,'⌚','ساعة ذكية سلسلة 7',890,4.7,'#fce7f3'],[4,'💄','طقم مكياج احترافي',260,4.5,'#ffe4e6'],[5,'🪴','نبتة زينة داخلية',120,4.4,'#ecfccb'],[1,'👜','حقيبة يد جلد',640,4.8,'#fef3c7'],[2,'📱','جراب جوال شفاف',60,4.3,'#e0f2fe']];
+var C=0,Q=DB.get('pk_shop_cart',{}),FV=DB.get('pk_shop_fav',{});
+function save(){DB.set('pk_shop_cart',Q);DB.set('pk_shop_fav',FV);badge()}
+function badge(){var n=0;for(var k in Q)n+=Q[k];$('cb').style.display=n?'grid':'none';$('cb').textContent=n;$('cd').style.display=n?'block':'none'}
+function card(p,i){return '<div class="pc pr" onclick="pd('+i+')"><div class="im" style="background:'+p[5]+'"><span class="e">'+p[1]+'</span><button class="fav '+(FV[i]?'on':'')+'" onclick="event.stopPropagation();fav('+i+')">'+I('heart')+'</button></div><h4>'+p[2]+'</h4><div class="rt">'+I('star')+p[4]+' <span>(120+)</span></div><div class="ft"><b>'+money(p[3])+' <small>ج</small></b><button class="add" onclick="event.stopPropagation();add('+i+')">'+I('plus')+'</button></div></div>'}
+function draw(){$('ct').innerHTML=CA.map(function(c,i){return '<button class="pr '+(i==C?'on':'')+'" onclick="C='+i+';draw()"><span>'+c[0]+'</span>'+c[1]+'</button>'}).join('');var q=$('q').value.trim();
+$('g').innerHTML=P.map(function(p,i){return (C&&p[0]!=C)||(q&&p[2].indexOf(q)<0)?'':card(p,i)}).join('')||'<div class="empty" style="grid-column:1/-1"><div class="ill">🔍</div><b>ما لقينا نتائج</b>جرّب كلمة تانية</div>';stagger($('g'))}
+function favs(){var h='';P.forEach(function(p,i){if(FV[i])h+=card(p,i)});$('fg').innerHTML=h||'<div class="empty" style="grid-column:1/-1"><div class="ill">💝</div><b>المفضلة فاضية</b>اضغط على القلب في أي منتج عشان تحفظه هنا</div>';stagger($('fg'))}
+function fav(i){if(FV[i])delete FV[i];else{FV[i]=1;toast('أضيف للمفضلة')}save();draw();favs()}
+function add(i,n){Q[i]=(Q[i]||0)+(n||1);save();toast('أضيف للسلة 🛍')}
+function pd(i){var p=P[i];$('pd').innerHTML='<div class="grab"></div><div class="pdi" style="background:'+p[5]+'">'+p[1]+'</div><div class="row"><div class="sp"><span class="badge">'+CA[p[0]][1]+'</span><h2 style="margin:8px 0 2px">'+p[2]+'</h2><div class="rt mu" style="display:flex;gap:4px;align-items:center">'+I('star')+p[4]+' • تقييمات ممتازة</div></div><b style="font-size:26px;font-weight:900">'+money(p[3])+' <small class="mu" style="font-size:13px">ج</small></b></div><p class="mu" style="margin:12px 0 18px">منتج أصلي بجودة عالية وضمان سنة كاملة. توصيل خلال 24 ساعة داخل المدينة، وإرجاع مجاني خلال 7 أيام.</p><div class="row"><div class="step"><button onclick="qq(-1)">'+I('minus')+'</button><b id="pq">1</b><button onclick="qq(1)">'+I('plus')+'</button></div><button class="btn sp" onclick="add('+i+',+$(\'pq\').textContent);closeS()">'+I('bag')+'أضف للسلة</button></div>';openS('o-p')}
+function qq(d){var e=$('pq');e.textContent=Math.max(1,+e.textContent+d)}
+function ch(i,d){Q[i]=(Q[i]||0)+d;if(Q[i]<=0)delete Q[i];save();cart()}
+function cart(){var h='',s=0,n=0;for(var k in Q){var p=P[k];s+=p[3]*Q[k];n+=Q[k];h+='<div class="ci"><div class="im" style="background:'+p[5]+'">'+p[1]+'</div><div class="sp"><b style="display:block">'+p[2]+'</b><b style="color:var(--p)">'+money(p[3])+' ج</b></div><div class="step"><button onclick="ch('+k+',-1)">'+I('minus')+'</button><b>'+Q[k]+'</b><button onclick="ch('+k+',1)">'+I('plus')+'</button></div></div>'}
+if(!n){$('cl').innerHTML='<div class="empty"><div class="ill">🛍</div><b>سلتك فاضية</b>تصفح المنتجات وأضف اللي يعجبك<br><button class="btn" onclick="tabs(\'home\')">'+I('home')+'تسوق الآن</button></div>';return}
+var dl=s>=500?0:30;$('cl').innerHTML='<div id="cil">'+h+'</div><div class="sum"><div><span>المجموع ('+n+' منتج)</span><b>'+money(s)+' ج</b></div><div><span>التوصيل</span><b>'+(dl?dl+' ج':'مجاناً 🎉')+'</b></div><div class="t"><span>الإجمالي</span><span>'+money(s+dl)+' ج</span></div></div><button class="btn bl" style="margin-top:14px" onclick="done()">'+I('check')+'إتمام الطلب</button>';stagger($('cil'))}
+function done(){Q={};save();cart();toast('تم استلام طلبك! بنوصله ليك قريب 🚚')}
+window.onTab=function(t){if(t=='cart')cart();if(t=='fav')favs()};
+badge();draw();
+</script>

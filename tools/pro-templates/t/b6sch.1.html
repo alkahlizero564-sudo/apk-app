@@ -1,0 +1,34 @@
+<!--META {"h":228,"theme":"dark","title":"المعلم"}-->
+<style>
+.as{padding:15px;border-radius:22px;background:var(--sf);border:1px solid var(--ln);margin-bottom:12px;box-shadow:var(--sh1)}.as .bar{margin-top:12px}
+.qa{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:14px 18px 0}.qa button{padding:18px 14px;border-radius:22px;background:var(--sf);border:1px solid var(--ln);text-align:start;display:flex;flex-direction:column;gap:10px;font-weight:800;box-shadow:var(--sh1)}.qa .av{width:44px;height:44px;border-radius:15px}
+</style>
+<section class="scr on" id="s-home">
+<div class="top"><div class="ttl"><small>لوحة المعلم</small><h1>فصلي الدراسي</h1></div><div class="av g" style="width:46px;height:46px;border-radius:16px">👨‍🏫</div></div>
+<div class="stats" id="sts"></div>
+<div class="qa"><button class="pr" onclick="openHW()"><div class="av g"></div>واجب جديد</button><button class="pr" onclick="openS('o-an')"><div class="av">📢</div>إعلان جديد</button></div>
+<div class="sec"><h3>الواجبات المنشورة</h3></div><div class="wrap" id="hl"></div>
+</section>
+<section class="scr" id="s-an"><div class="top"><div class="ttl"><small>للطلاب وأولياء الأمور</small><h1>الإعلانات</h1></div></div><div class="wrap" id="anl"></div></section>
+<button class="fab" onclick="openHW()"><i data-i="plus"></i></button>
+<nav class="tabbar"><button class="on" data-t="home" onclick="tabs('home')"><i data-i="book"></i>الواجبات</button><button data-t="an" onclick="tabs('an')"><i data-i="megaphone"></i>الإعلانات</button></nav>
+<div class="ov" id="o-hw"><div class="sheet"><div class="grab"></div><h2>واجب جديد</h2><label class="fld"><span>المادة</span></label><div class="chips" id="sc" style="padding:0 0 12px"></div><label class="fld"><span>العنوان</span><input class="in" id="ht"></label><label class="fld"><span>التفاصيل</span><textarea class="in" id="hb" style="min-height:80px"></textarea></label><label class="fld"><span>آخر موعد للتسليم</span><input class="in" id="hd" type="date"></label><button class="btn bl" onclick="pubHW()"><i data-i="send"></i>نشر للطلاب</button></div></div>
+<div class="ov" id="o-an"><div class="sheet"><div class="grab"></div><h2>إعلان جديد</h2><label class="fld"><span>العنوان</span><input class="in" id="at"></label><label class="fld"><span>النص</span><textarea class="in" id="ab"></textarea></label><button class="btn bl" onclick="pubAn()"><i data-i="megaphone"></i>نشر الإعلان</button></div></div>
+<script>
+var SB=['رياضيات','علوم','عربي','إنجليزي','تاريخ'],sc=0,CLS=28;
+document.querySelector('.qa .av.g').innerHTML=I('plus');
+function HW(){return DB.get('pk2_sc_hw',[])}function AN(){return DB.get('pk2_sc_an',[])}
+if(!DB.get('pk2_sc_hw',null)){var n=Date.now();DB.set('pk2_sc_hw',[{id:uid(),s:'رياضيات',t:'حل تمارين صفحة 45',b:'التمارين من 1 إلى 10.',due:n+864e5,d:n-864e5,by:'أ. ياسر',sub:{a:1,b:1,c:1,d:1,e:1,f:1,g:1,h:1,i:1,j:1,k:1,l:1,m:1,n:1,o:1,p:1,q:1,r:1,s:1}},{id:uid(),s:'علوم',t:'تقرير عن دورة الماء',b:'تقرير لا يقل عن صفحتين.',due:n+3*864e5,d:n-2*864e5,by:'أ. ياسر',sub:{a:1,b:1,c:1,d:1,e:1,f:1,g:1,h:1}}]);DB.set('pk2_sc_an',[{id:uid(),t:'رحلة مدرسية الخميس 🚌',b:'رحلة علمية إلى المتحف القومي.',by:'أ. ياسر',d:n-36e5}])}
+function draw(){var L=HW(),subs=L.reduce(function(s,h){return s+Object.keys(h.sub).length},0),act=L.filter(function(h){return h.due>Date.now()}).length;
+$('sts').innerHTML='<div class="stat"><small>الطلاب</small><b>'+CLS+'</b></div><div class="stat"><small>واجبات نشطة</small><b>'+act+'</b></div><div class="stat"><small>تسليمات</small><b style="color:var(--ok)">'+subs+'</b></div>';
+$('hl').innerHTML=L.slice().sort(function(a,b){return b.d-a.d}).map(function(h){var c=Object.keys(h.sub).length,dd=Math.ceil((h.due-Date.now())/864e5);return '<div class="as"><div class="row"><div class="sp"><span class="badge">'+h.s+'</span><b style="display:block;margin-top:6px">'+E(h.t)+'</b><small class="mu">'+(dd<0?'انتهى التسليم':'متبقي '+dd+' يوم')+'</small></div><div style="text-align:center"><b style="font-size:22px">'+c+'<small class="mu" style="font-size:13px">/'+CLS+'</small></b><small class="mu" style="display:block;font-size:11px">سلّموا</small></div><button class="icb" style="width:38px;height:38px;border-radius:13px" onclick="delHW(\''+h.id+'\')">'+I('trash')+'</button></div><div class="bar"><i style="width:'+Math.min(100,c/CLS*100)+'%"></i></div></div>'}).join('')||'<div class="empty"><div class="ill">📝</div><b>ما نشرت واجبات لسه</b><button class="btn" onclick="openHW()">'+I('plus')+'واجب جديد</button></div>';stagger($('hl'))}
+function ann(){$('anl').innerHTML=AN().map(function(a){return '<div class="li"><div class="av">📢</div><div class="bd"><b>'+E(a.t)+'</b><small>'+ago(a.d)+'</small></div><button class="icb" style="width:38px;height:38px;border-radius:13px" onclick="delAn(\''+a.id+'\')">'+I('trash')+'</button></div>'}).join('')||'<div class="empty"><div class="ill">📢</div><b>ما في إعلانات</b></div>';stagger($('anl'))}
+function chips(){$('sc').innerHTML=SB.map(function(s,i){return '<button class="chip '+(i==sc?'on':'')+'" onclick="sc='+i+';chips()">'+s+'</button>'}).join('')}
+function openHW(){$('ht').value='';$('hb').value='';var d=new Date(Date.now()+3*864e5);$('hd').value=d.toISOString().slice(0,10);sc=0;chips();openS('o-hw')}
+function pubHW(){var t=$('ht').value.trim();if(!t){toast('اكتب عنوان الواجب');return}var due=new Date($('hd').value+'T23:59').getTime()||Date.now()+864e5,L=HW();L.unshift({id:uid(),s:SB[sc],t:t,b:$('hb').value.trim(),due:due,d:Date.now(),by:'أ. ياسر',sub:{}});DB.set('pk2_sc_hw',L);closeS();draw();toast('تم نشر الواجب للطلاب ✔')}
+function pubAn(){var t=$('at').value.trim();if(!t){toast('اكتب عنوان الإعلان');return}var L=AN();L.unshift({id:uid(),t:t,b:$('ab').value.trim(),by:'أ. ياسر',d:Date.now()});DB.set('pk2_sc_an',L);$('at').value='';$('ab').value='';closeS();ann();toast('تم نشر الإعلان')}
+function delHW(id){var L=HW(),i=L.findIndex(function(x){return x.id==id}),it=L[i];L.splice(i,1);DB.set('pk2_sc_hw',L);draw();toast('تم حذف الواجب',function(){var M=HW();M.splice(i,0,it);DB.set('pk2_sc_hw',M);draw()})}
+function delAn(id){DB.set('pk2_sc_an',AN().filter(function(x){return x.id!=id}));ann()}
+window.onTab=function(t){if(t=='an')ann();else draw()};
+draw();
+</script>

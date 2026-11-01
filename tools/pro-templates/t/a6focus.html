@@ -1,0 +1,45 @@
+<!--META {"name":"⏱ تركيز برو","desc":"مؤقت تركيز بخلفية شفق متحركة: حلقة متدرجة كبيرة، أوضاع تركيز واستراحة، جلسات اليوم، ومهمة حالية، وإحصائيات أسبوعية.","tag":"🌌 داكن شفقي","c":"#6366f1","cat":"prod","h":238,"theme":"dark","title":"تركيز","ord":16,"replaces":"⏱ التركيز"}-->
+<style>
+html{background:var(--bg)}body{background:transparent}
+.aur{position:fixed;inset:0;z-index:-1;overflow:hidden}.aur i{position:absolute;width:420px;height:420px;border-radius:50%;filter:blur(70px);opacity:.45;animation:pkFloat 14s ease-in-out infinite}
+.aur i:nth-child(1){background:#6366f1;top:-160px;right:-120px}.aur i:nth-child(2){background:#ec4899;bottom:-200px;left:-160px;animation-delay:-5s}.aur i:nth-child(3){background:#06b6d4;top:40%;left:30%;width:260px;height:260px;animation-delay:-9s;opacity:.25}
+.tm{position:relative;width:286px;height:286px;margin:18px auto 10px}.tm .in2{position:absolute;inset:26px;border-radius:50%;background:color-mix(in srgb,var(--sf) 70%,transparent);backdrop-filter:blur(12px);border:1px solid var(--ln);display:grid;place-items:center;text-align:center;box-shadow:inset 0 2px 30px rgba(0,0,0,.25)}
+.tm .t{font-size:58px;font-weight:900;letter-spacing:1px;line-height:1}.tm small{color:var(--mu);font-weight:700;font-size:13px}
+.ctr{display:flex;align-items:center;justify-content:center;gap:22px;margin:14px 0 6px}.ctr .go{width:84px;height:84px;border-radius:30px;background:var(--grad);color:#fff;display:grid;place-items:center;box-shadow:0 18px 40px var(--glow)}.ctr .go svg.i{width:34px;height:34px;fill:#fff}
+.ctr .icb{width:56px;height:56px;border-radius:20px}
+.ses{display:flex;justify-content:center;gap:8px;margin:12px 0}.ses i{width:12px;height:12px;border-radius:50%;background:var(--sf2);border:1px solid var(--ln)}.ses i.on{background:var(--p2);border-color:transparent;box-shadow:0 0 12px var(--p2)}
+.cur{margin:12px 18px 0;display:flex;align-items:center;gap:12px;padding:14px 16px}
+.wk{display:flex;align-items:flex-end;gap:10px;height:140px}.wk div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%}.wk i{width:100%;border-radius:10px;background:var(--sf2)}.wk i.on{background:var(--grad)}.wk small{font-size:10.5px;color:var(--mu);font-weight:700}
+</style>
+<div class="aur"><i></i><i></i><i></i></div>
+<section class="scr on" id="s-home">
+<div class="top"><div class="ttl"><small>جلسة عمل عميق</small><h1>تركيز</h1></div><button class="icb pr" onclick="snd=!snd;toast(snd?'التنبيه الصوتي مفعّل':'التنبيه الصوتي متوقف')"><i data-i="bell"></i></button></div>
+<div class="wrap"><div class="seg" id="md"></div></div>
+<div class="tm"><div id="rg"></div><div class="in2"><div><small id="ml">تركيز</small><div class="t" id="tt">25:00</div><small id="st">جاهز تبدأ؟</small></div></div></div>
+<div class="ses" id="ses"></div>
+<div class="ctr"><button class="icb pr" onclick="reset()"><i data-i="rotate"></i></button><button class="go pr" id="go" onclick="go()"></button><button class="icb pr" onclick="skip()"><i data-i="next"></i></button></div>
+<div class="glass cur"><div class="av g" style="width:42px;height:42px;border-radius:14px">🎯</div><input class="sp" id="task" placeholder="على شنو بتشتغل هسه؟" style="border:0;background:none;outline:none;font-size:15px;font-weight:700"></div>
+</section>
+<section class="scr" id="s-st"><div class="top"><div class="ttl"><small>آخر 7 أيام</small><h1>إنجازك</h1></div></div>
+<div class="stats" id="sts"></div><div class="sec"><h3>دقائق التركيز</h3></div><div class="wrap"><div class="card"><div class="wk" id="wk"></div></div></div></section>
+<nav class="tabbar"><button class="on" data-t="home" onclick="tabs('home')"><i data-i="clock"></i>المؤقت</button><button data-t="st" onclick="tabs('st')"><i data-i="chart"></i>الإحصائيات</button></nav>
+<script>
+var M=[['تركيز',25],['استراحة',5],['طويلة',15]],mode=0,left=1500,tot=1500,run=false,tmr=null,snd=true,LOG=DB.get('pk_focus',{}),cyc=0;
+if(!DB.get('pk_focus_seed')){for(var i=1;i<7;i++)LOG[dkey(new Date(Date.now()-i*864e5))]=[50,75,100,25,125,75][i-1];DB.set('pk_focus',LOG);DB.set('pk_focus_seed',1)}
+var tsk=DB.get('pk_focus_task','');$('task').value=tsk;$('task').oninput=function(){DB.set('pk_focus_task',this.value)};
+function fmt(s){var m=Math.floor(s/60),x=s%60;return (m<10?'0':'')+m+':'+(x<10?'0':'')+x}
+function draw(){$('md').innerHTML=M.map(function(m,i){return '<button class="'+(i==mode?'on':'')+'" onclick="setM('+i+')">'+m[0]+' '+m[1]+'د</button>'}).join('');
+$('rg').innerHTML='<svg width="286" height="286" viewBox="0 0 286 286" style="transform:rotate(-90deg);position:absolute;inset:0"><defs><linearGradient id="gg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818cf8"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs><circle cx="143" cy="143" r="132" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="14"/><circle cx="143" cy="143" r="132" fill="none" stroke="url(#gg)" stroke-width="14" stroke-linecap="round" stroke-dasharray="829.4" stroke-dashoffset="'+(829.4*(1-left/tot))+'" style="transition:stroke-dashoffset 1s linear;filter:drop-shadow(0 0 10px rgba(236,72,153,.5))"/></svg>';
+$('tt').textContent=fmt(left);$('ml').textContent=M[mode][0];$('st').textContent=run?(mode==0?'ركّز… أنت قدها':'خذ نفس عميق'):'جاهز تبدأ؟';$('go').innerHTML=I(run?'pause':'play');
+var s='';for(var i=0;i<4;i++)s+='<i class="'+(i<cyc%4||(cyc&&cyc%4==0&&i<4&&!run&&mode!=0)?'on':'')+'"></i>';$('ses').innerHTML=s}
+function setM(i){stop();mode=i;left=tot=M[i][1]*60;draw()}
+function stop(){run=false;clearInterval(tmr)}
+function done(){stop();if(mode==0){cyc++;var k=dkey();LOG[k]=(LOG[k]||0)+M[0][1];DB.set('pk_focus',LOG);toast('أحسنت! جلسة مكتملة 🎉');setM(cyc%4==0?2:1)}else{toast('انتهت الاستراحة، يلا نرجع');setM(0)}try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}stats()}
+function go(){if(run)stop();else{run=true;tmr=setInterval(function(){left--;if(left<=0)done();else draw()},1000)}vib();draw()}
+function reset(){stop();left=tot;draw()}
+function skip(){done()}
+function stats(){var tot2=0,mx=1,b=[];for(var o=6;o>=0;o--){var d=new Date(Date.now()-o*864e5),v=LOG[dkey(d)]||0;tot2+=v;mx=Math.max(mx,v);b.push([v,SDAYS[d.getDay()]])}
+$('wk').innerHTML=b.map(function(x,i){return '<div><i class="'+(i==6?'on':'')+'" style="height:'+Math.max(6,x[0]/mx*110)+'px"></i><small>'+x[1]+'</small></div>'}).join('');
+$('sts').innerHTML='<div class="stat"><small>اليوم</small><b>'+(LOG[dkey()]||0)+'<small style="display:inline;font-size:12px"> د</small></b></div><div class="stat"><small>الأسبوع</small><b>'+Math.round(tot2/60*10)/10+'<small style="display:inline;font-size:12px"> س</small></b></div><div class="stat"><small>جلسات</small><b>'+Math.round(tot2/25)+'</b></div>'}
+draw();stats();
+</script>

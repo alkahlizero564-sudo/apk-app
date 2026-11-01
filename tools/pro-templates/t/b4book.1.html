@@ -1,0 +1,28 @@
+<!--META {"h":275,"theme":"dark","title":"إدارة الحجوزات"}-->
+<style>
+.tl{position:relative;margin:0 18px}.tl .it{display:flex;gap:12px;margin-bottom:12px}.tl .tm{width:54px;flex:none;text-align:center;font-weight:850;font-size:14px;padding-top:14px}
+.tl .cd{flex:1;padding:14px;border-radius:20px;background:var(--sf);border:1px solid var(--ln);border-inline-start:4px solid var(--c);box-shadow:var(--sh1)}
+.acts{display:flex;gap:8px;margin-top:10px}
+</style>
+<section class="scr on" id="s-day">
+<div class="top"><div class="ttl"><small id="td"></small><h1>حجوزات اليوم</h1></div><button class="icb pr" onclick="draw()"><i data-i="refresh"></i></button></div>
+<div class="stats" id="sts"></div>
+<div class="sec"><h3>الجدول</h3></div><div class="tl" id="tl"></div>
+</section>
+<section class="scr" id="s-all"><div class="top"><div class="ttl"><small>كل الحجوزات</small><h1>الحجوزات</h1></div></div><div class="wrap"><div class="seg" id="fs"></div></div><div class="wrap" id="al" style="margin-top:14px"></div></section>
+<nav class="tabbar"><button class="on" data-t="day" onclick="tabs('day')"><i data-i="clock"></i>اليوم</button><button data-t="all" onclick="tabs('all')"><i data-i="calendar"></i>الحجوزات<span class="bdg" id="nb" style="display:none"></span></button></nav>
+<script>
+var ST=['بانتظار التأكيد','مؤكد','مكتمل','ملغي'],SC=['warn','','ok','bad'],CC=['var(--warn)','var(--p)','var(--ok)','var(--bad)'],F=0;
+function A(){return DB.get('pk2_bk_appts',[])}
+if(!DB.get('pk2_bk_appts',null)){var k=dkey(),n=new Date();function ts(h,m){return new Date(n.getFullYear(),n.getMonth(),n.getDate(),h,m).getTime()}DB.set('pk2_bk_appts',[{id:uid(),di:'d1',dn:'ملعب النجوم الخماسي',ds:'كرة قدم',de:'⚽',dk:k,t:'17:00',ts:ts(17,0),pn:'فريق الشباب',ph:'0911111111',st:2,f:300},{id:uid(),di:'d3',dn:'نادي التنس الملكي',ds:'تنس',de:'🎾',dk:k,t:'18:00',ts:ts(18,0),pn:'أحمد كمال',ph:'0922222222',st:1,f:200},{id:uid(),di:'d1',dn:'ملعب النجوم الخماسي',ds:'كرة قدم',de:'⚽',dk:k,t:'20:00',ts:ts(20,0),pn:'شركة النيل',ph:'0933333333',st:0,f:300},{id:uid(),di:'d5',dn:'قاعة الفرح الكبرى',ds:'قاعات',de:'🏛',dk:k,t:'21:00',ts:ts(21,0),pn:'أسرة محجوب',ph:'0944444444',st:0,f:1500}])}
+var nw=new Date();$('td').textContent=DAYS[nw.getDay()]+'، '+nw.getDate()+' '+MONTHS[nw.getMonth()];
+function acts(a){return '<div class="acts">'+(a.st==0?'<button class="btn sm" onclick="setS(\''+a.id+'\',1)">'+I('check')+'تأكيد</button>':'')+(a.st==1?'<button class="btn sm" onclick="setS(\''+a.id+'\',2)">'+I('check')+'تم الحضور</button>':'')+(a.st<2?'<button class="btn dg sm" onclick="setS(\''+a.id+'\',3)">إلغاء</button><a class="btn gh sm" href="tel:'+a.ph+'">'+I('phone')+'</a>':'')+'</div>'}
+function draw(){var L=A(),k=dkey(),T=L.filter(function(a){return a.dk==k}).sort(function(a,b){return a.ts-b.ts}),pend=L.filter(function(a){return a.st==0}).length;
+$('nb').style.display=pend?'grid':'none';$('nb').textContent=pend;
+$('sts').innerHTML='<div class="stat"><small>اليوم</small><b>'+T.length+'</b></div><div class="stat"><small>بانتظار التأكيد</small><b style="color:var(--warn)">'+pend+'</b></div><div class="stat"><small>إيراد اليوم</small><b style="color:var(--ok)">'+money(T.filter(function(a){return a.st==1||a.st==2}).reduce(function(s,a){return s+(a.f||0)},0))+'</b></div>';
+$('tl').innerHTML=T.map(function(a){return '<div class="it"><div class="tm">'+a.t+'</div><div class="cd" style="--c:'+CC[a.st]+'"><div class="row"><div class="sp"><b>'+E(a.pn)+'</b><small class="mu" style="display:block">'+a.de+' '+E(a.dn)+' • '+a.ds+'</small></div><span class="badge '+SC[a.st]+'">'+ST[a.st]+'</span></div>'+acts(a)+'</div></div>'}).join('')||'<div class="empty"><div class="ill">☕</div><b>ما في حجوزات اليوم</b></div>';stagger($('tl'));all()}
+function all(){$('fs').innerHTML=ST.map(function(s,i){return '<button class="'+(i==F?'on':'')+'" onclick="F='+i+';all()">'+s.replace('بانتظار التأكيد','جديدة')+'</button>'}).join('');
+$('al').innerHTML=A().filter(function(a){return a.st==F}).sort(function(a,b){return a.ts-b.ts}).map(function(a){var d=new Date(a.ts);return '<div class="card" style="margin-bottom:10px"><div class="row"><div class="av">'+a.de+'</div><div class="sp"><b>'+E(a.pn)+'</b><small class="mu" style="display:block">'+E(a.dn)+' • '+DAYS[d.getDay()]+' '+d.getDate()+' '+MONTHS[d.getMonth()]+' • '+a.t+'</small></div></div>'+acts(a)+'</div>'}).join('')||'<div class="empty"><div class="ill">📭</div><b>ما في حجوزات هنا</b></div>';stagger($('al'))}
+function setS(id,s){var L=A(),a=L.find(function(x){return x.id==id});a.st=s;DB.set('pk2_bk_appts',L);toast(ST[s]);draw()}
+draw();
+</script>
