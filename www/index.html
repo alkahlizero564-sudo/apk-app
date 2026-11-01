@@ -10194,10 +10194,15 @@ EXP_MARK,
 '',
 'لو الطلب تعديل محدد على تطبيق موجود: طبّق خبرتك على الأجزاء التي تلمسها فقط، وحافظ على هوية التطبيق ووظائفه وبياناته كما هي.',
 '',
+'الأولوية القصوى: كود يعمل من أول مرة بدون أي خطأ. الجمال لا يبرر أي خطأ، ولو احتجت تختار بين تأثير بصري معقّد وكود مضمون فاختر المضمون. لا تستخدم أي دالة أو خاصية أو بارامتر أو ويدجت لست متأكداً 100% من وجوده وتوقيعه في الإصدار الحالي، ولا تخترع أسماء.',
+'',
 'قبل الإجابة قيّم تصميمك بصمت من 10 في: (الانطباع الأول، والهوية، والتسلسل، والمسافات، والتفاصيل والحركة، وسهولة الاستخدام). أي بند أقل من 9 حسّنه قبل أن ترد. الرد كود كامل فقط كما هو مطلوب.'
 ].join('\n');
+const CHK_HTML='\n\nمراجعة الكود قبل الرد (HTML): كل دالة تستدعيها من onclick أو أي معالج حدث معرّفة في السكربت على المستوى العام وبنفس الاسم حرفياً؛ كل getElementById يشير إلى id موجود فعلاً؛ السكربت في آخر body أو بعد تحميل الصفحة؛ كل JSON.parse وlocalStorage داخل try/catch مع قيمة افتراضية؛ لا متغير يُستخدم قبل تعريفه؛ الأقواس وعلامات التنصيص متوازنة؛ لا مكتبات أو روابط خارجية؛ والملف كامل حتى </html>.';
+const CHK_FL='\n\nمراجعة الكود قبل الرد (Flutter): كل الاستيرادات موجودة أعلى الملف؛ const فقط مع القيم الثابتة فعلاً؛ أمان القيم الفارغة (null safety) صحيح باستخدام ? و?? و! بحذر؛ setState فقط داخل State، وتحقق من mounted بعد أي await؛ كل Controller يُنشأ في initState ويُتخلص منه في dispose؛ أسماء البارامترات مطابقة تماماً لتوقيعات الويدجتات؛ لا حزم غير المسموحة؛ الأقواس متوازنة والملف كامل.';
+const CHK_PY='\n\nمراجعة الكود قبل الرد (Python/Kivy): المسافات البادئة 4 مسافات بلا خلط؛ كل الاستيرادات موجودة وكل المكتبات من المسموحة فقط؛ كل دالة ومتغير معرّف قبل استخدامه؛ تحديث الواجهة من نتائج الشبكة داخل Clock.schedule_once أو دوال on_success؛ لا عمليات تحجب الواجهة؛ الملف كامل ويعمل عند التشغيل مباشرة.';
 const EXP_HTML='\n\nتطبيق ذلك في HTML: متغيرات CSS على :root للتوكنز، وbackdrop-filter للزجاج، وradial-gradient للإضاءات، وSVG مضمّن للأيقونات والرسوم، وtransition وanimation بمنحنى cubic-bezier(.2,.8,.2,1)، وfont-variant-numeric: tabular-nums للأرقام، وenv(safe-area-inset-*) للهوامش الآمنة. وإن كان نظام التصميم الجاهز مفعلاً فاستخدم فئاته وركّب منها تصميماً مميزاً بدل اختراع بدائل.';
-const EXP_FL='\n\nتطبيق ذلك في Flutter: لو نظام التصميم الجاهز (Ds...) مستخدم فركّب منه تصميماً مميزاً (DsHero برقم ضخم، وDsStats، وDsCard بمحتوى غني، وDsChips، وDsNav، وdsSheet) وأضف لمساتك عبر Container وBoxDecoration (تدرجات LinearGradient وظلال BoxShadow ناعمة ملونة وBorderRadius كبيرة) وCustomPainter لحلقات التقدم والرسوم، وTweenAnimationBuilder لعدّاد الأرقام، وAnimatedContainer وAnimatedSwitcher للانتقالات، وDsFade للدخول المتدرج. استخدم CustomScrollView مع Slivers للشاشات الطويلة، وFontWeight.w800 وw900 للعناوين، وfontFeatures: [FontFeature.tabularFigures()] للأرقام (مع import \'dart:ui\').';
+const EXP_FL='\n\nتطبيق ذلك في Flutter: لو نظام التصميم الجاهز (Ds...) مستخدم فركّب منه تصميماً مميزاً (DsHero برقم ضخم، وDsStats، وDsCard بمحتوى غني، وDsChips، وDsNav، وdsSheet) وأضف لمساتك عبر Container وBoxDecoration (تدرجات LinearGradient وظلال BoxShadow ناعمة ملونة وBorderRadius كبيرة) وCustomPainter لحلقات التقدم والرسوم، وTweenAnimationBuilder لعدّاد الأرقام، وAnimatedContainer وAnimatedSwitcher للانتقالات، وDsFade للدخول المتدرج. استخدم ListView عادي للشاشات الطويلة، وFontWeight.w800 وw900 للعناوين.';
 const EXP_PY='\n\nتطبيق ذلك في Kivy: عرّف قاموس ألوان واحداً (bg وsurface وtext وmuted وprimary وprimary2)، وارسم كل بطاقة وزر عبر canvas.before بـ RoundedRectangle (radius 20 إلى 28) مع طبقة ظل شبه شفافة تحتها بإزاحة بسيطة، وترويسة بطل بلون الهوية وعنوان ضخم bold، وأزرار بارتفاع 52dp على الأقل بلون الهوية ونص أبيض، وشريط تنقل سفلي مخصص، وAnimation للدخول المتدرج وتأثير الضغط. اجعل كل نص عربي معروض يمر عبر ar() من apkar.';
 const KW=/أنشئ تطبيقاً كاملاً يعمل من الصفر|من الصفر|تصميم|واجهة|شكل|الشاشة|شاشات/;
 const NO=/نتيجة الفحص الآلي|أصلح هذه الأخطاء|قارن بينهما|أنت مراجع جودة/;
@@ -10207,7 +10212,7 @@ ai=function(p){
   try{
     if(typeof p==='string'&&!S.keys.noExpert&&p.indexOf(EXP_MARK)<0&&!NO.test(p)&&KW.test(p)){
       const k=kindOf(p);
-      if(k)p+=COMMON+(k==='f'?EXP_FL:k==='p'?EXP_PY:EXP_HTML);
+      if(k)p+=COMMON+(k==='f'?EXP_FL+CHK_FL:k==='p'?EXP_PY+CHK_PY:EXP_HTML+CHK_HTML);
     }
   }catch(e){}
   return _aiExp(p);
@@ -10220,6 +10225,102 @@ render=function(){
   const m=$('#main');if(!m||$('#cx-exp'))return;
   const c=document.createElement('div');c.className='card';c.id='cx-exp';
   c.innerHTML='<h2>🧑‍🎨 المصمم المبرمج الخبير</h2><label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noExpert?'':'checked')+' onchange="S.keys.noExpert=!this.checked;save()"> صمّم الواجهات بعقلية مصمم ومبرمج خبير</label><p class="note">يضيف للذكاء الاصطناعي منهج تصميم احترافي (هوية بصرية، ألوان 60-30-10، تسلسل بصري، مسافات، حركات دقيقة) ومراجعة ذاتية قبل الرد، في HTML وFlutter وPython.</p>';
+  m.appendChild(c);
+};
+})();
+/* ===== إضافة: فحص HTML قبل البناء (أخطاء الصياغة والتشغيل والأزرار) + إصلاح تلقائي ===== */
+(function(){
+const NOISE=/fetch|NetworkError|Load failed|Failed to load|ERR_|net::|Script error\.?$|ResizeObserver|AbortError|NotAllowedError|SecurityError|Permission|play\(\)|vibrate|wakeLock|serviceWorker|Notification|geolocation|getUserMedia|Capacitor/i;
+function harness(tok){
+  return '<scr'+'ipt>(function(){var T='+JSON.stringify(tok)+',seen={};function s(m){m=String(m).slice(0,300);if(seen[m])return;seen[m]=1;try{parent.postMessage({ck:T,e:m},"*")}catch(x){}}'
+  +'var M={},LS={getItem:function(k){return Object.prototype.hasOwnProperty.call(M,k)?M[k]:null},setItem:function(k,v){M[k]=String(v)},removeItem:function(k){delete M[k]},clear:function(){M={}},key:function(i){return Object.keys(M)[i]||null},get length(){return Object.keys(M).length}};'
+  +'try{Object.defineProperty(window,"localStorage",{value:LS,configurable:true})}catch(x){}try{Object.defineProperty(window,"sessionStorage",{value:LS,configurable:true})}catch(x){}'
+  +'window.alert=function(){};window.confirm=function(){return true};window.prompt=function(){return "1"};window.open=function(){return null};'
+  +'window.addEventListener("error",function(e){if(e.target&&e.target!==window&&e.target.tagName)return;s((e.message||"Error")+(e.lineno?" (سطر "+e.lineno+")":""))},true);'
+  +'window.addEventListener("unhandledrejection",function(e){var r=e.reason;s("Uncaught (in promise) "+((r&&(r.message||r))||""))});'
+  +'var SKIP={"if":1,"return":1,"function":1,"typeof":1,"new":1,"while":1,"for":1,"switch":1,"catch":1};'
+  +'function hasG(n){try{return (0,eval)("typeof "+n)!=="undefined"}catch(x){return false}}'
+  +'function scan(){var miss={};document.querySelectorAll("*").forEach(function(el){for(var i=0;i<el.attributes.length;i++){var a=el.attributes[i];if(!/^on/.test(a.name))continue;var r=/(^|[^.\\w$])([A-Za-z_$][\\w$]*)\\s*\\(/g,m;while((m=r.exec(a.value))){var n=m[2];if(SKIP[n]||n in window||hasG(n))continue;miss[n]=a.name}}});Object.keys(miss).forEach(function(n){s("ReferenceError: الدالة "+n+"() مستدعاة من "+miss[n]+" في HTML لكنها غير معرّفة")})}'
+  +'function clicks(){var L=[].slice.call(document.querySelectorAll("[onclick]")).slice(0,40);L.forEach(function(el){try{if(/location|reload|remove|del|clear|reset|logout|حذف/i.test(el.getAttribute("onclick")))return;el.click()}catch(x){s(x&&x.message||x)}})}'
+  +'window.addEventListener("load",function(){setTimeout(function(){scan();clicks();setTimeout(function(){scan();s("__done")},500)},700)});'
+  +'})();<\/scr'+'ipt>';
+}
+function syntaxErrs(code){
+  const out=[];const re=/<script\b([^>]*)>([\s\S]*?)<\/script>/gi;let m,k=0;
+  while((m=re.exec(code))){
+    if(/\bsrc\s*=/.test(m[1])||/type\s*=\s*["']?(application\/json|text\/template|module)/i.test(m[1]))continue;k++;
+    const js=m[2];if(!js.trim())continue;
+    try{new Function(js)}catch(e){
+      const before=code.slice(0,m.index).split('\n').length;
+      out.push('SyntaxError: '+e.message+' (في السكربت رقم '+k+' الذي يبدأ عند السطر '+before+' من الملف)');
+    }
+  }
+  const hr=/\son[a-z]+\s*=\s*"([^"]*)"/g;let h,c=0;
+  while((h=hr.exec(code))&&c<200){c++;const v=h[1].replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/&#39;/g,"'");if(v.indexOf("'+")>-1||v.indexOf('"+')>-1||v.indexOf('${')>-1||v.indexOf('\\')>-1)continue;try{new Function(v)}catch(e){out.push('SyntaxError في معالج حدث: '+h[0].trim().slice(0,90)+' → '+e.message)}}
+  return out;
+}
+function runtimeErrs(code){
+  return new Promise(function(res){
+    const tok='ck'+Math.random().toString(36).slice(2);const errs=[];
+    const f=document.createElement('iframe');f.setAttribute('sandbox','allow-scripts');f.setAttribute('aria-hidden','true');f.style.cssText='position:fixed;left:-9999px;top:0;width:390px;height:844px;opacity:0;pointer-events:none';
+    let done=false;function fin(){if(done)return;done=true;window.removeEventListener('message',on);try{f.remove()}catch(e){}res(errs)}
+    function on(ev){const d=ev.data;if(!d||d.ck!==tok)return;if(d.e==='__done'){fin();return}if(!NOISE.test(d.e))errs.push(d.e)}
+    window.addEventListener('message',on);
+    let h=String(code);const hb=harness(tok);
+    if(/<head[^>]*>/i.test(h))h=h.replace(/<head[^>]*>/i,function(x){return x+hb});else if(/<html[^>]*>/i.test(h))h=h.replace(/<html[^>]*>/i,function(x){return x+hb});else h=hb+h;
+    f.srcdoc=h;document.body.appendChild(f);setTimeout(fin,6000);
+  });
+}
+async function htmlCheck(code){
+  const s=syntaxErrs(code);if(s.length)return s.slice(0,12);
+  const r=await runtimeErrs(code);return r.slice(0,12);
+}
+window.cxHtmlCheck=htmlCheck;
+function fixP(i,code,errs,hist){
+  let p=sysFor(i)+'الكود الحالي:\n'+BT+'html\n'+code+'\n'+BT+'\n\nنتيجة الفحص الآلي (أخطاء حقيقية ظهرت عند تشغيل التطبيق ويجب إصلاحها):\n'+errs.join('\n');
+  if(hist.length)p+='\n\nأخطاء ظهرت في محاولة سابقة (لا تكرر نفس الأسلوب):\n'+hist.join('\n');
+  p+='\n\nتلميحات: ReferenceError أو "is not defined" → عرّف الدالة أو المتغير في السكربت على المستوى العام (خارج أي دالة) أو صحّح اسمه؛ "Cannot read properties of null" → العنصر غير موجود: تأكد من id وأن السكربت يعمل بعد إنشاء العناصر (آخر body)؛ SyntaxError → صحّح الأقواس وعلامات التنصيص والفواصل؛ JSON.parse → ضعه داخل try/catch.';
+  p+='\n\nأصلح هذه الأخطاء فقط وأبقِ كل شيء آخر كما هو تماماً (التصميم والوظائف والنصوص والبيانات). أعد الملف الكامل.';
+  return p;
+}
+const MAXH=4;
+window.cxHtmlForce=function(i){closeSheet();window._htmlSkip=true;buildAny(i)};
+const _bH=buildAny;
+buildAny=async function(i){
+  const a=S.apps[i];
+  if(!a||langOf(i)!=='html'||S.keys.noHtmlChk||!String(a.code||'').trim()||window._htmlSkip){window._htmlSkip=false;return _bH(i)}
+  if(window._htmlChk)return toast('الفحص شغّال، انتظر...');
+  window._htmlChk=true;
+  const P=progress('HTML — فحص قبل البناء: '+a.name,['فحص الكود وتشغيله','إصلاح الأخطاء بالذكاء الاصطناعي']);
+  let ok=false,errs=[],hist=[],best=null;
+  try{
+    for(let n=0;n<=MAXH;n++){
+      P.set(0,'run',n?'إعادة الفحص بعد الإصلاح '+n+'...':'تشغيل التطبيق واختبار الأزرار...');
+      errs=await htmlCheck(S.apps[i].code);
+      if(!best||errs.length<best.n)best={n:errs.length,code:S.apps[i].code};
+      if(!errs.length){ok=true;P.set(0,'ok','لا توجد أخطاء ✔');P.set(1,'ok',n?'تم الإصلاح ✔ (بعد '+n+' محاولة)':'لا حاجة للإصلاح');break}
+      P.set(0,'bad',errs.join('\n'));
+      if(n===MAXH)break;
+      P.set(1,'run','محاولة إصلاح '+(n+1)+' من '+MAXH+'...');
+      const old=S.apps[i].code,out=await ai(fixP(i,old,errs,hist));const nw=clean(out);
+      hist=errs.slice(0,4);
+      if(nw&&nw.length>old.length*0.5&&/<\/html>|<\/body>|<\/script>/i.test(nw))setCode(i,nw);
+    }
+  }catch(e){P.set(1,'bad',arErr(e));errs=[arErr(e)]}
+  finally{window._htmlChk=false}
+  if(ok)return _bH(i);
+  if(best&&best.code!==S.apps[i].code&&best.n<errs.length)setCode(i,best.code);
+  window._shownErr=errs.join('\n');
+  P.set(1,'bad','بقيت أخطاء بعد '+MAXH+' محاولات');
+  P.extra('<div class="errbox">'+esc(errs.join('\n'))+'</div><button class="acc" style="margin-top:10px;width:100%" onclick="cxHtmlForce('+i+')">🏗 ابنِ رغم ذلك</button>');
+};
+/* مفتاح التشغيل */
+const _rH=render;
+render=function(){
+  _rH();
+  if(tab!=='keys')return;const m=$('#main');if(!m||$('#cx-hck'))return;
+  const c=document.createElement('div');c.className='card';c.id='cx-hck';
+  c.innerHTML='<h2>🧪 فحص HTML قبل البناء</h2><label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noHtmlChk?'':'checked')+' onchange="S.keys.noHtmlChk=!this.checked;save()"> فحص تطبيقات HTML وإصلاح أخطائها تلقائياً قبل البناء</label><p class="note">يشغّل التطبيق في الخلفية ويكشف أخطاء الصياغة والتشغيل والأزرار التي تستدعي دوال غير موجودة، ثم يصلحها بالذكاء الاصطناعي (حتى '+MAXH+' محاولات).</p>';
   m.appendChild(c);
 };
 })();
