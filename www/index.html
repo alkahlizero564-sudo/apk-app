@@ -134,6 +134,7 @@ function restore(i,j){pushVersion(i);S.apps[i].code=S.apps[i].versions[j].code;s
 /* ---------- الذكاء الاصطناعي ---------- */
 const OAI={openrouter:{url:'https://openrouter.ai/api/v1/chat/completions',key:'orKey',model:'orModel',def:'',name:'OpenRouter'},groq:{url:'https://api.groq.com/openai/v1/chat/completions',key:'gqKey',model:'gqModel',def:'openai/gpt-oss-120b',name:'Groq'}};
 async function ai(prompt){const k=S.keys;
+  if(window._reqTail&&typeof prompt==='string'&&/```(html|dart|python)/.test(prompt)&&!/^أنت مراجع/.test(prompt)&&prompt.indexOf(window._reqTail)<0)prompt+=window._reqTail;
   if(OAI[k.provider]){const c=OAI[k.provider];const key=k[c.key],model=k[c.model]||c.def;
     if(!key)throw new Error('أدخل مفتاح '+c.name+' في قائمة المفاتيح');
     if(!model)throw new Error('اكتب اسم النموذج في قائمة المفاتيح (انسخه من openrouter.ai/models واختر نموذجاً مجانياً ينتهي بـ :free)');
@@ -160,6 +161,7 @@ async function ai(prompt){const k=S.keys;
     if(!(r.status===429||/quota|exhaust/i.test(msg)))throw last;
     if(n<gk.length-1)toast('حصة المفتاح '+(n+1)+' خلصت، التحويل للمفتاح '+(n+2))}
   throw last}
+const AI_BASE=ai;
 function clean(t){const m=t.match(/```(?:\w+)?\n([\s\S]*?)```/);return (m?m[1]:t).trim()}
 const SYS='أنت مبرمج محترف. التطبيق مكتوب بـ HTML وCSS وJavaScript في ملف واحد index.html ويعمل داخل تطبيق أندرويد. أعد الكود الكامل فقط داخل كتلة ```html بدون أي شرح.\n\n';
 async function busy(btn,fn){const t=btn.textContent;btn.disabled=true;btn.textContent='⏳ جاري العمل...';try{await fn()}catch(e){toast(arErr(e))}finally{btn.disabled=false;btn.textContent=t}}
@@ -9499,7 +9501,8 @@ render=function(){
 })();
 /* ===== إضافة: ملفات البناء الأحدث (Flutter v8 وPython v8: مكتبات تلقائية + دعم العربي) ===== */
 (function(){
-const WF_FLUTTER8=`# v9
+const WF_FLUTTER8=`# v10
+# v9 compatible
 # v8 compatible
 # v7 compatible
 # v6 compatible
@@ -9671,6 +9674,15 @@ jobs:
             fi
           fi
           echo "--- manifest ---"; grep -o 'android.permission.[A-Z_]*' $MF | sort -u
+      - name: requested permissions
+        run: |
+          [ -f apps/$APP/perms.txt ] || { echo "no perms.txt"; exit 0; }
+          MF=flutter_out/android/app/src/main/AndroidManifest.xml
+          for P in $(grep -oE '^[A-Z_]+$' apps/$APP/perms.txt); do
+            grep -q "android.permission.$P\\"" $MF || sed -i "s|<application|<uses-permission android:name=\\"android.permission.$P\\"/><application|" $MF
+          done
+          grep -q "^CAMERA$" apps/$APP/perms.txt && { grep -q "android.hardware.camera\\"" $MF || sed -i 's|<application|<uses-feature android:name="android.hardware.camera" android:required="false"/><application|' $MF; }
+          grep -o 'android.permission.[A-Z_]*' $MF | sort -u
       - name: push notifications (FCM)
         run: |
           if ! grep -qs on apps/$APP/push.txt; then echo "push notifications: off"; exit 0; fi
@@ -9721,7 +9733,8 @@ jobs:
           tag_name: flutter-\${{ inputs.app }}-build-\${{ github.run_number }}
           files: flutter_out/build/app/outputs/flutter-apk/app-release.apk
 `;
-const WF_PYTHON8=`# v10
+const WF_PYTHON8=`# v11
+# v10 compatible
 # v9 compatible
 # v8 compatible
 # v7 compatible
@@ -9855,6 +9868,12 @@ jobs:
               perms += ['POST_NOTIFICATIONS']
           if 'audio' in low and 'plyer' in mods:
               perms += ['RECORD_AUDIO']
+          try:
+              for x in open('perms.txt', encoding='utf-8').read().split():
+                  if x.isupper() and x.replace('_', '').isalpha() and x not in perms:
+                      perms.append(x)
+          except Exception:
+              pass
           open('/tmp/req.txt', 'w').write(','.join(req))
           open('/tmp/perms.txt', 'w').write(','.join(dict.fromkeys(perms)))
           print('requirements:', ','.join(req))
@@ -10015,7 +10034,7 @@ else:
     sys.exit("no android app in firebase project " + P + " and could not create one. Add any Android app in Firebase console.")
 `;
 if(typeof WF!=='undefined'){if(WF.flutter)WF.flutter.yaml=WF_FLUTTER8;if(WF.python)WF.python.yaml=WF_PYTHON8}
-const WF_MK8={flutter:'# v9',python:'# v10'};
+const WF_MK8={flutter:'# v10',python:'# v11'};
 async function ensureWf8(l){
   if(typeof WF==='undefined'||!WF[l])return;
   const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
@@ -10322,6 +10341,146 @@ render=function(){
   const c=document.createElement('div');c.className='card';c.id='cx-hck';
   c.innerHTML='<h2>🧪 فحص HTML قبل البناء</h2><label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noHtmlChk?'':'checked')+' onchange="S.keys.noHtmlChk=!this.checked;save()"> فحص تطبيقات HTML وإصلاح أخطائها تلقائياً قبل البناء</label><p class="note">يشغّل التطبيق في الخلفية ويكشف أخطاء الصياغة والتشغيل والأزرار التي تستدعي دوال غير موجودة، ثم يصلحها بالذكاء الاصطناعي (حتى '+MAXH+' محاولات).</p>';
   m.appendChild(c);
+};
+})();
+/* ===== إضافة: تنفيذ طلب المستخدم بحذافيره (استخراج المتطلبات + الالتزام + التحقق والإكمال + الصلاحيات) ===== */
+(function(){
+const CRE='أنشئ تطبيقاً كاملاً يعمل من الصفر';
+const PM={CAMERA:['CAMERA'],LOCATION:['ACCESS_FINE_LOCATION','ACCESS_COARSE_LOCATION'],BACKGROUND_LOCATION:['ACCESS_BACKGROUND_LOCATION'],MICROPHONE:['RECORD_AUDIO','MODIFY_AUDIO_SETTINGS'],NOTIFICATIONS:['POST_NOTIFICATIONS'],STORAGE:['READ_MEDIA_IMAGES','READ_MEDIA_VIDEO','READ_EXTERNAL_STORAGE'],VIBRATE:['VIBRATE'],CALL_PHONE:['CALL_PHONE'],SMS:['SEND_SMS'],CONTACTS:['READ_CONTACTS'],BLUETOOTH:['BLUETOOTH_CONNECT','BLUETOOTH_SCAN'],WAKE_LOCK:['WAKE_LOCK'],BIOMETRIC:['USE_BIOMETRIC'],FLASHLIGHT:['CAMERA']};
+const PAR={CAMERA:'الكاميرا',LOCATION:'الموقع',BACKGROUND_LOCATION:'الموقع في الخلفية',MICROPHONE:'الميكروفون',NOTIFICATIONS:'الإشعارات',STORAGE:'الصور والملفات',VIBRATE:'الاهتزاز',CALL_PHONE:'الاتصال المباشر',SMS:'الرسائل',CONTACTS:'جهات الاتصال',BLUETOOTH:'البلوتوث',WAKE_LOCK:'إبقاء الشاشة مضيئة',BIOMETRIC:'البصمة',FLASHLIGHT:'الكشاف'};
+const HOW={
+ h:{CAMERA:'<input type="file" accept="image/*" capture="environment"> أو navigator.mediaDevices.getUserMedia({video:true})',LOCATION:'navigator.geolocation.getCurrentPosition و watchPosition',MICROPHONE:'navigator.mediaDevices.getUserMedia({audio:true}) مع MediaRecorder',NOTIFICATIONS:'Notification.requestPermission ثم new Notification، ولإشعارات بين التطبيقين استخدم window.APKPush إن وُجد',STORAGE:'<input type="file" accept="image/*"> وFileReader',VIBRATE:'navigator.vibrate',CALL_PHONE:'رابط tel:',SMS:'رابط sms:',CONTACTS:'إدخال يدوي للأسماء والأرقام (الويب لا يقرأ جهات الاتصال)',WAKE_LOCK:'navigator.wakeLock.request',FLASHLIGHT:'getUserMedia مع torch عند توفره'},
+ f:{CAMERA:'image_picker (ImageSource.camera) أو mobile_scanner للمسح',LOCATION:'geolocator',MICROPHONE:'لا توجد حزمة تسجيل متاحة: اعرض رسالة واضحة',NOTIFICATIONS:'flutter_local_notifications',STORAGE:'image_picker و file_picker و path_provider',VIBRATE:'HapticFeedback من flutter/services',CALL_PHONE:'url_launcher مع tel:',SMS:'url_launcher مع sms:',CONTACTS:'إدخال يدوي (لا توجد حزمة جهات اتصال متاحة)',BIOMETRIC:'local_auth',WAKE_LOCK:'لا توجد حزمة: تجاهلها',BLUETOOTH:'لا توجد حزمة بلوتوث متاحة: اعرض رسالة واضحة'},
+ p:{CAMERA:'kivy.uix.camera.Camera أو plyer.camera',LOCATION:'plyer.gps',NOTIFICATIONS:'plyer.notification',VIBRATE:'plyer.vibrator',CALL_PHONE:'plyer.call',SMS:'plyer.sms',STORAGE:'plyer.filechooser'}
+};
+const SPECS={};
+function J(t){const s=String(t),a=s.indexOf('{'),b=s.lastIndexOf('}');if(a<0||b<a)return null;try{return JSON.parse(s.slice(a,b+1))}catch(e){return null}}
+function kindOf(p){if(p.indexOf(BT+'dart')>-1)return 'f';if(p.indexOf(BT+'python')>-1)return 'p';if(p.indexOf(BT+'html')>-1||p.indexOf('index.html')>-1)return 'h';return ''}
+function fenceOf(k){return k==='f'?'dart':k==='p'?'python':'html'}
+function descOf(p){
+  const i=p.lastIndexOf('وصف التطبيق:\n');if(i<0)return '';
+  let d=p.slice(i+13);
+  ['\n\nهذا التطبيق مكمّل','\n\nهذا التطبيق أحد تطبيقين','\nرابط قاعدة البيانات','\nURL: ','\n\nكود التطبيق الآخر','\n\nهيكل البيانات'].forEach(function(m){const j=d.indexOf(m);if(j>-1)d=d.slice(0,j)});
+  return d.trim().slice(0,4000);
+}
+async function specOf(desc,orig){
+  const key=desc+'|'+(orig||'');if(SPECS[key])return SPECS[key];
+  const p='أنت محلل متطلبات دقيق جداً. حوّل طلب المستخدم إلى قائمة متطلبات كاملة قابلة للتحقق، بدون حذف أي تفصيلة ذكرها وبدون تغيير فكرته أو مجاله.\n\n'+(orig?'الطلب الأصلي للمستخدم: «'+orig+'»\nوصف هذا التطبيق تحديداً: «'+desc+'»':'طلب المستخدم: «'+desc+'»')+
+  '\n\nأعد JSON فقط بدون شرح وبدون markdown بهذا الشكل:\n{"app":"اسم ونوع التطبيق كما يقصده المستخدم بالضبط","screens":["اسم كل شاشة أو قسم"],"features":["كل ميزة أو وظيفة أو تفصيلة طلبها المستخدم كجملة قصيرة قابلة للتحقق"],"data":["البيانات والحقول التي يحفظها التطبيق"],"texts":["أي أسماء أو نصوص أو ألوان أو أسعار أو أرقام محددة ذكرها حرفياً"],"permissions":["من هذه القائمة فقط: CAMERA, LOCATION, BACKGROUND_LOCATION, MICROPHONE, NOTIFICATIONS, STORAGE, VIBRATE, CALL_PHONE, SMS, CONTACTS, BLUETOOTH, WAKE_LOCK, BIOMETRIC, FLASHLIGHT"]}\n\nقواعد: features تشمل كل شيء ذكره المستخدم صراحة، ثم أضف فقط ما هو ضروري جداً لعمله (اكتب بجانبه «ضروري»). permissions تشمل ما طلبه صراحة وما تحتاجه ميزاته فعلاً. لا تتجاوز 30 ميزة؛ اجمع المتشابه.';
+  let o=null;try{o=J(await AI_BASE(p))}catch(e){}
+  if(!o||!Array.isArray(o.features))return null;
+  ['screens','features','data','texts','permissions'].forEach(function(k){o[k]=(Array.isArray(o[k])?o[k]:[]).map(String).filter(Boolean).slice(0,40)});
+  o.permissions=o.permissions.map(function(x){return x.trim().toUpperCase()}).filter(function(x){return PM[x]});
+  SPECS[key]=o;return o;
+}
+function tail(desc,orig,spec,k,isEdit){
+  let t='\n\n=== '+(isEdit?'التعديل المطلوب من المستخدم':'طلب المستخدم')+': هذا هو الأهم وله الأولوية على كل التعليمات السابقة ===\n';
+  t+=(isEdit?'نص التعديل حرفياً:\n«':'نص طلب المستخدم حرفياً:\n«')+desc+'»\n';
+  if(orig)t+='الطلب الأصلي للنظام كله: «'+orig+'»\n';
+  if(spec){
+    if(spec.app&&!isEdit)t+='\nالتطبيق المطلوب: '+spec.app+'\n';
+    if(spec.screens.length&&!isEdit)t+='الشاشات والأقسام: '+spec.screens.join('، ')+'\n';
+    t+='\nالمتطلبات (نفّذها كلها بوظائف حقيقية تعمل):\n'+spec.features.map(function(f,i){return (i+1)+'. '+f}).join('\n')+'\n';
+    if(spec.data.length)t+='البيانات: '+spec.data.join('، ')+'\n';
+    if(spec.texts.length)t+='استخدم هذه النصوص والقيم كما هي حرفياً: '+spec.texts.join('، ')+'\n';
+    if(spec.permissions.length){const H=HOW[k]||{};t+='الصلاحيات المطلوبة (مضافة تلقائياً في أندرويد، فاستخدمها فعلياً واطلب الإذن من المستخدم عند الحاجة مع رسالة واضحة لو رفض): '+spec.permissions.map(function(x){return PAR[x]+(H[x]?' ← '+H[x]:'')}).join('؛ ')+'\n'}
+  }
+  t+='\nقواعد الالتزام:\n'+(isEdit?
+   '- نفّذ التعديل المطلوب كاملاً بكل تفاصيله، وأبقِ كل شيء آخر في التطبيق كما هو تماماً (الوظائف والبيانات والتصميم).\n- لا تكتفِ بتعديل شكلي: الوظيفة المطلوبة يجب أن تعمل فعلاً.\n':
+   '- ابنِ هذا التطبيق نفسه بنفس الفكرة والمجال والاسم الذي طلبه المستخدم، ولا تستبدله بتطبيق آخر ولا بأي مثال مذكور في تعليمات التصميم أو القوالب (الأمثلة هناك للأسلوب فقط).\n- كل متطلب في القائمة يجب أن يكون موجوداً ويعمل فعلياً: ممنوع الأزرار الشكلية، وممنوع «قريباً» أو TODO أو بيانات ثابتة بدل وظيفة.\n- لا تحذف ولا تختصر أي شيء طلبه المستخدم حتى لو كان كثيراً، ولو التطبيق كبير فقسّمه أقساماً واضحة بشريط تنقل.\n- الميزات الإضافية مسموحة فقط إذا خدمت طلبه مباشرة.\n')+
+   '- قبل الرد راجع القائمة بنداً بنداً وتأكد أن كل بند منفذ في الكود.';
+  return t;
+}
+function stripForCheck(code){return String(code).replace(/<style id="ds-pro">[\s\S]*?<\/style>/g,'').replace(new RegExp('<scr'+'ipt id="ds-pro-js">[\\s\\S]*?<\\/scr'+'ipt>','g'),'').slice(0,90000)}
+async function verify(spec,code){
+  const p='أنت مراجع متطلبات صارم. أمامك قائمة متطلبات وكود تطبيق. لكل متطلب تحقق هل هو منفذ فعلياً في الكود بوظيفة تعمل (وليس زراً شكلياً أو نصاً فقط).\n\nالمتطلبات:\n'+spec.features.map(function(f,i){return (i+1)+'. '+f}).join('\n')+'\n\nالكود:\n'+BT+'\n'+stripForCheck(code)+'\n'+BT+'\n\nأعد JSON فقط بدون شرح: {"missing":["نص كل متطلب غير منفذ أو منفذ جزئياً مع توضيح قصير لما ينقصه"]}. إن كان كل شيء منفذاً أعد {"missing":[]}.';
+  try{const o=J(await AI_BASE(p));return o&&Array.isArray(o.missing)?o.missing.map(String).filter(Boolean).slice(0,15):[]}catch(e){return []}
+}
+function appIdx(p){if(p.indexOf('تطبيق الإدارة (صاحب النشاط)')>-1)return 1;if(p.indexOf('دور التطبيق: تطبيق الزبائن')>-1)return 0;return window._curApp==null?0:window._curApp}
+function setPerms(i,list){try{if(!S.apps[i])return;const cur=S.apps[i].perms||[];list.forEach(function(x){if(cur.indexOf(x)<0)cur.push(x)});S.apps[i].perms=cur;save()}catch(e){}}
+const PLAN='صمم نظاماً من تطبيقين مترابطين لهذا النشاط';
+const _aiF=ai;
+ai=async function(p){
+  if(typeof p!=='string'||S.keys.noFidelity)return _aiF(p);
+  if(p.indexOf(PLAN)>-1&&p.indexOf('التزم بنشاط المستخدم حرفياً')<0)return _aiF(p+'\n\nمهم جداً: التزم بنشاط المستخدم حرفياً ولا تغيّر مجاله. ضمّن في d1 وd2 كل تفصيلة وميزة وصلاحية ونص ذكرها المستخدم، ووزّعها على التطبيقين حسب من يستخدمها، ولا تحذف شيئاً.');
+  const k=kindOf(p),isCreate=p.indexOf(CRE)>-1,phase=p.indexOf('لهذه المرحلة فقط')>-1;
+  const em=p.lastIndexOf('التعديل المطلوب: '),isEdit=!isCreate&&em>-1&&p.indexOf('الكود الحالي:')>-1;
+  if(!k||(!isCreate&&!isEdit)||window._reqBusy)return _aiF(p);
+  const desc=isEdit?p.slice(em+17).trim().slice(0,3000):descOf(p);
+  if(!desc)return _aiF(p);
+  const orig=(isCreate&&p.indexOf('دور التطبيق:')>-1&&window._sysf&&window._sysf.desc&&window._sysf.desc!==desc)?String(window._sysf.desc).slice(0,2000):'';
+  const idx=appIdx(p);
+  toast(isEdit?'📋 تحليل التعديل المطلوب...':'📋 تحليل طلبك واستخراج كل المتطلبات...');
+  const spec=await specOf(desc,orig);
+  if(spec&&spec.permissions.length)setPerms(idx,spec.permissions);
+  const T=tail(desc,orig,spec,k,isEdit);
+  let out;
+  window._reqBusy=true;
+  try{
+  try{window._reqTail=T;out=await _aiF(p)}finally{window._reqTail=''}
+  const dsAfter=window._dsNext;
+  if(!spec||phase||!spec.features.length||S.keys.noVerify)return out;
+  try{
+    toast('🔎 التحقق من تنفيذ كل طلباتك...');
+    const code=clean(out),miss=await verify(spec,code);
+    if(!miss.length){toast('✔ كل المتطلبات منفذة');window._dsNext=dsAfter;return out}
+    toast('➕ إضافة '+miss.length+' متطلب ناقص...');
+    const fx=fenceOf(k);
+    const p2=isEdit?(p.slice(0,p.indexOf('الكود الحالي:'))+'الكود الحالي:\n'+BT+fx+'\n'+code+'\n'+BT+'\n\nالتعديل المطلوب: '+desc+'\n\nملاحظة: هذا الكود فيه جزء من التعديل، لكن المراجعة وجدت هذه الأجزاء غير منفذة بعد:\n'+miss.map(function(m,i){return (i+1)+'. '+m}).join('\n')+'\n\nأعد الكود الكامل بعد تنفيذ التعديل كاملاً.'):p.split(CRE).join('أكمل التطبيق التالي')+'\n\nكتبت هذا الكود لكن المراجعة وجدت متطلبات غير منفذة أو منفذة جزئياً:\n'+miss.map(function(m,i){return (i+1)+'. '+m}).join('\n')+'\n\nالكود الحالي:\n'+BT+fx+'\n'+code+'\n'+BT+'\n\nأعد الكود الكامل بعد إضافة كل المتطلبات الناقصة بوظائف حقيقية تعمل، وأبقِ كل ما هو موجود ويعمل كما هو.';
+    let out2;
+    try{window._reqTail=T;out2=await _aiF(p2)}finally{window._reqTail=''}
+    const c2=clean(out2);
+    if(c2&&c2.length>=code.length*0.7){toast('✔ تمت إضافة المتطلبات الناقصة');window._dsNext=dsAfter;return out2}
+  }catch(e){}
+  window._dsNext=dsAfter;
+  return out;
+  }finally{window._reqBusy=false}
+};
+/* معرفة رقم التطبيق في الإنشاء والتعديل */
+['aiCreate','aiEdit'].forEach(function(n){const f=window[n];if(typeof f!=='function')return;window[n]=function(i,btn){window._curApp=i;return f.apply(this,arguments)}});
+try{aiCreate=window.aiCreate;aiEdit=window.aiEdit}catch(e){}
+/* ملف الصلاحيات مع كل رفع: المطلوبة + المكتشفة من الكود */
+function detect(path,c){
+  const s=String(c),r=[];
+  if(/\.(html)$/.test(path)){
+    if(/getUserMedia\s*\(\s*\{[^}]*video|capture\s*=|accept\s*=\s*["']image\/\*["'][^>]*capture|BarcodeDetector|torch/.test(s))r.push('CAMERA');
+    if(/getUserMedia\s*\(\s*\{[^}]*audio|MediaRecorder|SpeechRecognition|webkitSpeechRecognition/.test(s))r.push('MICROPHONE');
+    if(/navigator\.geolocation/.test(s))r.push('LOCATION');
+    if(/Notification\.requestPermission|new Notification\(|showNotification/.test(s))r.push('NOTIFICATIONS');
+    if(/navigator\.vibrate/.test(s))r.push('VIBRATE');
+    if(/type\s*=\s*["']file["']/.test(s))r.push('STORAGE');
+    if(/wakeLock/.test(s))r.push('WAKE_LOCK');
+  }
+  return r;
+}
+function permTxt(list){const o=[];list.forEach(function(x){(PM[x]||[]).forEach(function(a){if(o.indexOf(a)<0)o.push(a)})});return o.join('\n')+(o.length?'\n':'')}
+const _putF=put;
+put=async function(repo,branch,path,content){
+  const r=await _putF(repo,branch,path,content);
+  const m=String(path).match(/^apps\/([^/]+)\/(www\/index\.html|main\.dart|main\.py)$/);
+  if(m&&!S.keys.noPerms){
+    try{const i=S.apps.findIndex(function(x){return slugOf(x.name)===m[1]});const want=((i>-1&&S.apps[i].perms)||[]).concat(detect(path,content));
+      const u=[];want.forEach(function(x){if(PM[x]&&u.indexOf(x)<0)u.push(x)});
+      await _putF(repo,branch,'apps/'+m[1]+'/perms.txt',permTxt(u)||'\n')}catch(e){}
+  }
+  return r;
+};
+/* واجهة: الصلاحيات في قائمة البناء + مفاتيح */
+window.cxPerm=function(i,x,on){const a=S.apps[i];a.perms=(a.perms||[]).filter(function(y){return y!==x});if(on)a.perms.push(x);save()};
+const _rF=render;
+render=function(){
+  _rF();
+  const m=$('#main');if(!m)return;
+  if(tab==='build'&&!$('#cx-perms')){
+    const c=document.createElement('div');c.className='card';c.id='cx-perms';
+    c.innerHTML='<h2>🔐 صلاحيات التطبيقات</h2><p class="note">تُضاف تلقائياً من طلبك ومن الكود، ويمكنك إضافة أي صلاحية هنا قبل البناء.</p>'+S.apps.map(function(a,i){const P=a.perms||[];return '<b style="display:block;margin:10px 0 6px">'+esc(a.name)+'</b><div style="display:flex;flex-wrap:wrap;gap:8px">'+Object.keys(PAR).filter(function(x){return x!=='FLASHLIGHT'}).map(function(x){return '<label style="display:inline-flex;gap:6px;align-items:center;background:var(--card);border:1px solid var(--line);padding:7px 11px;border-radius:12px;font-size:13px;margin:0;white-space:nowrap;color:var(--tx)"><input style="width:18px;height:18px;flex:none;margin:0" type="checkbox" '+(P.indexOf(x)>-1?'checked':'')+' onchange="cxPerm('+i+',\''+x+'\',this.checked)">'+PAR[x]+'</label>'}).join('')+'</div>'}).join('');
+    m.appendChild(c);
+  }
+  if(tab==='keys'&&!$('#cx-fid')){
+    const c=document.createElement('div');c.className='card';c.id='cx-fid';
+    c.innerHTML='<h2>🎯 تنفيذ طلبك بحذافيره</h2><label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noFidelity?'':'checked')+' onchange="S.keys.noFidelity=!this.checked;save()"> استخراج كل متطلباتك وإلزام الذكاء الاصطناعي بها</label><label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:10px 0 0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noVerify?'':'checked')+' onchange="S.keys.noVerify=!this.checked;save()"> التحقق بعد الكتابة وإضافة أي متطلب ناقص تلقائياً</label><p class="note">قبل الكتابة يحوّل طلبك إلى قائمة متطلبات وصلاحيات ويضعها في آخر الأمر كأهم شيء، وبعد الكتابة يراجع الكود بنداً بنداً ويضيف الناقص. يستهلك طلبين إضافيين تقريباً لكل تطبيق.</p>';
+    m.appendChild(c);
+  }
 };
 })();
 render();

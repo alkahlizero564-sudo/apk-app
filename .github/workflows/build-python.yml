@@ -1,4 +1,5 @@
-# v10
+# v11
+# v10 compatible
 # v9 compatible
 # v8 compatible
 # v7 compatible
@@ -132,6 +133,12 @@ jobs:
               perms += ['POST_NOTIFICATIONS']
           if 'audio' in low and 'plyer' in mods:
               perms += ['RECORD_AUDIO']
+          try:
+              for x in open('perms.txt', encoding='utf-8').read().split():
+                  if x.isupper() and x.replace('_', '').isalpha() and x not in perms:
+                      perms.append(x)
+          except Exception:
+              pass
           open('/tmp/req.txt', 'w').write(','.join(req))
           open('/tmp/perms.txt', 'w').write(','.join(dict.fromkeys(perms)))
           print('requirements:', ','.join(req))

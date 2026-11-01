@@ -148,6 +148,13 @@ jobs:
           for P in INTERNET ACCESS_NETWORK_STATE; do
             grep -q "android.permission.$P" "$M" || sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.$P\" />\n</manifest>|" "$M"
           done
+          if [ -f perms.txt ]; then
+            for P in $(grep -oE '^[A-Z_]+$' perms.txt); do
+              grep -q "android.permission.$P\"" "$M" || sed -i "s|</manifest>|    <uses-permission android:name=\"android.permission.$P\" />\n</manifest>|" "$M"
+            done
+            grep -q "^CAMERA$" perms.txt && { grep -q "android.hardware.camera\"" "$M" || sed -i "s|</manifest>|    <uses-feature android:name=\"android.hardware.camera\" android:required=\"false\" />\n</manifest>|" "$M"; }
+            grep -q "LOCATION" perms.txt && { grep -q "android.hardware.location.gps" "$M" || sed -i "s|</manifest>|    <uses-feature android:name=\"android.hardware.location.gps\" android:required=\"false\" />\n</manifest>|" "$M"; }
+          fi
           echo "--- permissions ---"
           grep "uses-permission" "$M"
           sed -i "s/versionCode [0-9][0-9]*/versionCode ${{ github.run_number }}/" android/app/build.gradle

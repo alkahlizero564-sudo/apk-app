@@ -1,4 +1,5 @@
-# v9
+# v10
+# v9 compatible
 # v8 compatible
 # v7 compatible
 # v6 compatible
@@ -170,6 +171,15 @@ jobs:
             fi
           fi
           echo "--- manifest ---"; grep -o 'android.permission.[A-Z_]*' $MF | sort -u
+      - name: requested permissions
+        run: |
+          [ -f apps/$APP/perms.txt ] || { echo "no perms.txt"; exit 0; }
+          MF=flutter_out/android/app/src/main/AndroidManifest.xml
+          for P in $(grep -oE '^[A-Z_]+$' apps/$APP/perms.txt); do
+            grep -q "android.permission.$P\"" $MF || sed -i "s|<application|<uses-permission android:name=\"android.permission.$P\"/><application|" $MF
+          done
+          grep -q "^CAMERA$" apps/$APP/perms.txt && { grep -q "android.hardware.camera\"" $MF || sed -i 's|<application|<uses-feature android:name="android.hardware.camera" android:required="false"/><application|' $MF; }
+          grep -o 'android.permission.[A-Z_]*' $MF | sort -u
       - name: push notifications (FCM)
         run: |
           if ! grep -qs on apps/$APP/push.txt; then echo "push notifications: off"; exit 0; fi
