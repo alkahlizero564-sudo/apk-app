@@ -4473,7 +4473,7 @@ class DsEmpty extends StatelessWidget {
 
 class DsFab extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
   const DsFab({super.key, this.icon = Icons.add, required this.onPressed});
 
   @override
@@ -4722,11 +4722,139 @@ function needsDs(h){
   return /\bDs[A-Z][A-Za-z]*\s*\(|\bds(Sheet|Toast|Undo|Confirm)\s*\(/.test(h);
 }
 
+/* أسماء كل التعريفات في نظام التصميم (عشان نشيل أي نسخة منها كتبها الذكاء الاصطناعي في الكود) */
+const DS_DECL=(function(){
+  const n=[];let x;
+  const re=/^(?:class\s+(\w+)|(?:Future<[^\n(]*>|void|Widget)\s+(\w+)\s*(?:<[^>\n]*>)?\s*\()/gm;
+  while((x=re.exec(DART_DS))!==null)n.push(x[1]||x[2]);
+  return n;
+})();
+/* يتخطى نص Dart (مع ${...}) ويرجع الموضع بعده */
+function skipStr(s,i){
+  let raw=false;
+  if(s[i]==='r'){raw=true;i++}
+  const q=s[i],tri=s.substr(i,3)===q+q+q;
+  i+=tri?3:1;
+  while(i<s.length){
+    const c=s[i];
+    if(!raw&&c==='\\'){i+=2;continue}
+    if(tri?s.substr(i,3)===q+q+q:c===q)return i+(tri?3:1);
+    if(!tri&&c==='\n')return i;
+    if(!raw&&c==='$'&&s[i+1]==='{'){i=matchClose(s,i+1);continue}
+    i++;
+  }
+  return i;
+}
+/* s[i] قوس فتح: يرجع الموضع بعد قوس الإغلاق المطابق (يتجاهل النصوص والتعليقات) */
+function matchClose(s,i){
+  const op=s[i],cl=op==='{'?'}':op==='('?')':']';
+  let d=0;
+  while(i<s.length){
+    const c=s[i];
+    if(c==='/'&&s[i+1]==='/'){const e=s.indexOf('\n',i);i=e<0?s.length:e;continue}
+    if(c==='/'&&s[i+1]==='*'){const e=s.indexOf('*/',i+2);i=e<0?s.length:e+2;continue}
+    if(c==='"'||c==="'"||(c==='r'&&(s[i+1]==='"'||s[i+1]==="'")&&!/\w/.test(s[i-1]||''))){i=skipStr(s,i);continue}
+    if(c===op)d++;
+    else if(c===cl){d--;if(d===0)return i+1}
+    i++;
+  }
+  return -1;
+}
+function dropDecl(s,nm){
+  const re=new RegExp('^(?:abstract\\s+)?class\\s+'+nm+'\\b|^[A-Za-z_][\\w<>?, ]*\\s+'+nm+'\\s*(?:<[^>\\n]*>)?\\s*\\(','m');
+  const m=re.exec(s);if(!m)return null;
+  let i,end;
+  if(/^(?:abstract\s+)?class\b/.test(m[0])){
+    i=s.indexOf('{',m.index);if(i<0)return null;
+    end=matchClose(s,i);
+  }else{
+    i=matchClose(s,m.index+m[0].length-1);if(i<0)return null;
+    const r=/^\s*(?:async\s*\*?|sync\s*\*)?\s*/.exec(s.slice(i));i+=r[0].length;
+    if(s[i]==='{')end=matchClose(s,i);
+    else if(s.substr(i,2)==='=>'){const e=s.indexOf(';',i);end=e<0?-1:e+1}
+    else return null;
+  }
+  if(end<0)return null;
+  /* احذف التعليقات الملاصقة فوق التعريف */
+  let st=m.index;
+  while(st>0){
+    const p=s.lastIndexOf('\n',st-2);
+    const ln=s.slice(p+1,st-1);
+    if(/^\s*(\/\/|@override)/.test(ln))st=p+1;else break;
+  }
+  return s.slice(0,st)+s.slice(end).replace(/^[ \t]*\n/,'');
+}
+function stripDsCopies(s){
+  s=s.replace(/^\/\/ ===== نظام التصميم الجاهز \(يُضاف تلقائياً\) =====[^\n]*\n?/gm,'');
+  DS_DECL.forEach(function(nm){
+    for(let k=0;k<6;k++){const r=dropDecl(s,nm);if(r===null)break;s=r}
+  });
+  return s;
+}
+/* بديل DS.get و DS.set (الذكاء الاصطناعي ينقلها أحياناً من نظام HTML) مع حفظ دائم على الجهاز */
+const DART_STORE=`
+// ===== مخزن DS (يُضاف تلقائياً) =====
+class DS {
+  static Map<String, dynamic>? _m;
+  static dsio.File? _f;
+  static dsio.File _file() {
+    if (_f != null) return _f!;
+    try {
+      final d = dsio.Directory(dsio.Directory.systemTemp.parent.path + '/app_flutter');
+      if (!d.existsSync()) d.createSync(recursive: true);
+      _f = dsio.File(d.path + '/ds_store.json');
+    } catch (_) {
+      _f = dsio.File(dsio.Directory.systemTemp.path + '/ds_store.json');
+    }
+    return _f!;
+  }
+  static Map<String, dynamic> _all() {
+    if (_m != null) return _m!;
+    _m = <String, dynamic>{};
+    try {
+      final f = _file();
+      if (f.existsSync()) {
+        final v = dsjs.jsonDecode(f.readAsStringSync());
+        if (v is Map) _m = Map<String, dynamic>.from(v);
+      }
+    } catch (_) {}
+    return _m!;
+  }
+  static void _save() {
+    try { _file().writeAsStringSync(dsjs.jsonEncode(_m ?? <String, dynamic>{})); } catch (_) {}
+  }
+  static dynamic get(String key, [dynamic def]) => _all()[key] ?? def;
+  static void set(String key, dynamic val) {
+    if (val == null) { _all().remove(key); } else { _all()[key] = val; }
+    _save();
+  }
+  static void remove(String key) => set(key, null);
+  static bool has(String key) => _all().containsKey(key);
+  static void clear() { _m = <String, dynamic>{}; _save(); }
+}
+`;
+function addTopImports(s,imps){
+  imps=imps.filter(function(x){return s.indexOf(x)<0});
+  if(!imps.length)return s;
+  const re=/^import\s+[^;]+;[ \t]*$/gm;
+  let last=-1,x;
+  while((x=re.exec(s))!==null)last=x.index+x[0].length;
+  if(last<0)return imps.join('\n')+'\n'+s;
+  return s.slice(0,last)+'\n'+imps.join('\n')+s.slice(last);
+}
+window.cxStripDs=stripDsCopies;
+
 /* حقن الكود عند رفع main.dart */
 const _put6=put;
 put=async function(repo,branch,path,content){
-  if(!S.keys.noDS&&/^apps\/[^/]+\/main\.dart$/.test(String(path))){
-    if(needsDs(content)&&content.indexOf('class DsPal')<0)content=content+'\n'+DART_DS;
+  if(/^apps\/[^/]+\/main\.dart$/.test(String(path))&&typeof content==='string'){
+    if(!S.keys.noDS&&needsDs(content)){
+      try{content=stripDsCopies(content)}catch(e){}
+      content=content+'\n'+DART_DS;
+    }
+    if(/\bDS\s*\.\s*(get|set|remove|has|clear)\s*\(/.test(content)&&!/^\s*(abstract\s+)?class\s+DS\b/m.test(content)){
+      content=addTopImports(content,["import 'dart:io' as dsio;","import 'dart:convert' as dsjs;"])+'\n'+DART_STORE;
+    }
   }
   return _put6(repo,branch,path,content);
 };
@@ -5752,6 +5880,13 @@ function fixDart(code){
   let s=orig;
   try{
     s=s.replace(/\b(cardTheme|dialogTheme|tabBarTheme)\s*:\s*(CardTheme|DialogTheme|TabBarTheme)\s*\(/g,function(m,a,b){return a+': '+b+'Data('});
+    s=s.replace(/\bMainAxisAlignment\.(between|around|evenly)\b/g,function(m,a){return 'MainAxisAlignment.space'+a[0].toUpperCase()+a.slice(1)});
+    s=s.replace(/\bMainAxisAlignment\.(space_between|space-between)\b/g,'MainAxisAlignment.spaceBetween');
+    s=s.replace(/\bCrossAxisAlignment\.(spaceBetween|between)\b/g,'CrossAxisAlignment.center');
+    s=s.replace(/\bTextAlign\.(middle)\b/g,'TextAlign.center');
+    s=s.replace(/\bFontWeight\.(semibold|semiBold|medium)\b/g,function(m,a){return a==='medium'?'FontWeight.w500':'FontWeight.w600'});
+    s=s.replace(/\bFontWeight\.(bolder|extraBold|extrabold)\b/g,'FontWeight.w800');
+    s=s.replace(/\bFontWeight\.(light|thin)\b/g,'FontWeight.w300');
     s=stripConst(s);
     s=addImports(s);
     if(cnt(s)!==cnt(orig))return orig;
@@ -5769,7 +5904,7 @@ put=async function(repo,branch,path,content){
 };
 
 /* قواعد صارمة تُضاف لكل طلب Flutter */
-const RULES='\n\nقواعد صارمة لتجنب أخطاء التجميع (مهمة جداً): 1) لا تكتب الكلمة const أمام أي ويدجت أو قائمة أو كائن إطلاقاً، إلا في تعريف المتغيرات الثابتة (static const وconst name = ...) وتعريف المُنشئ نفسه؛ فالأداة تتولى الباقي. 2) أنشئ كل TextEditingController وFocusNode وScrollController وAnimationController كحقل داخل State (في initState) ولا تنشئه داخل build، وتخلص منه في dispose. 3) اكتب كل الاستيرادات المطلوبة في أعلى الملف (مثل dart:convert وdart:async وdart:io وpackage:flutter/services.dart عند الحاجة). 4) استخدم CardThemeData وDialogThemeData وTabBarThemeData بدل CardTheme وDialogTheme وTabBarTheme. 5) تأكد أن كل متغير ودالة معرّفة قبل استخدامها، وأن الأقواس متوازنة، وأن الملف ينتهي كاملاً.';
+const RULES='\n\nقواعد صارمة لتجنب أخطاء التجميع (مهمة جداً): 1) لا تكتب الكلمة const أمام أي ويدجت أو قائمة أو كائن إطلاقاً، إلا في تعريف المتغيرات الثابتة (static const وconst name = ...) وتعريف المُنشئ نفسه؛ فالأداة تتولى الباقي. 2) أنشئ كل TextEditingController وFocusNode وScrollController وAnimationController كحقل داخل State (في initState) ولا تنشئه داخل build، وتخلص منه في dispose. 3) اكتب كل الاستيرادات المطلوبة في أعلى الملف (مثل dart:convert وdart:async وdart:io وpackage:flutter/services.dart عند الحاجة). 4) استخدم CardThemeData وDialogThemeData وTabBarThemeData بدل CardTheme وDialogTheme وTabBarTheme. 5) تأكد أن كل متغير ودالة معرّفة قبل استخدامها، وأن الأقواس متوازنة، وأن الملف ينتهي كاملاً. 6) قيم MainAxisAlignment هي start وend وcenter وspaceBetween وspaceAround وspaceEvenly فقط (لا يوجد between). 7) لا تنسخ أي ويدجت يبدأ اسمه بـ Ds أو دالة تبدأ بـ ds داخل الملف، فهي تُضاف تلقائياً. 8) DS.get وDS.set موجودة للحفظ الدائم على الجهاز: DS.get(key, def) وDS.set(key, value) والقيمة نص أو رقم أو bool أو List أو Map.';
 const _ai10=ai;
 ai=function(p){
   if(typeof p==='string'&&!S.keys.noFix7&&p.indexOf(BT+'dart بدون')>-1&&p.indexOf('قواعد صارمة لتجنب أخطاء التجميع')<0)p+=RULES;
@@ -5954,7 +6089,7 @@ async function diagnose(){
         item(E,own?'ok':'warn',w[0]+': '+(v?'v'+v:'إصدار غير معروف')+' — '+(own?'مفتاح لكل تطبيق':'مفتاح عشوائي أو مشترك'));
       }
       const cf=await ghFile(repo,br,'.github/workflows/check-flutter.yml');
-      item(E,(cf!==null&&cf.indexOf('# ck3')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck3')>-1?'الأحدث (ck3)':'قديم، بيتحدث تلقائياً عند أول فحص')));
+      item(E,(cf!==null&&cf.indexOf('# ck4')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck4')>-1?'الأحدث (ck4)':'قديم، بيتحدث تلقائياً عند أول فحص')));
       try{
         const ks=await gh('/repos/'+repo+'/contents/keys?ref='+br);
         const n=(Array.isArray(ks)?ks:[]).filter(function(f){return /\.keystore$/.test(f.name)});
@@ -6069,7 +6204,8 @@ render=function(){
 function maxFix(){const v=parseInt(S.keys.maxFix3,10);return (v>=1&&v<=100)?v:30}
 function stallN(){const v=parseInt(S.keys.stall3,10);return (v>=3&&v<=50)?v:10}
 
-const CK_FL=`# ck3
+const CK_FL=`# ck4
+# ck3
 # ck2
 # ck1
 name: check-flutter
@@ -6098,8 +6234,10 @@ jobs:
           flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
           rm -rf flutter_out/test
           cp apps/$APP/main.dart flutter_out/lib/main.dart
+          if [ -f apps/$APP/push.dart ]; then cp apps/$APP/push.dart flutter_out/lib/push.dart; fi
           cd flutter_out
           if grep -q "package:url_launcher" lib/main.dart; then flutter pub add url_launcher; fi
+          if grep -qs "package:firebase_messaging" lib/push.dart; then flutter pub add firebase_core firebase_messaging; fi
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
           cd ..
@@ -6162,7 +6300,7 @@ jobs:
 `;
 
 const CK={
-  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck3',main:'main.dart',name:'Flutter',min:'2-4'},
+  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck4',main:'main.dart',name:'Flutter',min:'2-4'},
   python:{file:'check-python.yml',yaml:CK_PY,mk:'# ck1',main:'main.py',name:'Python',min:'1'}
 };
 
@@ -6191,7 +6329,7 @@ const DS_SIG=[
 'أخطاء شائعة تجنّبها: لا تستخدم const أمام ويدجت فيه دالة أو قيمة ديناميكية؛ DsChips.onChanged تأخذ int؛ DsStats.items قائمة من DsStat؛ لا تعرّف صنفاً أو دالة اسمها يبدأ بـ Ds أو ds؛ لا تستخدم MaterialApp مباشرة بل DsApp.'
 ].join('\n');
 
-const HINTS='\n\nتلميحات لأخطاء Flutter الشائعة: Undefined name أو class أو method → أضف الاستيراد المناسب (dart:convert لـ jsonDecode وjsonEncode وutf8، وdart:io لـ HttpClient، وdart:async لـ Timer وFuture) أو صحّح الاسم؛ Not a constant expression → احذف const؛ The named parameter isn\'t defined → راجع أسماء البارامترات؛ A value of type X can\'t be assigned to Y → أضف تحويلاً أو as أو ??؛ تأكد من توازن الأقواس ومن الفواصل المنقوطة، ومن أن كل متغير معرّف قبل استخدامه.';
+const HINTS='\n\nتلميحات لأخطاء Flutter الشائعة: Undefined name أو class أو method → أضف الاستيراد المناسب (dart:convert لـ jsonDecode وjsonEncode وutf8، وdart:io لـ HttpClient، وdart:async لـ Timer وFuture) أو صحّح الاسم؛ Not a constant expression → احذف const؛ The named parameter isn\'t defined → راجع أسماء البارامترات؛ A value of type X can\'t be assigned to Y → أضف تحويلاً أو as أو ??؛ تأكد من توازن الأقواس ومن الفواصل المنقوطة، ومن أن كل متغير معرّف قبل استخدامه؛ is already defined → لا تكتب تعريفاً لويدجت Ds أو دالة ds بنفسك (تُضاف تلقائياً)؛ The argument type X can\'t be assigned to String → مرّر نصاً (مثلاً toString() أو نص ثابت) وليس ويدجت أو bool.';
 
 function extractErr(log){
   const lines=String(log).replace(/\r/g,'').split('\n').map(x=>x.replace(/^\S+Z\s?/,''));
@@ -9325,6 +9463,253 @@ render=function(){
     m.appendChild(c);
     if(on())setTimeout(cxPushCount,300);
   }
+};
+})();
+/* ===== إضافة: ملفات بناء Flutter الأحدث (v7: الإشعارات + fcm_config.py) ===== */
+(function(){
+const WF_FLUTTER7=`# v7
+# v6 compatible
+# v5 compatible
+# v4 compatible
+# v3 compatible
+# v2 compatible
+name: build-flutter
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: app folder
+        required: true
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      APP: \${{ inputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: app signing key
+        env:
+          KEYS_TOKEN: \${{ secrets.KEYS_TOKEN }}
+        run: |
+          if [ -z "$KEYS_TOKEN" ]; then echo "::error::KEYS_TOKEN secret is missing (Settings > Secrets and variables > Actions)"; exit 1; fi
+          OWNER="\${GITHUB_REPOSITORY%%/*}"
+          KR="$RUNNER_TEMP/keysrepo"
+          rm -rf "$KR"
+          git clone --depth 1 "https://x-access-token:$KEYS_TOKEN@github.com/$OWNER/apk-app-backup.git" "$KR" || { echo "::error::cannot open private repo $OWNER/apk-app-backup"; exit 1; }
+          mkdir -p "$KR/keys" keys
+          KS="$KR/keys/$APP.keystore"
+          PR="$KR/keys/$APP.properties"
+          if [ ! -f "$KS" ] || [ ! -f "$PR" ]; then
+            PASS=$(openssl rand -hex 12)
+            rm -f "$KS" "$PR"
+            keytool -genkeypair -keystore "$KS" -storetype PKCS12 -storepass "$PASS" -keypass "$PASS" -alias appkey -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=$APP, O=MyApps, C=SD"
+            echo "pass=$PASS" > "$PR"
+            cd "$KR"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -f "keys/$APP.keystore" "keys/$APP.properties"
+            git commit -m "add signing key for $APP"
+            BR=$(git rev-parse --abbrev-ref HEAD)
+            PUSHED=0
+            for n in 1 2 3 4 5; do
+              git pull --rebase origin "$BR" && git push origin "HEAD:$BR" && { PUSHED=1; break; }
+              echo "push attempt $n failed"
+              sleep 5
+            done
+            cd "$GITHUB_WORKSPACE"
+            if [ "$PUSHED" != "1" ]; then echo "::error::failed to save the signing key to apk-app-backup"; exit 1; fi
+            echo "NEW private signing key created for $APP"
+          else
+            echo "using private signing key for $APP"
+          fi
+          echo "::add-mask::$(grep '^pass=' "$PR" | cut -d= -f2)"
+          rm -f "keys/$APP.keystore" "keys/$APP.properties"
+          cp "$KS" "keys/$APP.keystore"
+          cp "$PR" "keys/$APP.properties"
+      - name: create project
+        run: |
+          PKG=$(cat apps/$APP/pkg.txt 2>/dev/null | tr -d '[:space:]')
+          if [ -z "$PKG" ]; then PKG=com.myapps.app_$APP; fi
+          flutter create --org com.myapps --project-name app_$APP --platforms=android flutter_out
+          cp apps/$APP/main.dart flutter_out/lib/main.dart
+          if [ -f apps/$APP/push.dart ]; then cp apps/$APP/push.dart flutter_out/lib/push.dart; fi
+          if grep -q "package:url_launcher" apps/$APP/main.dart; then
+            (cd flutter_out && flutter pub add url_launcher)
+          fi
+          MF=flutter_out/android/app/src/main/AndroidManifest.xml
+          sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/><application|' $MF
+          sed -i "/applicationId/s|com.myapps.app_$APP|$PKG|" flutter_out/android/app/build.gradle*
+          SET=apps/$APP/settings.json
+          LABEL=$(jq -r '.label // empty' $SET 2>/dev/null || true)
+          ORI=$(jq -r '.ori // "auto"' $SET 2>/dev/null || echo auto)
+          if [ -n "$LABEL" ]; then sed -i 's|android:label="[^"]*"|android:label="'"$LABEL"'"|' $MF; fi
+          if [ "$ORI" = "portrait" ] || [ "$ORI" = "landscape" ]; then sed -i 's|android:name=".MainActivity"|android:name=".MainActivity" android:screenOrientation="'"$ORI"'"|' $MF; fi
+          PASS=$(grep '^pass=' keys/$APP.properties | cut -d= -f2)
+          cp keys/$APP.keystore flutter_out/android/app/app.keystore
+          if [ -f flutter_out/android/app/build.gradle.kts ]; then
+            cat >> flutter_out/android/app/build.gradle.kts <<EOF
+
+          android {
+              signingConfigs {
+                  create("appkey") {
+                      storeFile = file("app.keystore")
+                      storePassword = "$PASS"
+                      keyAlias = "appkey"
+                      keyPassword = "$PASS"
+                  }
+              }
+              buildTypes {
+                  getByName("release") {
+                      signingConfig = signingConfigs.getByName("appkey")
+                  }
+              }
+          }
+          EOF
+          else
+            cat >> flutter_out/android/app/build.gradle <<EOF
+
+          android {
+              signingConfigs {
+                  appkey {
+                      storeFile file("app.keystore")
+                      storePassword "$PASS"
+                      keyAlias "appkey"
+                      keyPassword "$PASS"
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.appkey
+                  }
+              }
+          }
+          EOF
+          fi
+          if [ -f apps/$APP/icon.png ]; then
+            for d in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+              cp apps/$APP/icon.png flutter_out/android/app/src/main/res/$d/ic_launcher.png
+            done
+          fi
+      - name: push notifications (FCM)
+        run: |
+          if ! grep -qs on apps/$APP/push.txt; then echo "push notifications: off"; exit 0; fi
+          SA="$RUNNER_TEMP/keysrepo/keys/fcm-sa.json"
+          if [ ! -f "$SA" ]; then echo "::error::push.txt is on but keys/fcm-sa.json is missing in apk-app-backup"; exit 1; fi
+          G=$(ls flutter_out/android/app/build.gradle* | head -n 1)
+          PKG=$(grep -m1 -oE 'applicationId *=? *"[^"]+"' "$G" | grep -oE '"[^"]+"' | tr -d '"')
+          echo "package: $PKG"
+          python3 .github/fcm_config.py "$SA" "$PKG" flutter_out/android/app/google-services.json
+          (cd flutter_out && flutter pub add firebase_core firebase_messaging)
+          SG=$(ls flutter_out/android/settings.gradle* | head -n 1)
+          if [[ "$SG" == *.kts ]]; then
+            grep -q google-services "$SG" || sed -i 's|^\\(\\s*\\)id("com.android.application") version\\(.*\\)$|&\\n\\1id("com.google.gms.google-services") version "4.4.2" apply false|' "$SG"
+            grep -q google-services "$G" || sed -i '0,/id("com.android.application")/s//id("com.android.application")\\n    id("com.google.gms.google-services")/' "$G"
+            sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
+          else
+            grep -q google-services "$SG" || sed -i 's|^\\(\\s*\\)id "com.android.application" version\\(.*\\)$|&\\n\\1id "com.google.gms.google-services" version "4.4.2" apply false|' "$SG"
+            grep -q google-services "$G" || sed -i '0,/id "com.android.application"/s//id "com.android.application"\\n    id "com.google.gms.google-services"/' "$G"
+            sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/; s/minSdk = flutter.minSdkVersion/minSdk = 23/' "$G"
+          fi
+          echo "--- gradle ---"; grep -n "google-services\\|minSdk" "$SG" "$G" || true
+          MF=flutter_out/android/app/src/main/AndroidManifest.xml
+          grep -q POST_NOTIFICATIONS $MF || sed -i 's|<application|<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/><application|' $MF
+      - name: build
+        working-directory: flutter_out
+        run: |
+          VN=$(jq -r '.versionName // "1.0.0"' ../apps/$APP/settings.json 2>/dev/null || echo 1.0.0)
+          VC=$(jq -r '.versionCode // 1' ../apps/$APP/settings.json 2>/dev/null || echo 1)
+          flutter build apk --release --build-name=$VN --build-number=$VC
+      - name: verify signing
+        if: always()
+        continue-on-error: true
+        run: |
+          APK=flutter_out/build/app/outputs/flutter-apk/app-release.apk
+          if [ ! -f "$APK" ]; then echo "no apk to verify"; exit 0; fi
+          AS=$(ls $ANDROID_SDK_ROOT/build-tools/*/apksigner 2>/dev/null | tail -n 1)
+          if [ -z "$AS" ]; then echo "apksigner not found"; exit 0; fi
+          PASS=$(grep '^pass=' keys/$APP.properties | cut -d= -f2)
+          A=$("$AS" verify --print-certs "$APK" | grep -i "SHA-256 digest" | head -n 1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          K=$(keytool -list -v -keystore keys/$APP.keystore -storepass "$PASS" -alias appkey 2>/dev/null | grep -i "SHA256:" | head -n 1 | awk '{print $NF}' | tr -d ':' | tr 'A-Z' 'a-z')
+          echo "apk:      $A"
+          echo "keystore: $K"
+          if [ -n "$A" ] && [ "$A" = "$K" ]; then echo "SIGNING OK: this app uses its own key"; else echo "SIGNING MISMATCH"; fi
+      - name: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: flutter-\${{ inputs.app }}-build-\${{ github.run_number }}
+          files: flutter_out/build/app/outputs/flutter-apk/app-release.apk
+`;
+const FCM_PY=`# يجيب google-services.json لتطبيق أندرويد من مشروع Firebase (عبر مفتاح Service account)
+import json, sys, time, base64, subprocess, urllib.request, urllib.parse, urllib.error, tempfile, os
+sa = json.load(open(sys.argv[1])); pkg = sys.argv[2]; out = sys.argv[3]
+def b64u(b): return base64.urlsafe_b64encode(b).rstrip(b"=").decode()
+now = int(time.time())
+h = b64u(json.dumps({"alg": "RS256", "typ": "JWT"}).encode())
+c = b64u(json.dumps({"iss": sa["client_email"], "scope": "https://www.googleapis.com/auth/cloud-platform https://www.googleapis.com/auth/firebase", "aud": "https://oauth2.googleapis.com/token", "iat": now, "exp": now + 3600}).encode())
+kf = tempfile.NamedTemporaryFile("w", delete=False, suffix=".pem"); kf.write(sa["private_key"]); kf.close()
+sig = subprocess.run(["openssl", "dgst", "-sha256", "-sign", kf.name], input=(h + "." + c).encode(), capture_output=True, check=True).stdout
+os.unlink(kf.name)
+class HE(Exception): pass
+def req(url, data=None, method=None, hdr=None):
+    r = urllib.request.Request(url, data=data, method=method, headers=hdr or {})
+    try:
+        with urllib.request.urlopen(r, timeout=60) as f: return json.loads(f.read() or b"{}")
+    except urllib.error.HTTPError as e: raise HE("HTTP %s %s: %s" % (e.code, url, e.read().decode()[:500]))
+tok = req("https://oauth2.googleapis.com/token", urllib.parse.urlencode({"grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer", "assertion": h + "." + c + "." + b64u(sig)}).encode(), "POST", {"Content-Type": "application/x-www-form-urlencoded"})["access_token"]
+A = {"Authorization": "Bearer " + tok, "Content-Type": "application/json"}
+P = sa["project_id"]; B = "https://firebase.googleapis.com/v1beta1/"
+apps = req(B + "projects/" + P + "/androidApps?pageSize=100", hdr=A).get("apps", [])
+app = next((a for a in apps if a.get("packageName") == pkg), None)
+if not app:
+    try:
+        op = req(B + "projects/" + P + "/androidApps", json.dumps({"packageName": pkg, "displayName": pkg}).encode(), "POST", A)
+        for i in range(40):
+            if op.get("done"): break
+            time.sleep(3); op = req(B + op["name"], hdr=A)
+        app = op.get("response")
+        if app: print("registered new android app in firebase:", pkg)
+        else: print("create op error:", op.get("error"))
+    except HE as e:
+        print("could not register app:", e)
+if app:
+    cfg = req(B + "projects/" + P + "/androidApps/" + app["appId"] + "/config", hdr=A)
+    open(out, "wb").write(base64.b64decode(cfg["configFileContents"]))
+    print("google-services.json OK for", pkg)
+elif apps:
+    cfg = req(B + "projects/" + P + "/androidApps/" + apps[0]["appId"] + "/config", hdr=A)
+    j = json.loads(base64.b64decode(cfg["configFileContents"]))
+    cl = j["client"][0]; cl["client_info"]["android_client_info"]["package_name"] = pkg; j["client"] = [cl]
+    json.dump(j, open(out, "w")); print("fallback: cloned config of", apps[0].get("packageName"), "for", pkg)
+else:
+    sys.exit("no android app in firebase project " + P + " and could not create one. Add any Android app in Firebase console.")
+`;
+if(typeof WF!=='undefined'&&WF.flutter)WF.flutter.yaml=WF_FLUTTER7;
+async function ensureWf7(){
+  if(typeof WF==='undefined'||!WF.flutter)return;
+  const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
+  async function cur(p){try{const f=await gh('/repos/'+repo+'/contents/'+p+'?ref='+br);const t=atob(String(f.content||'').replace(/\s/g,''));try{return decodeURIComponent(escape(t))}catch(_){return t}}catch(e){if(e.status!==404)throw e;return null}}
+  let ch=false;
+  if((await cur('.github/fcm_config.py'))===null){await put(repo,br,'.github/fcm_config.py',FCM_PY);ch=true}
+  const w=await cur('.github/workflows/'+WF.flutter.file);
+  if(w===null||w.indexOf('# v7')<0){await put(repo,br,'.github/workflows/'+WF.flutter.file,WF_FLUTTER7);ch=true}
+  if(ch)await sleep(5000);
+}
+const _bn7=buildNative;
+buildNative=async function(i,l){
+  if(l==='flutter'&&S.keys.ghToken){try{await ensureWf7()}catch(e){return toast(arErr(e))}}
+  return _bn7(i,l);
 };
 })();
 render();
