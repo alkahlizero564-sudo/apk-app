@@ -9745,7 +9745,8 @@ jobs:
             flutter_out/build/app/outputs/flutter-apk/app-release.apk
             flutter_out/build/app/outputs/bundle/release/app-release.aab
 `;
-const WF_PYTHON8=`# v11
+const WF_PYTHON8=`# v12
+# v11 compatible
 # v10 compatible
 # v9 compatible
 # v8 compatible
@@ -9970,10 +9971,43 @@ jobs:
           warn_on_root = 1
           EOF
           sed -i 's/^ *//' buildozer.spec
+          if grep -qs '^on' store.txt; then
+            echo "Google Play (.aab): on -> android.api 35"
+            sed -i 's/^android.api = .*/android.api = 35/' buildozer.spec
+            echo 'android.release_artifact = aab' > /tmp/art.txt
+            echo 'android.debug_artifact = apk' >> /tmp/art.txt
+            sed -i '/^android.accept_sdk_license/r /tmp/art.txt' buildozer.spec
+          fi
           if [ -f icon.png ]; then sed -i '/^\\[app\\]/a icon.filename = %(source.dir)s/icon.png' buildozer.spec; fi
       - name: build
         working-directory: apps/\${{ inputs.app }}
         run: buildozer -v android debug
+      - name: Google Play file (.aab)
+        id: aab
+        if: success()
+        continue-on-error: true
+        working-directory: apps/\${{ inputs.app }}
+        run: |
+          if ! grep -qs '^on' store.txt; then echo "Google Play (.aab): off"; exit 0; fi
+          PASS=$(grep '^pass=' "$GITHUB_WORKSPACE/keys/$APP.properties" | cut -d= -f2)
+          export P4A_RELEASE_KEYSTORE="$GITHUB_WORKSPACE/keys/$APP.keystore"
+          export P4A_RELEASE_KEYSTORE_PASSWD="$PASS"
+          export P4A_RELEASE_KEYALIAS=appkey
+          export P4A_RELEASE_KEYALIAS_PASSWD="$PASS"
+          buildozer -v android release
+          ls -la bin/
+          AAB=$(ls bin/*.aab 2>/dev/null | head -n 1)
+          if [ -z "$AAB" ]; then echo "::warning::no .aab was produced"; exit 0; fi
+          echo "--- signing ---"
+          keytool -printcert -jarfile "$AAB" | grep -i "SHA256:" | head -n 1 || true
+          echo "--- 16 KB page size check (Google Play, Android 15+) ---"
+          rm -rf /tmp/aab && mkdir -p /tmp/aab && unzip -q -o "$AAB" 'base/lib/*' -d /tmp/aab || true
+          BAD=0
+          for SO in $(find /tmp/aab -name '*.so'); do
+            AL=$(readelf -lW "$SO" | awk '/LOAD/{print $NF; exit}')
+            case "$AL" in 0x4000|0x10000) ;; *) BAD=1; echo "not 16KB aligned: $(basename "$SO") ($AL)";; esac
+          done
+          if [ "$BAD" = 1 ]; then echo "::warning::some native libraries are not 16 KB aligned; Google Play may reject this .aab for Android 15+ devices"; else echo "16 KB OK"; fi
       - name: verify signing
         if: always()
         continue-on-error: true
@@ -9999,7 +10033,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: python-\${{ inputs.app }}-build-\${{ github.run_number }}
-          files: apps/\${{ inputs.app }}/bin/*.apk
+          files: |
+            apps/\${{ inputs.app }}/bin/*.apk
+            apps/\${{ inputs.app }}/bin/*.aab
 `;
 const FCM_PY=`# يجيب google-services.json لتطبيق أندرويد من مشروع Firebase (عبر مفتاح Service account)
 import json, sys, time, base64, subprocess, urllib.request, urllib.parse, urllib.error, tempfile, os
@@ -10046,7 +10082,7 @@ else:
     sys.exit("no android app in firebase project " + P + " and could not create one. Add any Android app in Firebase console.")
 `;
 if(typeof WF!=='undefined'){if(WF.flutter)WF.flutter.yaml=WF_FLUTTER8;if(WF.python)WF.python.yaml=WF_PYTHON8}
-const WF_MK8={flutter:'# v11',python:'# v11'};
+const WF_MK8={flutter:'# v11',python:'# v12'};
 async function ensureWf8(l){
   if(typeof WF==='undefined'||!WF[l])return;
   const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
@@ -11062,13 +11098,13 @@ function aabOf(path,rel){
   const tag=decodeURIComponent(path.split('/releases/tags/')[1]||'');
   S.apps.forEach(function(a){
     const k=slugOf(a.name);if(!k)return;
-    if(tag.indexOf(k+'-build-')===0||tag.indexOf('flutter-'+k+'-build-')===0){a.aab=aab.browser_download_url;save()}
+    if(tag.indexOf(k+'-build-')===0||tag.indexOf('flutter-'+k+'-build-')===0||tag.indexOf('python-'+k+'-build-')===0){a.aab=aab.browser_download_url;save()}
   });
 }
 const _putS=put;
 put=async function(repo,branch,path,content){
   await _putS(repo,branch,path,content);
-  const m=String(path).match(/^apps\/([^/]+)\/(www\/index\.html|main\.dart)$/);
+  const m=String(path).match(/^apps\/([^/]+)\/(www\/index\.html|main\.dart|main\.py)$/);
   if(m){
     const a=S.apps.find(function(x){return slugOf(x.name)===m[1]});
     const on=!!(a&&a.set&&a.set.store);
@@ -11079,13 +11115,13 @@ window.cxStore=function(i,on){const a=S.apps[i];a.set=Object.assign({},a.set,{st
 function storeCard(){
   const rows=S.apps.map(function(a,i){
     if(!(a.code&&a.code.trim()))return '';
-    const l=langOf(i),ok=l==='html'||l==='flutter';
-    return '<div class="hb-row" style="padding:8px 0;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap"><div class="hb-t" style="flex:1"><b style="font-size:14px">'+esc((a.set&&a.set.label)||a.name)+'</b><small>'+(ok?'الحزمة: <span dir="ltr">'+esc((typeof pkgOf==='function'&&pkgOf(i))||'تلقائي')+'</span>':'ملف .aab متاح لتطبيقات HTML وFlutter بس')+'</small></div>'
+    const l=langOf(i),ok=l==='html'||l==='flutter'||l==='python';
+    return '<div class="hb-row" style="padding:8px 0;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap"><div class="hb-t" style="flex:1"><b style="font-size:14px">'+esc((a.set&&a.set.label)||a.name)+'</b><small>'+(ok?'الحزمة: <span dir="ltr">'+esc((typeof pkgOf==='function'&&pkgOf(i))||'تلقائي')+'</span>':'ملف .aab غير متاح لهذا النوع')+'</small></div>'
      +(ok?'<label style="display:flex;gap:8px;align-items:center;color:var(--tx);margin:0"><input type="checkbox" style="width:22px;height:22px" '+(a.set&&a.set.store?'checked':'')+' onchange="cxStore('+i+',this.checked)"> .aab</label>':'')
      +(a.aab?'<a class="btn acc" style="flex:none;padding:8px 12px;font-size:13px" href="'+esc(a.aab)+'" target="_blank">⬇ .aab</a>':'')+'</div>';
   }).join('');
   if(!rows)return '';
-  return '<div class="card" id="fx-store"><h2>📦 Google Play</h2><p class="note" style="margin-top:0">فعّل «.aab» والبناء الجاي يطلع نسخة Release (Android SDK 36) وملف Google Play موقّعين بنفس المفتاح الدائم للتطبيق، عشان التحديثات في المتجر تتقبل.</p>'+rows+'</div>';
+  return '<div class="card" id="fx-store"><h2>📦 Google Play</h2><p class="note" style="margin-top:0">فعّل «.aab» والبناء الجاي يطلع نسخة Release (Android SDK 36) وملف Google Play موقّعين بنفس المفتاح الدائم للتطبيق، عشان التحديثات في المتجر تتقبل. في Python البناء بيطلع APK وملف .aab (Android API 35)، وسجل البناء بيوضح لو مكتبات التطبيق مش متوافقة مع صفحات 16KB اللي Google Play بيطلبها.</p>'+rows+'</div>';
 }
 
 /* ================= 7) دقائق البناء هذا الشهر ================= */
