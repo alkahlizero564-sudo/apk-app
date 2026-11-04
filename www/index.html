@@ -9234,14 +9234,19 @@ function pushJS(i){
   +'function banner(t,b){try{var d=document.createElement("div");d.style.cssText="position:fixed;top:calc(10px + env(safe-area-inset-top));left:10px;right:10px;z-index:2147483647;background:#111827;color:#fff;border-radius:16px;padding:12px 14px;font-family:system-ui,Tahoma,sans-serif;direction:rtl;box-shadow:0 10px 30px rgba(0,0,0,.35);font-size:14px;line-height:1.6";var h=document.createElement("b");h.textContent="🔔 "+(t||"");var p=document.createElement("div");p.style.opacity=".85";p.textContent=b||"";d.appendChild(h);d.appendChild(p);d.onclick=function(){d.remove()};document.body.appendChild(d);setTimeout(function(){d.remove()},6000)}catch(e){}}'
   +'function init(){var P=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.PushNotifications;if(!P)return;'
   +'P.addListener("registration",function(t){tk=t.value;reg()});'
-  +'P.addListener("pushNotificationReceived",function(n){banner(n.title,n.body);try{window.dispatchEvent(new CustomEvent("apkpush",{detail:n}))}catch(e){}});'
-  +'P.addListener("pushNotificationActionPerformed",function(a){try{window.dispatchEvent(new CustomEvent("apkpush-open",{detail:a.notification}))}catch(e){}});'
+  +'function keep(n){try{var L=JSON.parse(localStorage.getItem("apk_inbox")||"[]");L.unshift({title:n.title||"",body:n.body||"",data:n.data||{},t:Date.now(),read:false});localStorage.setItem("apk_inbox",JSON.stringify(L.slice(0,50)))}catch(e){}}'
+  +'P.addListener("pushNotificationReceived",function(n){keep(n);banner(n.title,n.body);try{window.dispatchEvent(new CustomEvent("apkpush",{detail:n}))}catch(e){}});'
+  +'P.addListener("pushNotificationActionPerformed",function(a){keep(a.notification||{});try{window.dispatchEvent(new CustomEvent("apkpush-open",{detail:a.notification}))}catch(e){}});'
   +'P.checkPermissions().then(function(s){return s.receive==="granted"?s:P.requestPermissions()}).then(function(s){if(s.receive==="granted")P.register()}).catch(function(){})}'
   +'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();'
   +'window.APKPush={role:C.role,setUser:function(u){uid=u?String(u):null;try{localStorage.setItem("apk_push_uid",uid||"")}catch(e){}reg()},'
   +'toAdmin:function(t,b,d){return call({to:"admin",title:t,body:b,data:d||{}})},'
   +'toUser:function(u,t,b,d){return call({to:"user",uid:String(u),title:t,body:b,data:d||{}})},'
-  +'toAll:function(t,b,d){return call({to:"customer",title:t,body:b,data:d||{}})}};})();';
+  +'toAll:function(t,b,d){return call({to:"customer",title:t,body:b,data:d||{}})},'
+  +'inbox:function(){try{return JSON.parse(localStorage.getItem("apk_inbox")||"[]")}catch(e){return []}},'
+  +'unread:function(){return window.APKPush.inbox().filter(function(x){return !x.read}).length},'
+  +'markRead:function(){try{localStorage.setItem("apk_inbox",JSON.stringify(window.APKPush.inbox().map(function(x){x.read=true;return x})))}catch(e){}},'
+  +'clearInbox:function(){try{localStorage.removeItem("apk_inbox")}catch(e){}}};})();';
 }
 function injectHtml(h,i){
   if(h.indexOf('id="apk-push"')>-1)h=h.replace(/<script id="apk-push">[\s\S]*?<\/script>/,'');
@@ -10961,6 +10966,9 @@ ai=function(p){
   if(role&&f.loginSet&&/```(html|dart|python)/.test(p)&&p.indexOf('=== طريقة تسجيل الدخول في')<0){
     const l=['html','flutter','python'].indexOf(f.lang)>-1?f.lang:'html';
     p+=loginRule(role==='a'?lmode(f.la,'email_password'):lmode(f.lc,'none'),role==='a',f.be==='supabase'?'supabase':'firebase',l);
+  }
+  if(role&&S.keys.push&&S.keys.push.on&&/```html/.test(p)&&p.indexOf('=== صندوق الإشعارات ===')<0){
+    p+='\n\n=== صندوق الإشعارات ===\n- أضف أيقونة 🔔 في الترويسة عليها عدد غير المقروء (APKPush.unread()) تفتح شاشة «الإشعارات» تعرض APKPush.inbox() (العنوان والنص والوقت) الأحدث أولاً، ونفّذ APKPush.markRead() عند فتحها، وزر «مسح الكل» (APKPush.clearInbox()).\n- حدّث العدد والشاشة فوراً عند window.addEventListener("apkpush",...) وافتح الشاشة عند "apkpush-open".\n- استخدم if(window.APKPush) قبل أي استدعاء، وأرسل الإشعارات الفعلية عند الأحداث المهمة: '+(role==='c'?'APKPush.toAdmin عند طلب أو حجز جديد':'APKPush.toUser(uid) عند تغيير حالة طلب الزبون، وAPKPush.toAll للعروض')+'.';
   }
   /* كل تطبيق في النظام يقرأ بنوده هو بس */
   if(role&&p.indexOf('=== المواصفات اللي وافق عليها')>-1)p=onlyMine(p,role);
