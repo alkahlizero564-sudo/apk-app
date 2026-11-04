@@ -33,6 +33,28 @@ jobs:
           convert assets/icon-background.png assets/icon-foreground.png -composite assets/icon-only.png
           npx -y @capacitor/assets generate --android
       - run: npx cap sync android
+      - name: Colors like APK Fact (status bar, navigation bar, splash)
+        continue-on-error: true
+        run: |
+          V=android/app/src/main/res/values
+          mkdir -p $V
+          cat > $V/apkfact_colors.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="apkfact_bg">#07080E</color>
+              <color name="apkfact_nav">#10121B</color>
+          </resources>
+          EOF
+          sed -i 's/^ *//' $V/apkfact_colors.xml
+          ST=$V/styles.xml
+          if [ -f $ST ]; then
+            sed -i 's|<item name="colorPrimaryDark">[^<]*</item>|<item name="colorPrimaryDark">@color/apkfact_bg</item>|' $ST
+            sed -i 's|<item name="colorPrimary">[^<]*</item>|<item name="colorPrimary">@color/apkfact_bg</item>|' $ST
+            grep -q 'android:navigationBarColor' $ST || sed -i 's|\(<style name="AppTheme.NoActionBar"[^>]*>\)|\1\n        <item name="android:navigationBarColor">@color/apkfact_nav</item>\n        <item name="android:statusBarColor">@color/apkfact_bg</item>\n        <item name="android:windowBackground">@color/apkfact_bg</item>|' $ST
+            grep -q 'windowSplashScreenBackground' $ST || sed -i 's|\(<style name="AppTheme.NoActionBarLaunch"[^>]*>\)|\1\n        <item name="windowSplashScreenBackground">@color/apkfact_bg</item>\n        <item name="android:windowBackground">@color/apkfact_bg</item>|' $ST
+            sed -i 's|<item name="android:background">@drawable/splash</item>|<item name="android:background">@color/apkfact_bg</item>|' $ST
+            cat $ST
+          fi
       - name: Apply shared signing key
         run: |
           cp "$GITHUB_WORKSPACE/keys/shared.keystore" android/app/shared.keystore

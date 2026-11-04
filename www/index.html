@@ -11499,6 +11499,243 @@ render=function(){
   bar();
 };
 })();
+/* ===== إضافة: كل شي زي APK Fact (شاشة الفتح + معالج «تطبيق جديد» بالخطوات + خط زمني للبناء + الإعدادات والنوافذ) ===== */
+(function(){
+const LC={html:'#F06529',flutter:'#42A5F5',python:'#FFD43B'};
+const I={
+ x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+ fwd:'<path d="M9 18l6-6-6-6"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>',
+ html:'<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
+ flutter:'<path d="M14 3 5 12l3 3L20 3z"/><path d="m14 12-4 4 4 4h6l-4-4 4-4z"/>',
+ python:'<path d="M12 3c-4 0-4 1.8-4 3v2h4v1H6c-2 0-3 1.5-3 4s1 4 3 4h2v-2.5c0-1.4 1.1-2.5 2.5-2.5h4c1.4 0 2.5-1.1 2.5-2.5V6c0-1.6-1.6-3-5.5-3z"/><path d="M12 21c4 0 4-1.8 4-3v-2h-4v-1h6c2 0 3-1.5 3-4s-1-4-3-4h-2"/>',
+ info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>',
+ alert:'<circle cx="12" cy="12" r="9"/><path d="M12 8v5"/><path d="M12 16h.01"/>',
+ phone:'<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
+ spark:'<path d="M12 3l1.8 4.9L19 10l-5.2 2.1L12 17l-1.8-4.9L5 10l5.2-2.1z"/>'
+};
+function ic(n,sz){return '<span class="pi"><svg viewBox="0 0 24 24" width="'+(sz||20)+'" height="'+(sz||20)+'" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+I[n]+'</svg></span>'}
+
+const st=document.createElement('style');st.id='fact-ui';
+st.textContent=`
+/* شاشة الفتح */
+#fx-splash{position:fixed;inset:0;z-index:100000;background:#07080E;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;transition:opacity .35s ease}
+#fx-splash.out{opacity:0;pointer-events:none}
+#fx-splash .lg{width:96px;height:96px;border-radius:28px;background:linear-gradient(225deg,#6E4BFF,#2563EB);display:grid;place-items:center;color:#fff;box-shadow:0 18px 40px rgba(110,75,255,.35);animation:fxpop .5s cubic-bezier(.2,.9,.3,1.3)}
+#fx-splash b{font-size:24px;font-weight:800;color:#F3F5FB;letter-spacing:.3px}
+#fx-splash small{font-size:13px;color:#9097AD}
+@keyframes fxpop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+/* معالج «تطبيق جديد»: صفحة كاملة زي APK Fact */
+#sheet.wiz{background:var(--bg)!important;align-items:stretch!important;-webkit-backdrop-filter:none;backdrop-filter:none}
+#sheet.wiz .sheetbox{max-height:none!important;height:100%;border-radius:0!important;border:0!important;padding:calc(10px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))!important;background:var(--bg)!important;overflow:auto}
+#sheet.wiz .sheetbox::before{display:none!important}
+#sheet.wiz .sheetbox>h3{font-size:22px!important;font-weight:800!important;margin:4px 0 6px!important}
+.wz-top{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+.wz-top b{flex:1;font-size:18px;font-weight:800;color:var(--tx)}
+.wz-x{flex:none!important;width:42px!important;height:42px!important;border-radius:21px!important;padding:0!important;display:grid!important;place-items:center;background:var(--sf2)!important;border:1px solid var(--line)!important;color:var(--tx)!important}
+.wz-st{display:flex;gap:8px;margin:0 0 22px}
+.wz-st div{flex:1;min-width:0}
+.wz-st i{display:block;height:4px;border-radius:2px;background:var(--line)}
+.wz-st div.done i{background:var(--ok)}.wz-st div.on i{background:var(--pri)}
+.wz-st span{display:block;margin-top:6px;font-size:12px;font-weight:700;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wz-st div.done span,.wz-st div.on span{color:var(--tx)}
+/* بطاقات اختيار اللغة */
+.wz-lang{display:flex!important;align-items:center;gap:14px;width:100%;text-align:right;padding:16px!important;margin-bottom:12px;border-radius:22px!important;background:var(--sf)!important;border:1.5px solid var(--line)!important;color:var(--tx)!important;font-weight:400!important}
+.wz-lang.on{border-color:var(--pri)!important;background:var(--pris)!important}
+.wz-lang .li{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;flex:none}
+.wz-lang b{display:block;font-size:16px;font-weight:800}.wz-lang small{display:block;font-size:13px;line-height:19px;color:var(--mut);margin-top:2px}
+.wz-foot{position:sticky;bottom:calc(-24px - env(safe-area-inset-bottom));margin:18px -16px calc(-24px - env(safe-area-inset-bottom));padding:12px 16px calc(14px + env(safe-area-inset-bottom));background:rgba(7,8,14,.96);border-top:1px solid var(--line);display:flex;gap:10px}
+.wz-foot button{min-height:52px;border-radius:16px!important;font-weight:800!important;font-size:16px!important}
+.wz-foot .nx{flex:2;background:linear-gradient(225deg,#6E4BFF,#2563EB)!important;color:#fff!important;border:0!important}
+.wz-foot .bk{flex:1;background:var(--pris)!important;border:1px solid var(--ib)!important;color:var(--tx)!important}
+.wz-cnt{float:left;font-size:12px;color:var(--mut);font-weight:500}
+/* الخط الزمني للخطوات (Timeline) */
+.sheetbox .step{display:flex!important;flex-direction:row;gap:12px;padding:0!important;border:0!important;min-height:56px}
+.sheetbox .step>span{flex:none;position:relative;width:28px;height:28px;border-radius:50%;border:2px solid var(--mut);display:grid;place-items:center;font-size:0!important;color:transparent;margin-top:0}
+.sheetbox .step{position:relative}
+.sheetbox .step:has(+ .step)::after{content:"";position:absolute;top:32px;bottom:4px;right:13px;width:2px;border-radius:1px;background:var(--line2)}
+.sheetbox .step.ok>span{border-color:var(--ok);background:var(--ok)}
+.sheetbox .step.ok>span::before{content:"";width:12px;height:7px;border:2.5px solid #07080E;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.sheetbox .step.ok:has(+ .step)::after{background:var(--ok)}
+.sheetbox .step.run>span{border-color:var(--it);border-top-color:transparent;animation:fxspin .8s linear infinite}
+.sheetbox .step.bad>span{border-color:var(--bad)}
+.sheetbox .step.bad>span::before{content:"✕";font-size:13px;color:var(--bad);font-weight:900}
+.sheetbox .step>div{flex:1;font-size:15px;font-weight:700;color:var(--tx);padding:3px 0 16px}
+.sheetbox .step.wait>div{color:var(--mut)}
+.sheetbox .step small{font-size:12.5px!important;font-weight:400;color:var(--mut)!important;margin-top:2px;line-height:1.6}
+.sheetbox .step small.el{display:block;font-variant-numeric:tabular-nums}
+@keyframes fxspin{to{transform:rotate(360deg)}}
+/* رأس النوافذ السفلية: العنوان وزر الإغلاق */
+.sh-x{float:left;flex:none!important;width:38px!important;height:38px!important;border-radius:19px!important;padding:0!important;display:grid!important;place-items:center;background:var(--sf2)!important;border:1px solid var(--line)!important;color:var(--tx)!important;margin:-4px 0 6px 0!important}
+/* التنبيهات (Banner) */
+body.aur .hb-warn{background:#151937!important;border:0!important;color:#A9B6FF!important;border-radius:14px!important;padding:12px!important;font-size:14px!important;line-height:21px!important}
+body.aur .errbox:not(:empty){background:#3A1418;color:#F87171;border-radius:14px;padding:12px;font-size:14px}
+body.aur .explain{background:#151937!important;color:#A9B6FF;border:0!important;border-radius:14px!important}
+/* شارات اللغات بألوانها */
+.lg-b{border-radius:999px!important;padding:3px 9px!important;font-size:11px!important;font-weight:800!important;border:1px solid!important}
+/* الحالة الفاضية */
+body.aur .hb-empty div{width:68px;height:68px;border-radius:34px;background:#1C1840;display:grid!important;place-items:center;margin:0 auto 12px;font-size:30px!important;opacity:1!important}
+body.aur .hb-empty b{font-size:18px}
+/* الإعدادات: أقسام وصفوف داخل كرت واحد زي APK Fact */
+body.aur .hb-menu .hb-card{border-radius:0!important;margin:0!important;border-top-width:0!important;padding:14px 16px!important}
+body.aur .hb-menu .hb-h3+.hb-card,body.aur .hb-menu>.hb-card:first-child{border-top-width:1px!important;border-top-left-radius:22px!important;border-top-right-radius:22px!important}
+body.aur .hb-menu .hb-card:has(+ .hb-h3),body.aur .hb-menu .hb-card:last-child{border-bottom-left-radius:22px!important;border-bottom-right-radius:22px!important}
+body.aur .hb-menu .hb-ic{width:36px!important;height:36px!important;border-radius:11px!important}
+body.aur .hb-menu .hb-ic .pi svg{width:20px!important;height:20px!important}
+body.aur .hb-menu .hb-t b{font-size:15px!important}
+body.aur .hb-menu .hb-t small{font-size:12.5px!important;line-height:18px}
+body.aur details.cx-ks{background:var(--sf)!important;border:1px solid var(--line)!important;border-radius:22px!important;padding:14px 16px!important;margin-bottom:10px}
+body.aur details.cx-ks summary{display:flex;align-items:center;gap:12px;font-weight:700;color:var(--tx);list-style:none}
+body.aur details.cx-ks .cx-ic{width:36px;height:36px;border-radius:11px;background:#1C1840;display:grid;place-items:center}
+body.aur .cx-bd{border-radius:999px!important;font-weight:800!important}
+`;
+document.head.appendChild(st);
+
+/* ================= شاشة الفتح ================= */
+(function(){
+  const d=document.createElement('div');d.id='fx-splash';
+  d.innerHTML='<div class="lg">'+ic('phone',44)+'</div><b>APK App</b><small>ابنِ تطبيقك في دقائق</small>';
+  document.body.appendChild(d);
+  setTimeout(function(){d.classList.add('out');setTimeout(function(){d.remove()},400)},900);
+})();
+
+/* ================= معالج «تطبيق جديد» ================= */
+const STEPS=['البداية','اللغة','التفاصيل','الفهم','التصميم','المراجعة'];
+function stepOf(t){
+  if(/لمين|لزبون|مشروع Supabase|مشروع جديد|استيراد الكود/.test(t))return 0;
+  if(/اختار اللغة/.test(t))return 1;
+  if(/التفاصيل|نظام متكامل \(تطبيقين\)/.test(t))return 2;
+  if(/فهمتك صح/.test(t))return 3;
+  if(/اعتمد التصميم/.test(t))return 4;
+  if(/جاري العمل|^\s*نظام متكامل\s*$|جاري/.test(t))return 5;
+  return -1;
+}
+let WZ=false;
+function wzOn(){return WZ}
+function decorate(){
+  const sh=$('#sheet');if(!sh)return;
+  const box=sh.querySelector('.sheetbox');
+  if(!box||!sh.classList.contains('on')){sh.classList.remove('wiz');return}
+  if(box._fx)return;box._fx=1;
+  const h=box.querySelector(':scope>h3');
+  const t=h?h.textContent:'';
+  const s=WZ?stepOf(t):-1;
+  if(s>-1){
+    sh.classList.add('wiz');
+    const two=window._hk===2;
+    const cancel=[...box.querySelectorAll('button.ghost')].find(function(b){return /إلغاء/.test(b.textContent)});
+    const top=document.createElement('div');
+    top.innerHTML='<div class="wz-top"><b>'+(s<1&&!/مشروع جديد/.test(t)?'مشروع جديد':two?'تطبيقين متصلين':'تطبيق جديد')+'</b>'+((cancel||s<3)?'<button class="wz-x" aria-label="إغلاق">'+ic('x')+'</button>':'')+'</div>'
+     +'<div class="wz-st">'+STEPS.map(function(l,i){return '<div class="'+(i<s?'done':i===s?'on':'')+'"><i></i><span>'+l+'</span></div>'}).join('')+'</div>';
+    const x=top.querySelector('.wz-x');
+    if(x)x.onclick=function(){if(cancel)cancel.click();else{WZ=false;closeSheet()}};
+    while(top.firstChild)box.insertBefore(top.lastChild,box.firstChild);
+    return;
+  }
+  sh.classList.remove('wiz');
+  /* نافذة عادية: زر إغلاق في الرأس لو فيها زر إغلاق/إلغاء */
+  if(h){
+    const c=[...box.querySelectorAll('button.ghost')].find(function(b){return /^(إغلاق|إلغاء|❌ إلغاء)/.test(b.textContent.trim())});
+    if(c&&!box.querySelector('.sh-x')){const b=document.createElement('button');b.className='sh-x';b.setAttribute('aria-label','إغلاق');b.innerHTML=ic('x',18);b.onclick=function(){c.click()};box.insertBefore(b,box.firstChild)}
+  }
+}
+const _closeF=closeSheet;
+closeSheet=function(){
+  const r=_closeF.apply(this,arguments);
+  const sh=$('#sheet');if(sh)sh.classList.remove('wiz');
+  return r;
+};
+/* المعالج يبدأ من «＋» وبيخلص لما الإنشاء يخلص */
+['cxHubNew','cxOwnAsk'].forEach(function(n){const f=window[n];if(typeof f!=='function')return;window[n]=function(){WZ=true;return f.apply(this,arguments)}});
+/* تطبيق واحد بالوصف: صفحة اللغة ثم صفحة التفاصيل (زي APK Fact) */
+const W={lang:'html',name:'',label:'',desc:''};
+function foot(back,next,nt){return '<div class="wz-foot">'+(back?'<button class="bk" onclick="'+back+'">رجوع</button>':'')+'<button class="nx" onclick="'+next+'">'+(nt||'التالي')+'</button></div>'}
+function wzLang(){
+  const L=[['html','HTML','تطبيق ويب داخل أندرويد. الأسرع، ومعاينة فورية'],['flutter','Flutter','تطبيق أصلي سريع بواجهة Material'],['python','Python','تطبيق Kivy بلغة بايثون']];
+  const sh=$('#sheet');
+  sh.innerHTML='<div class="sheetbox"><h3>اختار اللغة</h3><p class="note" style="margin:0 0 14px">بأي لغة نكتب تطبيقك؟</p>'
+   +L.map(function(x){return '<button class="wz-lang'+(W.lang===x[0]?' on':'')+'" onclick="cxWzLang(\''+x[0]+'\')"><span class="li" style="background:'+LC[x[0]]+'24;color:'+LC[x[0]]+'">'+ic(x[0],26)+'</span><span style="flex:1"><b>'+x[1]+'</b><small>'+x[2]+'</small></span>'+(W.lang===x[0]?'<span style="color:var(--pri)">'+ic('check')+'</span>':'')+'</button>'}).join('')
+   +foot('cxHubNew()','cxWzDetails()')
+   +'<button class="ghost" style="display:none" onclick="closeSheet()">إلغاء</button></div>';
+  sh.classList.add('on');
+}
+window.cxWzLang=function(l){W.lang=l;wzLang()};
+window.cxWzDetails=function(){
+  const sh=$('#sheet');
+  sh.innerHTML='<div class="sheetbox"><h3>التفاصيل</h3><p class="note" style="margin:0 0 6px">اسم التطبيق ووصف فكرتك. كل ما تكتب تفاصيل أكتر، كل ما يطلع أقرب للي في بالك.</p>'
+   +'<label>اسم التطبيق تحت الأيقونة</label><input id="wz-lb" placeholder="مثلاً: مخبز النور" value="'+esc(W.label)+'" oninput="cxWzSet(\'label\',this.value)">'
+   +'<label>الاسم بالإنجليزي (للحزمة)</label><input id="wz-nm" dir="ltr" placeholder="bakery" value="'+esc(W.name)+'" oninput="cxWzSet(\'name\',this.value)">'
+   +'<label>وصف التطبيق <span class="wz-cnt" id="wz-c">'+W.desc.length+'</span></label><textarea id="wz-ds" style="height:160px" placeholder="مثلاً: تطبيق مخبز. الزبون يشوف الرغيف والأسعار ويحجز بالاسم والتلفون، ويتابع حالة طلبه" oninput="cxWzSet(\'desc\',this.value)">'+esc(W.desc)+'</textarea>'
+   +foot('cxWzBack()','cxWzGo()','التالي: الفهم')
+   +'<button class="ghost" style="display:none" onclick="closeSheet()">إلغاء</button></div>';
+  sh.classList.add('on');
+};
+window.cxWzBack=function(){wzLang()};
+window.cxWzSet=function(k,v){W[k]=v;if(k==='desc'){const c=$('#wz-c');if(c)c.textContent=v.length}};
+window.cxWzGo=function(){
+  const desc=W.desc.trim(),name=slugOf(W.name||'');
+  if(!name)return toast('اكتب اسم إنجليزي للتطبيق (حروف وأرقام)');
+  if(desc.length<8)return toast('اكتب وصف أوضح لفكرتك');
+  const f=window.cxHubStartX;
+  if(typeof f!=='function')return toast('الميزة دي ما متاحة');
+  f('ai');
+  try{const tt=$('#toast');if(tt)tt.style.display='none'}catch(e){}
+  const a=S.apps[0];
+  a.name=name.slice(0,24);a.lang=W.lang;a.pv='';
+  if(W.label.trim())a.set=Object.assign({},a.set,{label:W.label.trim()});
+  save();render();
+  let n=0;
+  (function tryGo(){
+    const t=$('#dsc0');
+    if(!t){if(++n<30)return setTimeout(tryGo,120);return toast('افتح الكود واضغط إنشاء')}
+    const box=$('#desc0');if(box&&box.hidden&&typeof toggleDesc==='function')toggleDesc(0);
+    t.value=desc;
+    const b=document.createElement('button');b.style.display='none';document.body.appendChild(b);
+    WZ=true;
+    aiCreate(0,b);
+    W.name='';W.label='';W.desc='';
+  })();
+};
+if(typeof window.cxHubStart==='function'){
+  window.cxHubStartX=window.cxHubStart;
+  window.cxHubStart=function(how){
+    if(how==='ai'&&window._hk!==2){WZ=true;return wzLang()}
+    return window.cxHubStartX.apply(this,arguments);
+  };
+}
+/* لما الشغل يخلص والنافذة تتقفل، المعالج يقفل */
+const _setCodeW=setCode;
+setCode=function(){const r=_setCodeW.apply(this,arguments);setTimeout(function(){if(!$('#sheet').classList.contains('on'))WZ=false},50);return r};
+
+/* ================= الخط الزمني: عدّاد الوقت للخطوة الشغالة ================= */
+const T0={};
+setInterval(function(){
+  const box=$('#sheet.on .sheetbox');if(!box)return;
+  box.querySelectorAll('.step.run').forEach(function(s){
+    const k=(s.querySelector('div')||s).firstChild;const key=(k&&k.textContent)||'';
+    if(!T0[key])T0[key]=Date.now();
+    let e=s.querySelector('small.el');
+    if(!e){e=document.createElement('small');e.className='el';(s.querySelector('div')||s).appendChild(e)}
+    const sec=Math.floor((Date.now()-T0[key])/1000);
+    e.textContent=Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0');
+  });
+  box.querySelectorAll('.step.ok,.step.bad').forEach(function(s){const k=(s.querySelector('div')||s).firstChild;if(k)delete T0[k.textContent]});
+},1000);
+
+/* ================= شارات اللغة بألوانها + التنبيهات ================= */
+function tint(){
+  document.querySelectorAll('.hb-bd,.hb-tile small,.hb-t small').forEach(function(b){
+    if(b._lg)return;b._lg=1;
+    if(!b.classList.contains('hb-bd'))return;
+    const t=b.textContent;
+    const l=/HTML/.test(t)?'html':/Flutter/.test(t)?'flutter':/Python/.test(t)?'python':'';
+    if(l&&t.trim().length<12){b.classList.add('lg-b');b.style.cssText+=';background:'+LC[l]+'1F!important;border-color:'+LC[l]+'55!important;color:'+LC[l]+'!important'}
+  });
+}
+let q=0;
+function pass(){q=0;decorate();tint()}
+try{new MutationObserver(function(){if(!q){q=1;requestAnimationFrame(pass)}}).observe(document.body,{childList:true,subtree:true})}catch(e){}
+})();
 render();
 
 </script>
