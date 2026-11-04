@@ -9501,7 +9501,8 @@ render=function(){
 })();
 /* ===== إضافة: ملفات البناء الأحدث (Flutter v8 وPython v8: مكتبات تلقائية + دعم العربي) ===== */
 (function(){
-const WF_FLUTTER8=`# v10
+const WF_FLUTTER8=`# v11
+# v10 compatible
 # v9 compatible
 # v8 compatible
 # v7 compatible
@@ -9712,6 +9713,10 @@ jobs:
           VN=$(jq -r '.versionName // "1.0.0"' ../apps/$APP/settings.json 2>/dev/null || echo 1.0.0)
           VC=$(jq -r '.versionCode // 1' ../apps/$APP/settings.json 2>/dev/null || echo 1)
           flutter build apk --release --build-name=$VN --build-number=$VC
+          if grep -qs '^on' ../apps/$APP/store.txt; then
+            echo "=== Google Play file (.aab) ==="
+            flutter build appbundle --release --build-name=$VN --build-number=$VC
+          fi
       - name: verify signing
         if: always()
         continue-on-error: true
@@ -9731,7 +9736,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: flutter-\${{ inputs.app }}-build-\${{ github.run_number }}
-          files: flutter_out/build/app/outputs/flutter-apk/app-release.apk
+          files: |
+            flutter_out/build/app/outputs/flutter-apk/app-release.apk
+            flutter_out/build/app/outputs/bundle/release/app-release.aab
 `;
 const WF_PYTHON8=`# v11
 # v10 compatible
@@ -10034,7 +10041,7 @@ else:
     sys.exit("no android app in firebase project " + P + " and could not create one. Add any Android app in Firebase console.")
 `;
 if(typeof WF!=='undefined'){if(WF.flutter)WF.flutter.yaml=WF_FLUTTER8;if(WF.python)WF.python.yaml=WF_PYTHON8}
-const WF_MK8={flutter:'# v10',python:'# v11'};
+const WF_MK8={flutter:'# v11',python:'# v11'};
 async function ensureWf8(l){
   if(typeof WF==='undefined'||!WF[l])return;
   const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
@@ -10481,6 +10488,638 @@ render=function(){
     c.innerHTML='<h2>🎯 تنفيذ طلبك بحذافيره</h2><label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noFidelity?'':'checked')+' onchange="S.keys.noFidelity=!this.checked;save()"> استخراج كل متطلباتك وإلزام الذكاء الاصطناعي بها</label><label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:10px 0 0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noVerify?'':'checked')+' onchange="S.keys.noVerify=!this.checked;save()"> التحقق بعد الكتابة وإضافة أي متطلب ناقص تلقائياً</label><p class="note">قبل الكتابة يحوّل طلبك إلى قائمة متطلبات وصلاحيات ويضعها في آخر الأمر كأهم شيء، وبعد الكتابة يراجع الكود بنداً بنداً ويضيف الناقص. يستهلك طلبين إضافيين تقريباً لكل تطبيق.</p>';
     m.appendChild(c);
   }
+};
+})();
+/* ===== إضافة: ميزات APK Fact (لمين؟ + فهمتك صح؟ + المسودات وشاشة الخطأ + طريقة الدخول لكل تطبيق + قاعدة Supabase لكل زبون + Google Play + إعادة المحاولة مع GitHub + دقائق البناء) ===== */
+(function(){
+const PERM_KEYS=['CAMERA','LOCATION','BACKGROUND_LOCATION','MICROPHONE','NOTIFICATIONS','STORAGE','VIBRATE','CALL_PHONE','SMS','CONTACTS','BLUETOOTH','WAKE_LOCK','BIOMETRIC','FLASHLIGHT'];
+const PERM_AR={CAMERA:'الكاميرا',LOCATION:'الموقع',BACKGROUND_LOCATION:'الموقع في الخلفية',MICROPHONE:'الميكروفون',NOTIFICATIONS:'الإشعارات',STORAGE:'الصور والملفات',VIBRATE:'الاهتزاز',CALL_PHONE:'الاتصال المباشر',SMS:'الرسائل',CONTACTS:'جهات الاتصال',BLUETOOTH:'البلوتوث',WAKE_LOCK:'إبقاء الشاشة مضيئة',BIOMETRIC:'البصمة',FLASHLIGHT:'الكشاف'};
+function J(t){const s=String(t),a=s.indexOf('{'),b=s.lastIndexOf('}');if(a<0||b<a)return null;try{return JSON.parse(s.slice(a,b+1))}catch(e){return null}}
+function hsh(s){let h=5381;s=String(s);for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return (h>>>0).toString(36)}
+function lsGet(k){try{return JSON.parse(localStorage.getItem(k)||'null')}catch(e){return null}}
+function lsSet(k,v){try{if(v==null)localStorage.removeItem(k);else localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function curPj(){return (S.projects||[]).find(function(p){return p.id===S.cur})}
+function sheet(h){const sh=$('#sheet');sh.innerHTML='<div class="sheetbox">'+h+'</div>';sh.classList.add('on');return sh}
+const BASE=(typeof AI_BASE==='function')?AI_BASE:ai;
+
+/* ================= 1) GitHub: إعادة المحاولة لما يرجّع 502/503/504 أو ينقطع الاتصال ================= */
+const _ghX=gh;
+gh=async function(path,opt){
+  const m=String((opt&&opt.method)||'GET').toUpperCase();
+  for(let n=0;;n++){
+    try{
+      const r=await _ghX(path,opt);
+      try{if(/\/releases\/tags\//.test(path)&&r&&r.assets)aabOf(path,r)}catch(e){}
+      return r;
+    }catch(e){
+      const st=e&&e.status,msg=String((e&&e.message)||'');
+      const net=!st&&/Failed to fetch|NetworkError|Load failed|network|timed? ?out/i.test(msg);
+      const gw=st===502||st===503||st===504||(st>=500&&st<600&&m!=='POST');
+      if(!(gw||net)||n>=3)throw e;
+      await sleep(2000*Math.pow(2,n));
+    }
+  }
+};
+/* حفظ ملف: لو اتغيّر في GitHub أثناء الحفظ (409/422 بسبب sha) يعيد قراءة الـ sha ويحاول تاني */
+const _putX=put;
+put=async function(repo,branch,path,content){
+  for(let n=0;;n++){
+    try{return await _putX(repo,branch,path,content)}
+    catch(e){if(!(e&&(e.status===409||(e.status===422&&/sha/i.test(String(e.message)))))||n>=3)throw e;await sleep(1500*(n+1))}
+  }
+};
+
+/* ================= 2) شاشة الخطأ بدل ما الشغل يضيع + المسودات ================= */
+let _errT=0;
+function errBox(m){
+  try{saveNow()}catch(e){}
+  if(Date.now()-_errT<4000)return;_errT=Date.now();
+  let b=$('#fx-err');
+  if(!b){b=document.createElement('div');b.id='fx-err';b.style.cssText='position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top));z-index:9999;background:#2a1220;border:1px solid #ef4444;color:#fde2e2;border-radius:18px;padding:12px 14px;box-shadow:0 12px 30px rgba(0,0,0,.5);font-size:14px;line-height:1.8';document.body.appendChild(b)}
+  b.innerHTML='<b>⚠ حصل خطأ غير متوقع، لكن شغلك محفوظ</b><br><span style="opacity:.8">كل اللي كتبته (الوصف والكود والمشاريع) متحفوظ تلقائياً. تقدر تكمّل عادي.</span><div style="font-family:monospace;direction:ltr;text-align:left;font-size:11px;opacity:.7;margin-top:6px;max-height:60px;overflow:auto">'+esc(String(m).slice(0,400))+'</div><div class="row" style="margin-top:8px"><button class="sec" onclick="cxFxErrCopy()">📋 نسخ التفاصيل</button><button class="acc" onclick="document.getElementById(\'fx-err\').remove()">متابعة</button></div>';
+  b._m=String(m);
+}
+window.cxFxErrCopy=function(){const b=$('#fx-err');const t=b&&b._m||'';try{navigator.clipboard.writeText(t);toast('تم النسخ ✔')}catch(e){toast(t.slice(0,200))}};
+window.addEventListener('error',function(e){
+  if(!e||!e.message||/ResizeObserver|Script error\.?$/i.test(e.message))return;
+  errBox(e.message+(e.lineno?' (سطر '+e.lineno+')':''));
+});
+window.addEventListener('unhandledrejection',function(e){
+  const r=e&&e.reason,m=String((r&&r.message)||r||'');
+  if(!m||/AbortError|تم إلغاء/.test(m))return;
+  errBox(m);
+});
+
+/* مسودات الوصف: تتحفظ وأنت بتكتب، وترجع لو التطبيق اتقفل أو حصل خطأ */
+const DK='apk_drafts';
+const DR=lsGet(DK)||{};
+function drSave(){lsSet(DK,DR)}
+window._sysf=window._sysf||{desc:'',be:'firebase',lang:'html',sty:''};
+if(DR.sys&&typeof DR.sys==='object'){
+  const f=window._sysf;
+  if(!String(f.desc||'').trim()&&DR.sys.desc)f.desc=DR.sys.desc;
+  ['be','lang','lc','la'].forEach(function(k){if(DR.sys[k])f[k]=DR.sys[k]});
+}
+function sysDraft(){const f=window._sysf||{};DR.sys={desc:f.desc||'',be:f.be,lang:f.lang,lc:f.lc,la:f.la,t:Date.now()};drSave()}
+document.addEventListener('input',function(e){
+  const t=e.target;if(!t||!t.id)return;
+  if(t.id==='hb-sysd'||t.id==='sysd'){window._sysf.desc=t.value;sysDraft()}
+  const m=t.id.match(/^dsc([01])$/);
+  if(m){DR['d'+m[1]]={v:t.value,cur:S.cur||null,t:Date.now()};drSave()}
+},true);
+const _setCodeX=setCode;
+setCode=function(i,c){
+  const r=_setCodeX.apply(this,arguments);
+  if(DR['d'+i]){delete DR['d'+i];drSave()}
+  return r;
+};
+function drRestore(){
+  [0,1].forEach(function(i){
+    const t=$('#dsc'+i),d=DR['d'+i];
+    if(!t||!d||!d.v||t.value.trim()||(d.cur||null)!==(S.cur||null))return;
+    t.value=d.v;
+    const box=$('#desc'+i);if(box&&box.hidden&&typeof toggleDesc==='function')toggleDesc(i);
+    if(!t._fxN){t._fxN=1;t.insertAdjacentHTML('beforebegin','<p class="note" style="color:#fbbf24;margin:4px 0">📝 رجّعت ليك الوصف اللي كنت بتكتبه (مسودة محفوظة)</p>')}
+  });
+}
+
+/* ================= 3) «لمين؟»: التطبيق ليك ولا لزبون ================= */
+S.keys.sbProj=Array.isArray(S.keys.sbProj)?S.keys.sbProj:[];
+window._own=null;
+function clientNames(){
+  const L=[];
+  (S.projects||[]).forEach(function(p){const n=p.client&&p.client.name;if(n&&L.indexOf(n)<0)L.push(n)});
+  (S.keys.sbProj||[]).forEach(function(x){if(x.label&&L.indexOf(x.label)<0)L.push(x.label)});
+  return L;
+}
+function ownChip(){
+  const o=window._own;if(!o)return '';
+  return '<div class="hb-row" style="margin:2px 0 8px;gap:8px"><span class="hb-bd '+(o.kind==='client'?'b':'g')+'">'+(o.kind==='client'?'👤 لزبون: '+esc(o.name)+(o.sb?' · ⚡ قاعدة '+esc(o.sb.label||o.sb.ref):''):'🏠 لي (الأساسي)')+'</span><button class="ghost" style="width:auto;margin:0;padding:4px 10px;font-size:12px" onclick="cxOwnAsk(1)">تغيير</button></div>';
+}
+function addChip(){
+  const h=$('#sheet .sheetbox h3');
+  if(h&&!$('#fx-own')&&window._own){h.insertAdjacentHTML('afterend','<div id="fx-own">'+ownChip()+'</div>')}
+}
+const O={step:'pick',name:'',sb:null};
+window.cxOwnAsk=function(again){
+  O.step='pick';O.name='';O.sb=null;window._own=null;
+  const two=window._hk===2;
+  sheet('<h3 style="margin:0 0 4px">لمين؟</h3><p class="note" style="margin:0 0 8px">'+(two?'النظام ده':'التطبيق ده')+' ليك ولا لزبون؟</p>'
+   +'<button class="hb-opt" onclick="cxOwnPick(\'mine\')"><div class="hb-ic" style="width:44px;height:44px;font-size:22px">🏠</div><span style="flex:1"><b>لي (الأساسي)</b><small>'+(two?'في قاعدة البيانات الأساسية بتاعتك':'تطبيق خاص بيك')+'</small></span><span style="color:var(--mut)">←</span></button>'
+   +'<button class="hb-opt" onclick="cxOwnClient()"><div class="hb-ic" style="width:44px;height:44px;font-size:22px">👤</div><span style="flex:1"><b>لزبون</b><small>'+(two?'يتسجّل باسم الزبون، وتقدر تخلي ليهو قاعدة Supabase منفصلة':'يتسجّل باسم الزبون')+'</small></span><span style="color:var(--mut)">←</span></button>'
+   +'<button class="ghost" onclick="closeSheet()">إلغاء</button>');
+};
+window.cxOwnPick=function(kind){
+  window._own=kind==='mine'?{kind:'mine',t:Date.now()}:{kind:'client',name:O.name,sb:O.sb,t:Date.now()};
+  _hubNew();
+};
+window.cxOwnClient=function(){
+  const L=clientNames(),P=S.keys.sbProj||[];
+  sheet('<h3 style="margin:0 0 4px">👤 لزبون</h3>'
+   +(L.length?'<p class="note" style="margin:0 0 4px">زبون سابق</p><div class="hb-chips" style="flex-wrap:wrap">'+L.map(function(n){return '<button onclick="cxOwnName(this.textContent)">'+esc(n)+'</button>'}).join('')+'</div>':'')
+   +'<label>اسم الزبون</label><input id="fx-cn" placeholder="مثلاً: مخبز النور" value="'+esc(O.name)+'" oninput="cxOwnName(this.value,1)">'
+   +'<label>قاعدة البيانات (Supabase) للزبون</label>'
+   +'<select id="fx-sb" onchange="cxOwnSb(this.value)"><option value="">مشروعي الأساسي</option>'+P.map(function(x,i){return '<option value="'+i+'"'+(O.sb&&O.sb.ref===x.ref?' selected':'')+'>'+esc(x.label||x.ref)+' ('+esc(x.ref)+')</option>'}).join('')+'<option value="add">＋ مشروع في حساب الزبون…</option><option value="new">＋ مشروع جديد في حسابي…</option></select>'
+   +'<p class="note">قاعدة منفصلة يعني بيانات الزبون ده ما بتختلط مع باقي الزباين. بتنفع للأنظمة اللي على Supabase.</p>'
+   +'<button class="hb-big" onclick="cxOwnClientOk()">✔ تمام</button><button class="ghost" onclick="cxOwnAsk(1)">رجوع</button>');
+};
+window.cxOwnName=function(v,typing){O.name=String(v||'').trim().slice(0,60);if(!typing){const e=$('#fx-cn');if(e)e.value=O.name}};
+window.cxOwnSb=function(v){
+  if(v==='add')return sbAddForm();
+  if(v==='new')return sbNewForm();
+  O.sb=v===''?null:(S.keys.sbProj||[])[+v]||null;
+};
+window.cxOwnClientOk=function(){
+  if(!O.name)return toast('اكتب اسم الزبون');
+  cxOwnPick('client');
+};
+function sbAddForm(){
+  sheet('<h3 style="margin:0 0 4px">⚡ مشروع Supabase في حساب الزبون</h3>'
+   +'<label>رمز المشروع (Project Ref)</label><input id="fx-ref" dir="ltr" placeholder="abcdefghijklmnopqrst">'
+   +'<p class="note">من رابط المشروع: supabase.com/dashboard/project/<b>الرمز</b></p>'
+   +'<label>مفتاح الوصول (Access Token) من حساب الزبون</label><input id="fx-tok" dir="ltr" type="password" placeholder="sbp_...">'
+   +'<p class="note">Account → Access Tokens. مش مفتاح anon.</p><p class="note" id="fx-sbs"></p>'
+   +'<button class="hb-big" onclick="cxSbAdd(this)">✔ تحقق وأضف</button><button class="ghost" onclick="cxOwnClient()">رجوع</button>');
+}
+async function sbM(token,path,opt){
+  opt=opt||{};
+  const r=await fetch('https://api.supabase.com/v1'+path,{method:opt.method||'GET',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:opt.body?JSON.stringify(opt.body):undefined});
+  const t=await r.text();
+  if(!r.ok){
+    if(r.status===401)throw new Error('مفتاح الوصول غير صحيح أو منتهي (Supabase → Account → Access Tokens).');
+    if(r.status===403||r.status===404)throw new Error('المشروع ده مش موجود أو المفتاح ما عنده صلاحية عليه.');
+    throw new Error('Supabase ('+r.status+'): '+t.slice(0,250));
+  }
+  try{return t.trim()?JSON.parse(t):null}catch(e){return null}
+}
+function remember(p){
+  S.keys.sbProj=(S.keys.sbProj||[]).filter(function(x){return x.ref!==p.ref}).concat([p]);save();
+  O.sb=p;
+}
+window.cxSbAdd=async function(btn){
+  const ref=String(($('#fx-ref')||{}).value||'').trim().toLowerCase(),tok=String(($('#fx-tok')||{}).value||'').trim();
+  if(!/^[a-z]{20}$/.test(ref))return toast('رمز المشروع 20 حرف إنجليزي صغير');
+  if(!/^sbp_/.test(tok))return toast('مفتاح الوصول يبدأ بـ sbp_');
+  btn.disabled=true;$('#fx-sbs').textContent='⏳ جاري التحقق...';
+  try{
+    const info=await sbM(tok,'/projects/'+ref);
+    remember({ref:ref,token:tok,label:O.name||(info&&info.name)||ref,kind:'client'});
+    toast('✔ تمت إضافة مشروع الزبون');cxOwnClient();
+  }catch(e){$('#fx-sbs').textContent='✖ '+arErr(e);btn.disabled=false}
+};
+function sbNewForm(){
+  if(!S.keys.sbToken)return toast('أضف مفتاح Supabase (Access Token) بتاعك في الإعدادات الأول');
+  sheet('<h3 style="margin:0 0 4px">⚡ مشروع Supabase جديد للزبون</h3>'
+   +'<label>اسم المشروع</label><input id="fx-pn" value="'+esc(O.name||'')+'" placeholder="اسم الزبون">'
+   +'<label>المنطقة</label><select id="fx-rg"><option value="eu-central-1">فرانكفورت (الأقرب للشرق الأوسط)</option><option value="ap-south-1">مومباي</option><option value="eu-west-2">لندن</option><option value="us-east-1">أمريكا (شرق)</option></select>'
+   +'<p class="note">الخطة المجانية فيها مشروعين نشطين بس. التجهيز بياخد من 2 لـ 5 دقايق.</p><p class="note" id="fx-sbs"></p>'
+   +'<button class="hb-big" onclick="cxSbNew(this)">🚀 أنشئ المشروع</button><button class="ghost" onclick="cxOwnClient()">رجوع</button>');
+}
+window.cxSbNew=async function(btn){
+  const tok=S.keys.sbToken,st=function(t){const e=$('#fx-sbs');if(e)e.textContent=t};
+  const label=String(($('#fx-pn')||{}).value||'').trim()||O.name||'client';
+  const region=($('#fx-rg')||{}).value||'eu-central-1';
+  btn.disabled=true;
+  try{
+    st('⏳ قراءة المنظمة...');
+    const orgs=await sbM(tok,'/organizations');
+    if(!orgs||!orgs.length)throw new Error('حسابك في Supabase ما فيه منظمة (Organization). اعمل واحدة من supabase.com الأول.');
+    const org=orgs[0];
+    const ch='abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789',rb=new Uint8Array(24);crypto.getRandomValues(rb);
+    const pass=Array.from(rb,function(b){return ch[b%ch.length]}).join('');
+    st('⏳ إنشاء المشروع...');
+    let c;
+    try{c=await sbM(tok,'/projects',{method:'POST',body:{name:label.replace(/[<>"'`\\]/g,'').slice(0,60)||'client',organization_slug:org.slug||org.id,db_pass:pass,region:region}})}
+    catch(e){if(/limit|maximum|free/i.test(e.message))throw new Error('وصلت لحد المشاريع المجانية في Supabase (مشروعين نشطين). أوقف مشروع قديم، أو استخدم حساب الزبون.');throw e}
+    const ref=c&&(c.ref||c.id);
+    if(!/^[a-z]{20}$/.test(String(ref)))throw new Error('Supabase ما رجّع رمز المشروع الجديد.');
+    const t0=Date.now();let ok=false;
+    while(Date.now()-t0<8*60*1000){
+      st('⏳ المشروع '+ref+' بيتجهّز... ('+Math.round((Date.now()-t0)/1000)+' ث)');
+      await sleep(10000);
+      const i=await sbM(tok,'/projects/'+ref).catch(function(){return null});
+      if(i&&i.status==='INIT_FAILED')throw new Error('Supabase فشل في تجهيز المشروع. جرّب تاني بعد شوية.');
+      if(i&&i.status==='ACTIVE_HEALTHY'){ok=true;break}
+    }
+    remember({ref:ref,token:tok,label:label,kind:'created'});
+    if(!ok){toast('المشروع لسه بيتجهّز. استنى دقايق قبل ما تنشئ النظام.')}else toast('✔ المشروع جاهز');
+    cxOwnClient();
+  }catch(e){st('✖ '+arErr(e));btn.disabled=false}
+};
+
+/* «لمين؟» يظهر دايماً أول ما تضغط مشروع جديد */
+const _hubNew=function(){const f=window.cxHubNew0;if(f){f();addChip()}};
+if(typeof window.cxHubNew==='function'){
+  window.cxHubNew0=window.cxHubNew;
+  window.cxHubNew=function(){
+    /* الشاشة مقفولة = ضغطت «＋ مشروع جديد» من جديد: السؤال الأول دايماً «لمين؟» */
+    if(!$('#sheet').classList.contains('on')){if(busyNowX())return toast('انتظر انتهاء العملية الجارية');return cxOwnAsk()}
+    _hubNew();
+  };
+}
+function busyNowX(){return !!(window._sysBusy||window._preN||window._preN3||window._pre||window._rvBusy)}
+/* بعد إنشاء المشروع: سجّله باسم الزبون وبقاعدته */
+function applyOwn(before){
+  const o=window._own,p=curPj();
+  if(!o||!p||p.id===before)return;
+  window._own=null;
+  if(Date.now()-(o.t||0)>3600000)return;
+  if(o.kind==='client'){
+    p.client=Object.assign({},p.client||{},{name:o.name});
+    if(o.sb)p.sb={ref:o.sb.ref,label:o.sb.label||''};
+  }else{delete p.sb}
+  save();
+}
+function wrapOwn(n){
+  const f=window[n];if(typeof f!=='function')return;
+  window[n]=function(){
+    const before=S.cur;
+    const r=f.apply(this,arguments);
+    if(r&&typeof r.then==='function')return r.then(function(v){applyOwn(before);return v},function(e){applyOwn(before);throw e});
+    applyOwn(before);return r;
+  };
+}
+['cxHubStart','cxHubImpGo','cxPjPick'].forEach(wrapOwn);
+
+/* قاعدة Supabase الخاصة بالزبون: تتفعّل مع مشروعه، وترجع الأساسية مع باقي المشاريع */
+function sbFor(p){
+  if(!p||!p.sb)return null;
+  return (S.keys.sbProj||[]).find(function(x){return x.ref===p.sb.ref})||null;
+}
+function syncSb(){
+  if(window._sbHold)return;
+  const K=S.keys,x=sbFor(curPj());
+  if(x){
+    if(!K.sbMain)K.sbMain={ref:K.sbRef||'',token:K.sbToken||''};
+    if(K.sbRef!==x.ref||K.sbToken!==x.token){K.sbRef=x.ref;K.sbToken=x.token;save()}
+  }else if(K.sbMain){
+    K.sbRef=K.sbMain.ref;K.sbToken=K.sbMain.token;delete K.sbMain;save();
+  }
+}
+
+/* ================= 4) «فهمتك صح؟»: المتطلبات قبل التصميم والكود ================= */
+const LT={screens:'📱 الشاشات',features:'✅ الميزات والوظائف',data:'🗄 البيانات اللي التطبيق بيحفظها',texts:'🔤 الأسماء والنصوص والأرقام والألوان'};
+const LNAME={html:'an HTML mobile web app (one index.html)',flutter:'a Flutter app',python:'a Python (Kivy) app'};
+const USYS='You are a senior product manager. The owner describes a mobile app idea in their own words, often briefly. Your job is to understand EXACTLY what they have in mind, not to invent a different app.\n'
+ +'- Keep their idea, domain, names, texts, numbers, prices, colors and language exactly as they wrote them.\n'
+ +'- Turn it into a clear, complete list of requirements a developer can build and check one by one.\n'
+ +'- Where the idea is short, fill the gaps with what such an app normally needs, but stay inside their idea.\n'
+ +'- Sign-in is the owner\'s decision: list sign-in, accounts or passwords ONLY when their words (or the chosen sign-in method) ask for it, and never ask about it.\n'
+ +'- Ask ONLY about things that really change the app and that you cannot reasonably decide yourself (0 to 5 questions). Each question gets 2 to 4 short ready answers (the most likely first).\n'
+ +'- Write everything in the owner\'s language (Arabic when they wrote Arabic, in the same dialect style), short and simple, no technical words.\n'
+ +'Reply with JSON only, no markdown:\n'
+ +'{"summary":"one or two sentences: what the app is and who uses it","screens":["each screen and what is on it"],"features":["each feature or behavior, one short checkable sentence"],"data":["what the app saves, with its fields"],"texts":["exact names, texts, prices, numbers or colors the owner mentioned"],"permissions":["only from: '+PERM_KEYS.join(', ')+' — only what the app really needs"],"questions":[{"q":"question","options":["answer 1","answer 2"]}]}';
+const UPAIR='This is a SYSTEM of two connected apps sharing one online database: a CUSTOMER app (the people who use the service) and an ADMIN app (the business that manages everything). Start every screen, feature and data item with «الزبون: », «الإدارة: » or «الاثنين: » to say which app it belongs to, and cover both apps fully. For permissions use {"customer":[...],"admin":[...]} instead of a list.\n';
+function lst(v){return Array.isArray(v)?v.map(function(x){return String(x).trim()}).filter(Boolean).slice(0,40):[]}
+function pl(v){return lst(v).map(function(x){return x.toUpperCase()}).filter(function(x,i,a){return PERM_KEYS.indexOf(x)>-1&&a.indexOf(x)===i})}
+function parseSpec(t,pair){
+  const o=J(t);if(!o)throw new Error('الرد ما فيه قائمة المتطلبات، جرّب تاني');
+  const sp={summary:String(o.summary||'').trim(),screens:lst(o.screens),features:lst(o.features),data:lst(o.data),texts:lst(o.texts),perm:{c:[],a:[]},questions:[]};
+  const P=o.permissions;
+  if(P&&!Array.isArray(P)&&typeof P==='object'){sp.perm.c=pl(P.customer);sp.perm.a=pl(P.admin)}
+  else{sp.perm.c=pl(P);sp.perm.a=pair?pl(P):[]}
+  sp.questions=(Array.isArray(o.questions)?o.questions:[]).map(function(q){return {q:String((q&&q.q)||'').trim(),options:lst(q&&q.options).slice(0,4)}}).filter(function(q){return q.q}).slice(0,5);
+  if(!sp.summary&&!sp.features.length&&!sp.screens.length)throw new Error('القائمة فاضية، جرّب تاني');
+  return sp;
+}
+function intro(t){return 'App name: '+(t.name||'')+'\nIt will be built as '+(LNAME[t.lang]||LNAME.html)+'.\n'+(t.pair?UPAIR:'')+(t.login?'Chosen sign-in: '+t.login+'\n':'')+'\n'}
+async function askSpec(prompt,t){
+  let last;
+  for(let n=0;n<2;n++){
+    try{return parseSpec(await BASE(USYS+'\n\n'+prompt),t.pair)}catch(e){last=e}
+  }
+  throw last;
+}
+function specText(sp,pair){
+  const o=['','=== المواصفات اللي وافق عليها صاحب التطبيق (نفّذها كلها بند بند، ولا تعمل تطبيق مختلف) ==='];
+  if(sp.summary)o.push('الفكرة: '+sp.summary);
+  Object.keys(LT).forEach(function(k){if(sp[k].length){o.push(LT[k].replace(/^\S+\s/,'')+':');sp[k].forEach(function(x){o.push('- '+x)})}});
+  return o.join('\n');
+}
+const U={};
+function uKey(t){return 'und:'+hsh(t.lang+'|'+(t.pair?'pair|':'')+(t.name||'')+'|'+t.desc+'|'+(t.login||''))}
+function uStatus(s){const e=$('#fx-us');if(e)e.textContent=s}
+function uDraw(){
+  const sp=U.spec,t=U.t;
+  let h='<h3 style="margin:0 0 4px">🤔 فهمتك صح؟</h3>';
+  if(!sp){
+    h+='<p class="note" id="fx-us">'+(U.busy?'⏳ بفهم فكرتك وبطلع قائمة المتطلبات...':'')+'</p>'
+     +(U.err?'<div class="hb-warn">✖ '+esc(U.err)+'</div><button class="acc" style="width:100%;margin-top:8px" onclick="cxUnd(\'redo\')">🔄 جرّب تاني</button>':'')
+     +'<button class="ghost" onclick="cxUnd(\'skip\')">تخطّي الخطوة دي</button><button class="ghost" onclick="cxUnd(\'cancel\')">إلغاء</button>';
+    sheet(h);return;
+  }
+  h+='<p class="note" style="margin:0 0 8px">ده اللي فهمته من وصفك. احذف أي بند غلط بـ ✕، جاوب الأسئلة، أو اكتب تصحيح، وبعدها اضغط «تمام».'+(t.pair?' كل بند مكتوب قدامه لأي تطبيق (الزبون / الإدارة / الاثنين).':'')+'</p>';
+  if(sp.summary)h+='<div class="card" style="padding:12px;margin:0 0 10px"><b>💡 الفكرة</b><p style="margin:6px 0 0;line-height:1.9">'+esc(sp.summary)+'</p></div>';
+  Object.keys(LT).forEach(function(k){
+    if(!sp[k].length)return;
+    h+='<div class="card" style="padding:12px;margin:0 0 10px"><b>'+LT[k]+' ('+sp[k].length+')</b>'
+     +sp[k].map(function(x,j){return '<div class="hb-row" style="padding:6px 0;border-bottom:1px solid var(--line);gap:8px"><span style="flex:1;line-height:1.8;font-size:14px">'+esc(x)+'</span><button class="ghost" style="width:auto;margin:0;padding:2px 10px;color:#ef4444" '+(U.busy?'disabled':'')+' onclick="cxUndDel(\''+k+'\','+j+')">✕</button></div>'}).join('')+'</div>';
+  });
+  const pr=function(arr,who,w){return arr.map(function(x){return '<button class="on" onclick="cxUndPerm(\''+w+'\',\''+x+'\')">'+(who?who+': ':'')+esc(PERM_AR[x]||x)+' ✕</button>'}).join('')};
+  if(sp.perm.c.length||sp.perm.a.length)h+='<div class="card" style="padding:12px;margin:0 0 10px"><b>🔐 الصلاحيات</b><div class="hb-chips" style="flex-wrap:wrap;margin:8px 0 0">'+pr(sp.perm.c,t.pair?'الزبون':'','c')+pr(sp.perm.a,'الإدارة','a')+'</div></div>';
+  if(sp.questions.length){
+    h+='<div class="card" style="padding:12px;margin:0 0 10px"><b>❓ أسئلة سريعة</b>';
+    sp.questions.forEach(function(q,j){
+      const a=U.ans[j]||'';
+      h+='<p style="margin:10px 0 6px;line-height:1.8">'+esc(q.q)+'</p><div class="hb-chips" style="flex-wrap:wrap;margin:0">'+q.options.map(function(op){return '<button class="'+(a===op?'on':'')+'" onclick="cxUndAns('+j+',this.textContent)">'+esc(op)+'</button>'}).join('')+'</div>'
+       +'<input placeholder="أو اكتب إجابتك" value="'+(q.options.indexOf(a)<0?esc(a):'')+'" oninput="cxUndAns('+j+',this.value,1)" style="margin-top:6px">';
+    });
+    h+='</div>';
+  }
+  h+='<label>تصحيح أو إضافة (اختياري)</label><textarea id="fx-un" style="height:80px" placeholder="مثلاً: شيل شاشة الإعدادات، وضيف زر واتساب في صفحة المنتج" oninput="cxUndNotes(this.value)">'+esc(U.notes)+'</textarea>'
+   +'<p class="note" id="fx-us">'+(U.busy?'⏳ جاري التحديث...':'')+'</p>'
+   +'<div class="row"><button class="sec" '+(U.busy?'disabled':'')+' onclick="cxUnd(\'refine\')">🔄 حدّث الفهم</button><button class="acc" style="flex:2" '+(U.busy?'disabled':'')+' onclick="cxUnd(\'ok\')">✔ تمام، ابدأ التصميم</button></div>'
+   +'<button class="ghost" onclick="cxUnd(\'skip\')">تخطّي (ابدأ بالوصف بس)</button><button class="ghost" onclick="cxUnd(\'cancel\')">إلغاء</button>';
+  const sh=sheet(h),bx=sh.querySelector('.sheetbox');if(bx&&U.top!=null)bx.scrollTop=U.top;
+}
+function uKeep(sp){U.spec=sp;U.ans={};U.notes='';lsSet(uKey(U.t),sp)}
+async function uRun(fn){
+  U.busy=true;U.err='';uDraw();
+  try{const sp=await fn();uKeep(sp);return sp}
+  catch(e){U.err=arErr(e);if(U.spec)toast('✖ '+U.err);return null}
+  finally{U.busy=false;uDraw()}
+}
+function uFirst(){const t=U.t;return uRun(function(){return askSpec(intro(t)+'THE OWNER\'S IDEA (their exact words, the highest priority):\n'+t.desc+'\n',t)})}
+function uRefine(){
+  const t=U.t,sp=U.spec;
+  const ans=sp.questions.map(function(q,j){return U.ans[j]?{q:q.q,a:U.ans[j]}:null}).filter(Boolean);
+  const cur={summary:sp.summary,screens:sp.screens,features:sp.features,data:sp.data,texts:sp.texts,permissions:t.pair?{customer:sp.perm.c,admin:sp.perm.a}:sp.perm.c};
+  let p=intro(t)+'THE OWNER\'S IDEA (their exact words):\n'+t.desc+'\n\nYOUR CURRENT LIST (the owner already removed what they don\'t want; do not add those back):\n'+JSON.stringify(cur,null,1)+'\n';
+  if(ans.length)p+='\nTHE OWNER\'S ANSWERS (apply each one to the list):\n'+ans.map(function(x){return '- '+x.q+' → '+x.a}).join('\n')+'\n';
+  if(U.notes.trim())p+='\nTHE OWNER\'S CORRECTIONS AND ADDITIONS (apply exactly):\n'+U.notes.trim()+'\n';
+  p+='\nReturn the full updated list in the same JSON format. Ask new questions only if something important is still unclear (usually none). Do not ask again what was answered.';
+  return uRun(function(){return askSpec(p,t)});
+}
+function pending(){return U.spec&&(U.notes.trim()||U.spec.questions.some(function(q,j){return U.ans[j]}))}
+window.cxUnd=async function(a){
+  if(U.busy&&a!=='cancel')return toast('انتظر شوية...');
+  if(a==='redo')return uFirst();
+  if(a==='refine'){if(!pending())return toast('جاوب سؤال أو اكتب تصحيح الأول');return uRefine()}
+  if(a==='ok'){
+    if(pending()){const r=await uRefine();if(!r)return}
+    const sp=U.spec,res=U.resolve;U.resolve=null;
+    if(res)res(sp);return;
+  }
+  const res=U.resolve;U.resolve=null;closeSheet();
+  if(res)res(a==='skip'?false:null);
+};
+window.cxUndDel=function(k,j){if(!U.spec)return;U.top=($('#sheet .sheetbox')||{}).scrollTop;U.spec[k].splice(j,1);lsSet(uKey(U.t),U.spec);uDraw()};
+window.cxUndPerm=function(w,x){if(!U.spec)return;U.top=($('#sheet .sheetbox')||{}).scrollTop;const L=U.spec.perm[w];const i=L.indexOf(x);if(i>-1)L.splice(i,1);lsSet(uKey(U.t),U.spec);uDraw()};
+window.cxUndAns=function(j,v,typing){U.ans[j]=String(v||'').trim();if(!typing){U.top=($('#sheet .sheetbox')||{}).scrollTop;uDraw()}};
+window.cxUndNotes=function(v){U.notes=v};
+/* يرجّع: المواصفات المعتمدة، أو false (تخطي)، أو null (إلغاء) */
+function understand(t){
+  return new Promise(function(resolve){
+    U.t=t;U.spec=null;U.ans={};U.notes='';U.err='';U.busy=false;U.top=0;U.resolve=resolve;
+    const c=lsGet(uKey(t));
+    if(c&&c.perm){U.spec=c;uDraw()}else uFirst();
+  });
+}
+window.cxUnderstand=understand;
+
+/* تطبيق واحد */
+if(typeof aiCreate==='function'){
+  const _aiCU=aiCreate;
+  aiCreate=window.aiCreate=function(i,btn){
+    const self=this,args=arguments,ta=$('#dsc'+i),d=ta&&ta.value.trim();
+    if(!d||S.keys.noUnd||d.indexOf('=== المواصفات اللي وافق عليها')>-1)return _aiCU.apply(self,args);
+    understand({desc:d,lang:langOf(i),name:(S.apps[i].set&&S.apps[i].set.label)||S.apps[i].name,pair:false}).then(function(sp){
+      if(sp===null)return;
+      if(sp){
+        ta.value=d+'\n'+specText(sp,false);
+        if(sp.perm.c.length){const cur=S.apps[i].perms||[];sp.perm.c.forEach(function(x){if(cur.indexOf(x)<0)cur.push(x)});S.apps[i].perms=cur;save()}
+      }
+      closeSheet();
+      _aiCU.apply(self,args);
+      /* لو الإنشاء فشل، الوصف بيفضل ومعاه المواصفات المعتمدة: اضغط إنشاء تاني ويكمّل بيها مباشرة */
+    });
+  };
+}
+
+/* ================= 5) طريقة تسجيل الدخول لكل تطبيق في النظام المتكامل ================= */
+const LOGIN={
+  none:'بدون تسجيل دخول',
+  phone_password:'الاسم + رقم الهاتف + كلمة مرور',
+  phone_email_code:'الاسم + رقم الهاتف + البريد + تأكيد البريد + كلمة مرور',
+  email_password:'الاسم + البريد + كلمة مرور'
+};
+function lmode(v,def){return LOGIN[v]?v:def}
+function loginLine(f){
+  if(!f.loginSet)return '';
+  return '\n\nطريقة تسجيل الدخول (قرار صاحب النظام، نفّذها كما هي): تطبيق الزبائن: '+LOGIN[lmode(f.lc,'none')]+'. تطبيق الإدارة: '+LOGIN[lmode(f.la,'email_password')]+'.';
+}
+function faOn(){const f=window._sysf||{};return !!window._authOn&&f.be==='firebase'&&f.lang==='html'}
+function loginRule(mode,admin,be,lang){
+  const who=admin?'تطبيق الإدارة':'تطبيق الزبائن';
+  const NOFAKE='\n- ممنوع تسجيل دخول وهمي: لا تقبل أي رقم أو بريد أو كلمة مرور بدون التحقق من الخادم، لا تحفظ كلمات المرور في التخزين المحلي، ولا تفتح التطبيق بمجرد الضغط على زر الدخول. احفظ الجلسة فقط بعد نجاح الدخول من الخادم، وأضف زر «تسجيل الخروج».';
+  let t='\n\n=== طريقة تسجيل الدخول في '+who+' (قرار صاحب النظام، ويلغي أي تعليمات سابقة عن الدخول في هذا التطبيق) ===\n';
+  if(mode==='none'){
+    return t+'- بدون أي شاشة تسجيل دخول ولا إنشاء حساب.'+(admin?'':' لو احتجت تعرف الزبون (مثلاً في الطلبات) اطلب الاسم ورقم الهاتف داخل النموذج نفسه.')+'\n- لا تضف شاشة دخول شكلية.';
+  }
+  const fields=mode==='phone_password'?'الاسم ورقم الهاتف وكلمة المرور (بدون بريد)':mode==='phone_email_code'?'الاسم ورقم الهاتف والبريد وكلمة المرور':'الاسم والبريد وكلمة المرور (بدون رمز)';
+  t+='- شاشة «دخول» وشاشة «إنشاء حساب» بالحقول: '+fields+'. وفي الدخول: '+(mode==='email_password'?'البريد':'رقم الهاتف')+' وكلمة المرور.\n';
+  t+='- احفظ الاسم ورقم الهاتف'+(mode==='phone_password'?'':' والبريد')+' في ملف المستخدم في قاعدة البيانات مربوطاً بمعرّف حسابه.\n';
+  if(be==='firebase'&&lang==='html'&&faOn()){
+    if(mode==='phone_password')t+='- استخدم FA.signUpPhone(phone,password) وFA.signInPhone(phone,password) (تحوّل الرقم لحساب داخلي تلقائياً، ولا يتم إرسال SMS).\n';
+    else t+='- استخدم FA.signUp(email,password) وFA.signIn(email,password).\n';
+    if(mode==='phone_email_code')t+='- بعد إنشاء الحساب نفّذ FA.sendVerify() وأظهر شاشة «أكّد بريدك» فيها زر «أكّدت» يتحقق بـ FA.verified() وزر «أرسل الرابط تاني»، ولا تدخل التطبيق قبل التأكيد (Firebase يرسل رابط تأكيد على البريد).\n';
+    if(admin&&mode==='phone_password')t+='- بعد الدخول نفّذ FA.claimAdmin() ثم FA.isAdmin() كالمعتاد، وفي شاشة الموظفين أضف الموظف برقم هاتف وكلمة مرور عبر FA.addStaffPhone(phone,password).\n';
+  }else if(be==='supabase'){
+    t+='- استخدم Supabase Auth عبر REST بنفس URL وanon key: إنشاء حساب POST /auth/v1/signup بـ {email,password,data:{name,phone}}، والدخول POST /auth/v1/token?grant_type=password، وأرسل access_token في Authorization: Bearer مع كل طلب للجداول، وجدّد الجلسة بـ grant_type=refresh_token.\n';
+    if(mode==='phone_password')t+='- لأن الدخول بالهاتف بدون بريد: حوّل الرقم (أرقام إنجليزية فقط) لبريد داخلي بالشكل p<الرقم>@phone.example.com واستخدمه في Auth، ولا تعرضه للمستخدم.\n';
+    if(mode==='phone_email_code')t+='- بعد إنشاء الحساب يصل للبريد رمز من 6 أرقام: أظهر شاشة إدخال الرمز وتحقق منه بـ POST /auth/v1/verify بـ {type:"signup",email,token}، مع زر «أرسل الرمز تاني» (POST /auth/v1/resend بـ {type:"signup",email}).\n';
+  }else{
+    const key=String(S.keys.fbKey||'').trim();
+    t+='- استخدم Firebase Authentication عبر REST (Identity Toolkit)'+(key?' بمفتاح الويب: '+key:' بمفتاح الويب (Web API Key) الموجود في إعدادات المشروع')+': إنشاء حساب accounts:signUp والدخول accounts:signInWithPassword على https://identitytoolkit.googleapis.com/v1/، وجدّد التوكن من securetoken.googleapis.com، وأرسله كـ ?auth= مع طلبات القاعدة.\n';
+    if(mode==='phone_password')t+='- لأن الدخول بالهاتف بدون بريد: حوّل الرقم (أرقام إنجليزية فقط) لبريد داخلي بالشكل p<الرقم>@phone.example.com واستخدمه في Auth، ولا تعرضه للمستخدم.\n';
+    if(mode==='phone_email_code')t+='- بعد إنشاء الحساب أرسل رابط تأكيد للبريد (accounts:sendOobCode بـ requestType VERIFY_EMAIL) وأظهر شاشة «أكّد بريدك» تتحقق من emailVerified (accounts:lookup) قبل دخول التطبيق.\n';
+  }
+  return t+NOFAKE.slice(1);
+}
+let ROLE='';
+function onlyMine(p,role){
+  const other=role==='c'?'الإدارة':'الزبون';
+  const re=new RegExp('^\\s*-\\s*«?\\s*'+other+'\\s*(:\\s*»|»\\s*:|:)');
+  return String(p).split('\n').filter(function(x){return !re.test(x)}).join('\n');
+}
+/* ذيل «طلب المستخدم» اللي بيضيفه فحص الالتزام: كمان بنود التطبيق ده بس */
+(function(){
+  let tl='';
+  try{Object.defineProperty(window,'_reqTail',{configurable:true,get:function(){return tl},set:function(v){tl=(v&&ROLE&&String(v).indexOf('=== المواصفات اللي وافق عليها')>-1)?onlyMine(v,ROLE):v}})}catch(e){}
+})();
+const PLAN_TXT='صمم نظاماً من تطبيقين مترابطين';
+const _aiL=ai;
+ai=function(p){
+  if(typeof p!=='string')return _aiL(p);
+  const f=window._sysf||{};
+  if(p.indexOf(PLAN_TXT)>-1&&p.indexOf('«الزبون:» يخص d1')<0&&(p.indexOf('=== المواصفات اللي وافق عليها')>-1||f.loginSet)){
+    p+='\n\nمهم: في المواصفات المعتمدة، البند اللي يبدأ بـ «الزبون:» يخص d1 فقط، و«الإدارة:» يخص d2 فقط، و«الاثنين:» يخص الاثنين. لا تنقل بنداً لتطبيق ليس له.'+(f.loginSet?' وضمّن طريقة تسجيل الدخول المذكورة لكل تطبيق في وصفه (d1 أو d2) حرفياً.':'');
+    return _aiL(p);
+  }
+  const role=p.indexOf('دور التطبيق: تطبيق الإدارة')>-1?'a':p.indexOf('دور التطبيق: تطبيق الزبائن')>-1?'c':'';
+  ROLE=role;
+  if(role&&f.loginSet&&/```(html|dart|python)/.test(p)&&p.indexOf('=== طريقة تسجيل الدخول في')<0){
+    const l=['html','flutter','python'].indexOf(f.lang)>-1?f.lang:'html';
+    p+=loginRule(role==='a'?lmode(f.la,'email_password'):lmode(f.lc,'none'),role==='a',f.be==='supabase'?'supabase':'firebase',l);
+  }
+  /* كل تطبيق في النظام يقرأ بنوده هو بس */
+  if(role&&p.indexOf('=== المواصفات اللي وافق عليها')>-1)p=onlyMine(p,role);
+  return _aiL(p);
+};
+/* دوال الدخول بالهاتف وتأكيد البريد تُضاف لكائن FA */
+const FAX=`(function(){var F=window.FA;if(!F||F.signUpPhone)return;var C=window.FA_CFG||{};
+function dg(p){return String(p||"").replace(/[\\u0660-\\u0669]/g,function(d){return String(d.charCodeAt(0)-1632)}).replace(/[\\u06F0-\\u06F9]/g,function(d){return String(d.charCodeAt(0)-1776)}).replace(/[^0-9]/g,"")}
+F.phoneMail=function(p){var d=dg(p);if(d.length<7)throw new Error("INVALID_PHONE");return "p"+d+"."+String(C.root||"app").toLowerCase().replace(/[^a-z0-9]/g,"")+"@phone.example.com"};
+F.signUpPhone=function(p,pw){return Promise.resolve().then(function(){return F.signUp(F.phoneMail(p),pw)}).catch(function(e){if(/EMAIL_EXISTS/.test(String(e&&e.message)))throw new Error("PHONE_EXISTS");throw e})};
+F.signInPhone=function(p,pw){return Promise.resolve().then(function(){return F.signIn(F.phoneMail(p),pw)}).catch(function(e){if(/INVALID_LOGIN_CREDENTIALS|EMAIL_NOT_FOUND|INVALID_PASSWORD/.test(String(e&&e.message)))throw new Error("PHONE_BAD");throw e})};
+F.addStaffPhone=function(p,pw){return Promise.resolve().then(function(){return F.addStaff(F.phoneMail(p),pw)})};
+function idt(path,b){return fetch("https://identitytoolkit.googleapis.com/v1/accounts:"+path+"?key="+encodeURIComponent(C.key||""),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)}).then(function(r){return r.json().then(function(j){if(!r.ok)throw new Error((j&&j.error&&j.error.message)||("HTTP "+r.status));return j})})}
+F.sendVerify=function(){return F.token().then(function(t){return idt("sendOobCode",{requestType:"VERIFY_EMAIL",idToken:t})})};
+F.verified=function(){return F.token().then(function(t){return idt("lookup",{idToken:t})}).then(function(j){return !!(j.users&&j.users[0]&&j.users[0].emailVerified)})};
+var E=F.err;F.err=function(e){var m=String((e&&e.message)||e);if(m.indexOf("INVALID_PHONE")>-1)return "رقم الهاتف غير صحيح";if(m.indexOf("PHONE_EXISTS")>-1)return "رقم الهاتف ده مسجّل قبل كده";if(m.indexOf("PHONE_BAD")>-1)return "رقم الهاتف أو كلمة المرور غير صحيحة";return E(e)};
+})();`;
+const _cleanL=clean;
+clean=function(t){
+  let r=_cleanL(t);
+  if(typeof r==='string'&&r.indexOf('id="fa-pro"')>-1&&r.indexOf('id="fa-x"')<0&&/FA\.(signUpPhone|signInPhone|addStaffPhone|sendVerify|verified)\b/.test(r)){
+    r=r.replace(new RegExp('(<scr'+'ipt id="fa-pro">[\\s\\S]*?<\\/scr'+'ipt>)'),function(m){return m+'<scr'+'ipt id="fa-x">'+FAX+'<\/scr'+'ipt>'});
+  }
+  return r;
+};
+
+/* النظام المتكامل: لمين؟ + فهمتك صح؟ + طريقة الدخول + قاعدة الزبون */
+if(typeof window.cxSysGo==='function'){
+  const _sysU=window.cxSysGo;
+  window.cxSysGo=async function(){
+    const f=window._sysf||{},self=this,args=arguments;
+    const desc=String(f.desc||'').trim();
+    if(window._sysBusy||desc.length<8||desc.indexOf('=== المواصفات اللي وافق عليها')>-1)return _sysU.apply(self,args);
+    let full=desc;
+    if(!S.keys.noUnd){
+      const lang=['html','flutter','python'].indexOf(f.lang)>-1?f.lang:'html';
+      const sp=await understand({desc:desc,lang:lang,name:'',pair:true,login:f.loginSet?('customer app: '+LOGIN[lmode(f.lc,'none')]+'; admin app: '+LOGIN[lmode(f.la,'email_password')]):''});
+      if(sp===null)return;
+      closeSheet();
+      if(sp){
+        full=desc+'\n'+specText(sp,true);
+        window._undPerm=sp.perm;
+      }
+    }
+    full+=loginLine(f);
+    const o=window._own,K=S.keys;
+    let sw=null;
+    if(o&&o.kind==='client'&&o.sb&&f.be==='supabase'){
+      const x=(K.sbProj||[]).find(function(y){return y.ref===o.sb.ref});
+      if(x){window._sbHold=true;sw={ref:K.sbRef,token:K.sbToken,main:K.sbMain};if(!K.sbMain)K.sbMain={ref:K.sbRef||'',token:K.sbToken||''};K.sbRef=x.ref;K.sbToken=x.token}
+    }
+    const before=S.cur;
+    f.desc=full;
+    try{
+      return await _sysU.apply(self,args);
+    }finally{
+      if(f.desc===full)f.desc=desc;
+      const ok=S.apps.every(function(a){return a.code&&a.code.trim()});
+      const P=window._undPerm;window._undPerm=null;
+      if(ok&&P){[['c',0],['a',1]].forEach(function(z){const L=P[z[0]]||[];if(!L.length)return;const a=S.apps[z[1]],cur=a.perms||[];L.forEach(function(x){if(cur.indexOf(x)<0)cur.push(x)});a.perms=cur});save()}
+      if(ok&&f.desc!==desc){/* اتعمل بنجاح ومسح الوصف */}
+      if(ok){delete DR.sys;drSave()}
+      applyOwn(before);
+      if(sw){window._sbHold=false;const p=curPj();if(!(p&&p.sb)){K.sbRef=sw.ref;K.sbToken=sw.token;if(sw.main)K.sbMain=sw.main;else delete K.sbMain}save()}
+    }
+  };
+}
+/* اختيار طريقة الدخول في شاشة النظام المتكامل */
+window.cxLogin=function(w,v){const f=window._sysf;f[w==='c'?'lc':'la']=v;f.loginSet=true;sysDraft()};
+if(typeof window.cxHubSys==='function'){
+  const _hs=window.cxHubSys;
+  window.cxHubSys=function(){
+    _hs.apply(this,arguments);
+    addChip();
+    const f=window._sysf||{},big=$('#sheet .hb-big');
+    if(big&&!$('#fx-lg')){
+      const sel=function(w,def,opts){const cur=lmode(f[w==='c'?'lc':'la'],def);return '<select onchange="cxLogin(\''+w+'\',this.value)">'+opts.map(function(k){return '<option value="'+k+'"'+(cur===k?' selected':'')+'>'+LOGIN[k]+'</option>'}).join('')+'</select>'};
+      big.insertAdjacentHTML('beforebegin','<div id="fx-lg"><label>🔐 تسجيل الدخول في تطبيق الزبائن</label>'+sel('c','none',['none','phone_password','phone_email_code','email_password'])
+        +'<label>🔐 تسجيل الدخول في تطبيق الإدارة</label>'+sel('a','email_password',['email_password','phone_password','phone_email_code','none'])
+        +'<p class="note">دخول حقيقي من قاعدة البيانات (مش شكلي). '+(f.be==='supabase'?'تأكيد البريد برمز من 6 أرقام (فعّل «بريد التأكيد» في البيانات).':'في Firebase: فعّل Email/Password في Authentication، وتأكيد البريد برابط.')+'</p>'
+        +'</div>');
+    }
+    const t=$('#hb-sysd');if(t&&!t.value&&f.desc)t.value=f.desc;
+  };
+}
+
+/* ================= 6) Google Play: ملف .aab موقّع بالمفتاح الدائم ================= */
+function aabOf(path,rel){
+  const aab=(rel.assets||[]).find(function(x){return /\.aab$/.test(x.name)});
+  if(!aab)return;
+  const tag=decodeURIComponent(path.split('/releases/tags/')[1]||'');
+  S.apps.forEach(function(a){
+    const k=slugOf(a.name);if(!k)return;
+    if(tag.indexOf(k+'-build-')===0||tag.indexOf('flutter-'+k+'-build-')===0){a.aab=aab.browser_download_url;save()}
+  });
+}
+const _putS=put;
+put=async function(repo,branch,path,content){
+  await _putS(repo,branch,path,content);
+  const m=String(path).match(/^apps\/([^/]+)\/(www\/index\.html|main\.dart)$/);
+  if(m){
+    const a=S.apps.find(function(x){return slugOf(x.name)===m[1]});
+    const on=!!(a&&a.set&&a.set.store);
+    if(a&&(on||a.storeW)){await _putS(repo,branch,'apps/'+m[1]+'/store.txt',(on?'on':'off')+'\n');a.storeW=on;save()}
+  }
+};
+window.cxStore=function(i,on){const a=S.apps[i];a.set=Object.assign({},a.set,{store:!!on});save();toast(on?'📦 البناء الجاي هيطلع ملف Google Play (.aab) كمان':'تم إيقاف ملف Google Play')};
+function storeCard(){
+  const rows=S.apps.map(function(a,i){
+    if(!(a.code&&a.code.trim()))return '';
+    const l=langOf(i),ok=l==='html'||l==='flutter';
+    return '<div class="hb-row" style="padding:8px 0;border-bottom:1px solid var(--line);gap:10px;flex-wrap:wrap"><div class="hb-t" style="flex:1"><b style="font-size:14px">'+esc((a.set&&a.set.label)||a.name)+'</b><small>'+(ok?'الحزمة: <span dir="ltr">'+esc((typeof pkgOf==='function'&&pkgOf(i))||'تلقائي')+'</span>':'ملف .aab متاح لتطبيقات HTML وFlutter بس')+'</small></div>'
+     +(ok?'<label style="display:flex;gap:8px;align-items:center;color:var(--tx);margin:0"><input type="checkbox" style="width:22px;height:22px" '+(a.set&&a.set.store?'checked':'')+' onchange="cxStore('+i+',this.checked)"> .aab</label>':'')
+     +(a.aab?'<a class="btn acc" style="flex:none;padding:8px 12px;font-size:13px" href="'+esc(a.aab)+'" target="_blank">⬇ .aab</a>':'')+'</div>';
+  }).join('');
+  if(!rows)return '';
+  return '<div class="card" id="fx-store"><h2>📦 Google Play</h2><p class="note" style="margin-top:0">فعّل «.aab» والبناء الجاي يطلع نسخة Release (Android SDK 36) وملف Google Play موقّعين بنفس المفتاح الدائم للتطبيق، عشان التحديثات في المتجر تتقبل.</p>'+rows+'</div>';
+}
+
+/* ================= 7) دقائق البناء هذا الشهر ================= */
+window.cxMinutes=async function(btn){
+  const out=$('#fx-min');if(!S.keys.ghToken)return toast('أضف مفتاح GitHub الأول');
+  btn.disabled=true;out.textContent='⏳ بحسب...';
+  try{
+    const repo=await repoFull(),info=await gh('/repos/'+repo);
+    const d=new Date(),st=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1)).toISOString().slice(0,10);
+    let tot=0,runs=0;
+    for(let pg=1;pg<=10;pg++){
+      const r=await gh('/repos/'+repo+'/actions/runs?per_page=100&page='+pg+'&created=%3E%3D'+st);
+      const L=r.workflow_runs||[];
+      L.forEach(function(x){if(x.status!=='completed'||!x.run_started_at)return;runs++;tot+=Math.max(1,Math.ceil((new Date(x.updated_at)-new Date(x.run_started_at))/60000))});
+      if(L.length<100)break;
+    }
+    out.innerHTML='<b style="font-size:24px;color:var(--tx)">'+tot+' دقيقة</b> · '+runs+' بناء من أول الشهر<br>'+(info.private?'المستودع خاص: GitHub بيدّي 2000 دقيقة مجاناً في الشهر للحساب المجاني'+(tot>1600?' ⚠ قربت تخلص':'')+'. بعدها محتاج ميزانية في github.com/settings/billing.':'المستودع عام: البناء مجاني وبدون حد للدقائق.');
+  }catch(e){out.textContent='✖ '+arErr(e)}
+  btn.disabled=false;
+};
+
+/* ================= الواجهة ================= */
+const _rX=render;
+render=function(){
+  syncSb();
+  _rX.apply(this,arguments);
+  const m=$('#main');if(!m)return;
+  drRestore();
+  if(tab==='build'&&!$('#fx-store')){const h=storeCard();if(h)m.insertAdjacentHTML('beforeend',h)}
+  if(tab==='keys'&&!$('#fx-keys')){
+    const p=curPj(),x=sbFor(p);
+    m.insertAdjacentHTML('beforeend','<div class="card" id="fx-keys"><h2>🤔 فهمتك صح؟</h2><label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noUnd?'':'checked')+' onchange="S.keys.noUnd=!this.checked;save()"> اعرض قائمة المتطلبات اللي فهمتها وأسئلة سريعة قبل التصميم والكود</label></div>'
+     +'<div class="card"><h2>⏱ دقائق البناء</h2><p class="note" id="fx-min" style="margin-top:0">كم دقيقة بناء استخدمت في GitHub الشهر ده.</p><button class="sec" style="width:100%" onclick="cxMinutes(this)">احسب الآن</button></div>'
+     +((S.keys.sbProj||[]).length?'<div class="card"><h2>⚡ قواعد Supabase للزباين</h2>'+(x?'<div class="hb-warn" style="margin:0 0 8px">المشروع المفتوح للزبون «'+esc((p.client&&p.client.name)||x.label)+'»، فمفاتيح Supabase فوق هي مفاتيح قاعدته ('+esc(x.ref)+'). مفاتيحك الأساسية بترجع لما تفتح مشروع تاني.</div>':'')+S.keys.sbProj.map(function(y,i){return '<div class="hb-row" style="padding:6px 0;border-bottom:1px solid var(--line)"><div class="hb-t"><b style="font-size:14px">'+esc(y.label||y.ref)+'</b><small dir="ltr">'+esc(y.ref)+'</small></div><button class="ghost" style="width:auto;margin:0;padding:4px 10px" onclick="cxSbDel('+i+')">حذف</button></div>'}).join('')+'</div>':''));
+  }
+};
+window.cxSbDel=function(i){
+  const y=(S.keys.sbProj||[])[i];if(!y)return;
+  if(!confirm('حذف «'+(y.label||y.ref)+'» من القائمة؟ (المشروع نفسه في Supabase ما بيتحذف)'))return;
+  S.keys.sbProj.splice(i,1);
+  (S.projects||[]).forEach(function(p){if(p.sb&&p.sb.ref===y.ref)delete p.sb});
+  save();render();
 };
 })();
 render();
