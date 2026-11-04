@@ -11636,7 +11636,7 @@ function decorate(){
   /* نافذة عادية: زر إغلاق في الرأس لو فيها زر إغلاق/إلغاء */
   if(h){
     const c=[...box.querySelectorAll('button.ghost')].find(function(b){return /^(إغلاق|إلغاء|❌ إلغاء)/.test(b.textContent.trim())});
-    if(c&&!box.querySelector('.sh-x')){const b=document.createElement('button');b.className='sh-x';b.setAttribute('aria-label','إغلاق');b.innerHTML=ic('x',18);b.onclick=function(){c.click()};box.insertBefore(b,box.firstChild)}
+    if(c&&!box.querySelector('.sh-x')){const b=document.createElement('button');b.className='sh-x';b.setAttribute('aria-label','إغلاق');b.innerHTML=ic('x',18);b.onclick=function(){c.click()};box.insertBefore(b,box.firstChild);if(/^إغلاق$/.test(c.textContent.trim()))c.style.display='none'}
   }
 }
 const _closeF=closeSheet;
@@ -11735,6 +11735,138 @@ function tint(){
 let q=0;
 function pass(){q=0;decorate();tint()}
 try{new MutationObserver(function(){if(!q){q=1;requestAnimationFrame(pass)}}).observe(document.body,{childList:true,subtree:true})}catch(e){}
+})();
+/* ===== إضافة: إزالة كل الشكل القديم (أيقونات خطية بدل كل الإيموجي + آخر الألوان القديمة) — بدون أي تغيير في الوظائف ===== */
+(function(){
+const st=document.createElement('style');st.id='fact-ui-2';
+st.textContent=`
+body.aur .cx-ed{background:#0B0D15!important;border:1.5px solid var(--line)!important;border-radius:14px!important}
+body.aur .cx-ed .cx-tb,body.aur .cx-ed .cx-gut{background:#10121B!important}
+body.aur .cx-th,body.aur .cx-th .ph,body.aur .st-ph{background:var(--sf)!important;border-color:var(--line)!important}
+body.aur .cx-shot{background-image:none!important;background:var(--sf2)!important}
+body.aur .cx-chip,body.aur .cx-chips>*{background:var(--sf)!important;border:1px solid var(--line)!important;color:var(--mut)!important;border-radius:999px!important;font-weight:700!important}
+body.aur .cx-chip.on,body.aur .cx-chips>.on{background:var(--pris)!important;border-color:var(--pri)!important;color:var(--tx)!important}
+body.aur .cx-thp button,body.aur .cx-thp button.on{background:var(--sf2)!important;border:1px solid var(--line)!important;color:var(--tx)!important;border-radius:999px!important}
+body.aur .cx-thp button.on{background:var(--pris)!important;border-color:var(--pri)!important}
+body.aur .st-send{background:linear-gradient(225deg,#6E4BFF,#2563EB)!important;color:#fff!important;border:0!important;border-radius:16px!important;font-weight:800!important}
+body.aur .cx-bd{background:var(--sf2)!important;border:1px solid var(--line)!important;color:var(--mut)!important;padding:3px 9px!important;font-size:11px!important}
+body.aur .cx-bd.ok{background:#0E2A22!important;border-color:rgba(74,222,128,.3)!important;color:#4ADE80!important}
+body.aur img#ic0,body.aur img#ic1{background:var(--sf2)!important;border-radius:16px!important}
+/* أي لون قديم مكتوب داخل العناصر نفسها */
+body.aur [style*="#0e1730"],body.aur [style*="#131c31"],body.aur [style*="#1c2742"],body.aur [style*="rgba(19,28,49"]{background-color:var(--sf2)!important}
+body.aur [style*="#243557"]{background-color:var(--pris)!important}
+body.aur [style*="#1b2440"]{border-color:#000!important}
+body.aur [style*="#0d47a1"],body.aur [style*="#4f46e5"],body.aur [style*="#2f80ff"]{background:linear-gradient(225deg,#6E4BFF,#2563EB)!important;border-color:transparent!important}
+body.aur [style*="#ffb300"]{color:#FBBF24!important}
+body.aur .fxi{display:inline-grid;vertical-align:-4px;margin-inline-end:6px;line-height:0}
+body.aur .fxi svg{width:18px;height:18px}
+body.aur .hb-bd .fxi svg,body.aur small .fxi svg,body.aur .cx-bd .fxi svg{width:13px;height:13px}
+body.aur .hb-bd .fxi,body.aur .cx-bd .fxi{vertical-align:-2px;margin-inline-end:4px}
+`;
+document.head.appendChild(st);
+
+/* أيقونات خطية (نفس أسلوب Ionicons outline) */
+const P={
+ link:'<path d="M9 15 15 9"/><path d="M11 6l1.5-1.5a4.2 4.2 0 0 1 6 6L17 12"/><path d="M13 18l-1.5 1.5a4.2 4.2 0 0 1-6-6L7 12"/>',
+ phone:'<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+ alert:'<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+ down:'<path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/>',
+ up:'<path d="M12 21V9"/><path d="m7 14 5-5 5 5"/><path d="M5 3h14"/>',
+ box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
+ mail:'<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>',
+ key:'<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2"/><path d="m16 7 3 3"/>',
+ spark:'<path d="M12 3l1.8 4.9L19 10l-5.2 2.1L12 17l-1.8-4.9L5 10l5.2-2.1z"/><path d="M19 17v4"/><path d="M17 19h4"/>',
+ bag:'<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+ pulse:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
+ book:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5V21h16"/>',
+ zap:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+ card:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+ bike:'<circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><path d="M15 6h2l3 11.5"/><path d="M5.5 17.5 9 10h7"/>',
+ heart:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8z"/>',
+ home:'<path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/>',
+ cash:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>',
+ checkc:'<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
+ x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+ flame:'<path d="M12 22c4 0 7-2.7 7-6.8 0-3.6-2.6-6.2-4.4-8.2-.4 2-1.5 3.3-2.8 3.8C12 7.5 10.5 4.4 8 2c0 3.6-3 6-3 10.5C5 18.6 8 22 12 22z"/>',
+ pencil:'<path d="M17 3a2.8 2.8 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5z"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ layers:'<path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>',
+ code:'<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
+ eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/>',
+ inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',
+ clip:'<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+ broom:'<path d="M3 21l7-7"/><path d="M14 4l6 6-6 6-6-6z"/>',
+ palette:'<circle cx="13.5" cy="6.5" r="1"/><circle cx="17.5" cy="10.5" r="1"/><circle cx="8.5" cy="7.5" r="1"/><path d="M12 2a10 10 0 1 0 0 20c1 0 1.7-.8 1.7-1.7 0-.9.8-1.7 1.7-1.7H17a5 5 0 0 0 5-5c0-4.9-4.5-8.4-10-8.4z"/>',
+ play:'<path d="M6 4l14 8-14 8z"/>',
+ wrench:'<path d="M14.7 6.3a4 4 0 0 0 5 5L22 9a6 6 0 0 1-8.5 6.4l-6.1 6.1a2.1 2.1 0 0 1-3-3l6.1-6.1A6 6 0 0 1 17 2l-2.3 2.3a1 1 0 0 0 0 1.4z"/>',
+ gem:'<path d="M6 3h12l4 6-10 12L2 9z"/><path d="M2 9h20"/>',
+ refresh:'<path d="M21 12a9 9 0 0 1-15.5 6.3L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.3L21 8"/><path d="M21 3v5h-5"/><path d="M3 21v-5h5"/>',
+ rocket:'<path d="M4.5 16.5c-1.5 1.3-2 5-2 5s3.7-.5 5-2c.7-.8.7-2.1-.1-2.9a2.2 2.2 0 0 0-2.9-.1z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.9A12.9 12.9 0 0 1 22 2c0 2.7-.8 7.5-6 11a22.4 22.4 0 0 1-4 2z"/>',
+ image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>',
+ hands:'<path d="M7 11l4-4 3 3 3-3 4 4-7 7z"/><path d="M3 11l4 0"/>',
+ bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+ belloff:'<path d="M8.7 3A6 6 0 0 1 18 8c0 2.7.6 4.6 1.3 6"/><path d="M17 17H3s3-2 3-9c0-.7.1-1.3.3-1.9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/><path d="m2 2 20 20"/>',
+ msg:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
+ send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
+ save:'<path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8"/><path d="M7 21v-7h10v7"/>',
+ github:'<path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.9a3.4 3.4 0 0 0-.9-2.6c3.1-.4 6.4-1.5 6.4-7A5.4 5.4 0 0 0 20 4.8 5 5 0 0 0 19.9 1S18.7.6 16 2.5a13.4 13.4 0 0 0-7 0C6.3.6 5.1 1 5.1 1A5 5 0 0 0 5 4.8a5.4 5.4 0 0 0-1.5 3.7c0 5.4 3.3 6.6 6.4 7A3.4 3.4 0 0 0 9 18.1V22"/>',
+ plug:'<path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a6 6 0 0 1-12 0V8z"/>',
+ folder:'<path d="M3 6a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+ film:'<rect x="2" y="3" width="20" height="18" rx="2"/><path d="M7 3v18M17 3v18M2 8h5M17 8h5M2 16h5M17 16h5"/>',
+ search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+ cloud:'<path d="M17.5 19H8a6 6 0 1 1 5.7-7.9A4.5 4.5 0 1 1 17.5 19z"/>',
+ plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
+ bug:'<rect x="8" y="6" width="8" height="14" rx="4"/><path d="M12 20v-9M4 13h4M16 13h4M5 7l3 2M19 7l-3 2M5 19l3-2M19 19l-3-2"/>',
+ trash:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+ moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+ db:'<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+ lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+ chart:'<path d="M3 3v18h18"/><path d="M8 16v-4"/><path d="M13 16V8"/><path d="M18 16v-7"/>',
+ file:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>',
+ info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>',
+ shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+ globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z"/>',
+ star:'<path d="m12 3 2.9 5.9 6.1.9-4.5 4.3 1.1 6.1L12 17.3 6.4 20.2l1.1-6.1L3 9.8l6.1-.9z"/>',
+ cart:'<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>'
+};
+const M={'🔗':'link','📱':'phone','📲':'phone','👤':'user','👥':'user','⚠':'alert','⬇':'down','📥':'down','⏬':'down','📤':'up','⏫':'up','⬆':'up','🏗':'box','📦':'box','📧':'mail','📨':'mail','✉':'mail','🔑':'key','✨':'spark','🤖':'spark','💡':'spark','🛒':'cart','🛍':'bag','🩺':'pulse','📚':'book','📖':'book','⚡':'zap','💳':'card','🛵':'bike','📿':'star','💜':'heart','❤':'heart','🏡':'home','🏠':'home','💰':'cash','💵':'cash','✅':'checkc','✔':'check','☑':'check','✖':'x','❌':'x','🔥':'flame','📝':'pencil','✏':'pencil','🖊':'pencil','⏱':'clock','🕘':'clock','⏳':'clock','⌛':'clock','🃏':'layers','💻':'code','👁':'eye','⚙':'gear','📋':'clip','🧹':'broom','🎨':'palette','▶':'play','🛠':'wrench','🔧':'wrench','💎':'gem','🔁':'refresh','🔄':'refresh','↺':'refresh','🚀':'rocket','🖼':'image','🤝':'hands','🔔':'bell','🔕':'belloff','💬':'msg','📢':'msg','💾':'save','🐙':'github','🔌':'plug','📁':'folder','📂':'folder','🎬':'film','🔬':'search','🔍':'search','🔎':'search','☁':'cloud','➕':'plus','🐞':'bug','🗑':'trash','🌙':'moon','🗄':'db','🔐':'lock','🔒':'lock','📊':'chart','📄':'file','📃':'file','ℹ':'info','🛡':'shield','🌐':'globe','⭐':'star','🎯':'star','🧪':'search','📌':'star','🎉':'spark','👍':'checkc','🟢':'checkc','🔴':'x','🧠':'spark','📷':'image','📸':'image','🖥':'code','📡':'globe','🗂':'folder','🧩':'layers','🎁':'bag','🏷':'star'};
+function svg(n){return '<span class="fxi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+P[n]+'</svg></span>'}
+const EMG=/(?:\p{Extended_Pictographic}|[↔-⇿⬅-⬇])(?:️|︎|‍(?:\p{Extended_Pictographic}))*|️/gu;
+const EM1=/^\s*((?:\p{Extended_Pictographic})(?:️|︎|‍\p{Extended_Pictographic})*)\s*/u;
+const ICONIC='button,summary,.hb-bd,.cx-bd,a.btn,.hb-h3,label,.cx-tt,.hb-opt b,h2,h3,b,.cd-lbl,.st-hd,.cx-chip';
+const SKIP='input,textarea,select,iframe,pre,code,svg,script,style,.cx-ed pre,.cx-ed .cx-gut,.explain,#fx-splash,.hb-card .hb-t b,.cd-sw b,.hb-tile b,.cx-th .nm,[contenteditable],.fxi,.pi,.ti,.wz-x,.sh-x,#au-bar';
+function keepHello(n){const p=n.parentElement;return p&&p.matches('#hb-top h1')}
+function fixNode(n){
+  const v=n.nodeValue;if(!v||!/\p{Extended_Pictographic}|️/u.test(v))return;
+  const p=n.parentElement;if(!p||p.closest(SKIP)||keepHello(n))return;
+  const host=p.closest(ICONIC);
+  const m=v.match(EM1);
+  let ico='';
+  if(m&&host&&n===firstText(host)){const k=m[1].replace(/[️︎]/g,'');const nm=M[k]||M[k.charAt(0)];if(nm)ico=svg(nm)}
+  const nv=v.replace(EMG,'').replace(/\s{2,}/g,' ').replace(/^\s+(?=\S)/,function(s){return n.previousSibling?' ':''});
+  if(!nv.trim()&&!ico){const all=v.replace(/[\uFE0F\uFE0E\s]/g,'');const nm=M[all];if(!nm)return;ico=svg(nm)}
+  if(ico){const s=document.createElement('span');s.innerHTML=ico;p.insertBefore(s.firstChild,n)}
+  n.nodeValue=nv;
+}
+function firstText(h){const w=document.createTreeWalker(h,NodeFilter.SHOW_TEXT,{acceptNode:function(t){return t.nodeValue.trim()?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_SKIP}});return w.nextNode()}
+function sweep(root){
+  if(!root)return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,null);
+  const L=[];let t;while((t=w.nextNode()))L.push(t);
+  L.forEach(fixNode);
+  root.querySelectorAll&&root.querySelectorAll('option').forEach(function(o){const s=o.textContent;if(/\p{Extended_Pictographic}/u.test(s))o.textContent=s.replace(EMG,'').trim()});
+  root.querySelectorAll&&root.querySelectorAll('[placeholder]').forEach(function(e){const s=e.getAttribute('placeholder');if(/\p{Extended_Pictographic}/u.test(s))e.setAttribute('placeholder',s.replace(EMG,'').replace(/^\s+/,''))});
+}
+let q=0;
+function pass(){q=0;sweep(document.body)}
+try{new MutationObserver(function(){if(!q){q=1;requestAnimationFrame(pass)}}).observe(document.body,{childList:true,subtree:true,characterData:true})}catch(e){}
+/* التنبيهات القصيرة كمان بدون إيموجي */
+const _toastF=toast;
+toast=function(m){return _toastF.call(this,String(m==null?'':m).replace(EMG,'').replace(/^\s+/,''))};
+pass();
 })();
 render();
 
