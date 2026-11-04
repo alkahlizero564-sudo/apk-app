@@ -11357,6 +11357,148 @@ function sched(){if(!q){q=1;requestAnimationFrame(pass)}}
 try{new MutationObserver(sched).observe(document.body,{childList:true,subtree:true})}catch(e){}
 sched();
 })();
+/* ===== إضافة: نفس شكل APK Fact (تصميم Aurora) ===== */
+(function(){
+document.body.classList.add('aur');
+const st=document.createElement('style');st.id='aurora-ui';
+st.textContent=`
+:root{--bg:#07080E;--sf:#10121B;--sf2:#171A26;--sf3:#1E2232;--fld:#0B0D15;--line:#22263A;--line2:#2E3350;--tx:#F3F5FB;--mut:#9097AD;--mut2:#5d6378;--pri:#6E4BFF;--pri2:#5B3AEB;--pris:#1C1840;--ib:#2A3163;--it:#A9B6FF;--acc:#2DD4BF;--ok:#4ADE80;--bad:#F87171;--warn:#FBBF24;--grad:linear-gradient(225deg,#6E4BFF,#2563EB);--card:var(--sf);--r1:14px;--r2:16px;--r3:22px}
+body.pro.aur{font-family:system-ui,Roboto,"Segoe UI","Noto Sans Arabic",Tahoma,sans-serif!important;background:var(--bg)!important;padding-bottom:calc(120px + env(safe-area-inset-bottom))!important}
+/* الشريط العلوي: عنوان كبير زي APK Fact */
+body.aur #hb-top{background:rgba(7,8,14,.92)!important;border-bottom:0!important;padding:calc(14px + env(safe-area-inset-top)) 16px 8px!important}
+body.aur #hb-top h1{font-size:22px!important;font-weight:800!important}
+body.aur.at-home #hb-top h1,body.aur.at-keys #hb-top h1{font-size:28px!important}
+body.aur #hb-top h1 small{font-size:14px!important;font-weight:400!important;color:var(--mut)!important;margin-top:2px}
+body.aur .hb-ib{width:42px!important;height:42px!important;border-radius:21px!important;background:var(--sf2)!important;border:1px solid var(--line)!important}
+body.aur .hb-tabs,body.aur .hb-seg,body.aur .cd-seg,body.aur .cx-seg{background:var(--fld)!important;border:1px solid var(--line)!important;border-radius:999px!important;padding:4px!important}
+body.aur .hb-tabs button,body.aur .hb-seg button,body.aur .cd-seg button,body.aur .cx-seg button{border-radius:999px!important;font-weight:700!important;font-size:13px!important;color:var(--mut)!important}
+body.aur .hb-tabs button.on,body.aur .hb-seg button.on,body.aur .cd-seg button.on,body.aur .cx-seg button.on{background:var(--sf2)!important;color:var(--tx)!important;box-shadow:none!important}
+/* الكروت */
+body.aur .card,body.aur .hb-card,body.aur .hb-tile,body.aur .hb-acts button,body.aur .cd-pane,body.aur .bd-card,body.aur .bd-hero,body.aur .cd-sw button,body.aur .cx-sw button{background:var(--sf)!important;border:1px solid var(--line)!important;border-radius:var(--r3)!important}
+body.aur .card,body.aur .hb-card{padding:16px!important}
+body.aur .hb-card.cur,body.aur .cd-sw button.on,body.aur .cx-sw button.on{border-color:var(--pri)!important;background:var(--pris)!important;box-shadow:none!important}
+body.aur .bd-hero{background:var(--grad)!important;border:0!important;color:#fff}
+body.aur .bd-hero p{color:rgba(255,255,255,.88)!important}
+body.aur .bd-hero button{background:#fff!important;color:var(--pri)!important;border-radius:999px!important;font-weight:900!important}
+body.aur .card h2{font-size:18px!important;font-weight:700!important}
+body.aur .hb-h3{font-size:18px!important;font-weight:700!important;color:var(--tx)!important;margin:22px 2px 12px!important}
+body.aur .hb-ic{width:48px!important;height:48px!important;border-radius:16px!important;background:var(--pris)!important;border:0!important;color:var(--it)!important}
+body.aur .hb-t b{font-weight:700!important}
+body.aur .hb-acts button span{color:var(--it)!important}
+body.aur .hb-tile.add{background:transparent!important;border:1.5px dashed var(--line2)!important}
+/* الشارات والشرائح */
+body.aur .hb-bd{border-radius:999px!important;font-weight:800!important;padding:3px 9px!important;background:var(--sf2)!important;border:1px solid var(--line)!important;color:var(--mut)!important}
+body.aur .hb-bd.g{background:#0E2A22!important;border-color:rgba(74,222,128,.3)!important;color:var(--ok)!important}
+body.aur .hb-bd.o{background:#2A2010!important;border-color:rgba(251,191,36,.3)!important;color:var(--warn)!important}
+body.aur .hb-bd.b{background:#151937!important;border-color:var(--ib)!important;color:var(--it)!important}
+body.aur .hb-bd.r{background:#3A1418!important;border-color:rgba(248,113,113,.3)!important;color:var(--bad)!important}
+body.aur .hb-chips button,body.aur .cd-chips button{background:var(--sf)!important;border:1px solid var(--line)!important;color:var(--mut)!important;font-weight:700!important;border-radius:999px!important;padding:8px 14px!important}
+body.aur .hb-chips button.on{background:var(--pris)!important;border-color:var(--pri)!important;color:var(--tx)!important}
+/* الأزرار */
+body.aur button.acc,body.aur .btn.acc,body.aur .hb-big,body.aur .cd-foot .go,body.aur .cx-ax .bld{background:var(--grad)!important;color:#fff!important;border:0!important;border-radius:var(--r2)!important;font-weight:800!important;min-height:52px;box-shadow:none!important}
+body.aur button.sec,body.aur .btn.sec,body.aur .cd-foot .sm{background:var(--pris)!important;border:1px solid var(--ib)!important;color:var(--tx)!important;border-radius:var(--r2)!important;font-weight:800!important}
+body.aur main button:not([class]),body.aur .sheetbox button:not([class]){border-radius:var(--r2)!important;font-weight:800;background:var(--grad)}
+body.aur button.ghost{border-radius:var(--r2)!important;border:0!important;color:var(--mut)!important}
+body.aur .hb-opt{background:var(--sf2)!important;border:1px solid var(--line)!important;border-radius:var(--r3)!important;padding:14px!important}
+body.aur .hb-opt .hb-ic{background:var(--pris)!important}
+body.aur .hb-opt.on,body.aur .hb-opt:active{border-color:var(--pri)!important;background:var(--pris)!important}
+/* الحقول */
+body.aur input,body.aur select,body.aur textarea{background:var(--fld)!important;border:1.5px solid var(--line)!important;border-radius:var(--r1)!important;min-height:52px;padding:12px!important}
+body.aur textarea{min-height:110px}
+body.aur input[type=checkbox],body.aur input[type=radio]{min-height:0;accent-color:var(--pri)}
+body.aur input:focus,body.aur select:focus,body.aur textarea:focus{border-color:var(--pri)!important;background:var(--sf)!important;box-shadow:none!important}
+body.aur label{color:var(--tx)!important;font-weight:600!important;font-size:14px!important}
+body.aur .hb-srch{border-radius:999px!important;padding-inline-start:44px!important}
+body.aur .cx-ed textarea.code,body.aur textarea.code{min-height:0;padding:inherit}
+/* النوافذ السفلية */
+body.aur #sheet{background:rgba(0,0,0,.6)!important}
+body.aur .sheetbox{border-radius:28px 28px 0 0!important;border:1px solid var(--line)!important;border-bottom:0!important}
+body.aur .sheetbox::before{width:44px!important;height:5px!important;background:var(--line)!important}
+body.aur .sheetbox h3{font-size:18px!important}
+body.aur #toast{background:var(--sf2)!important;border:1px solid var(--line)!important;border-radius:999px!important;bottom:calc(110px + env(safe-area-inset-bottom))!important}
+body.aur .hb-warn{background:#151937!important;border:1px solid var(--ib)!important;color:var(--it)!important;border-radius:var(--r1)!important}
+body.aur .cd-foot{background:rgba(7,8,14,.94)!important;border-top:1px solid var(--line)!important}
+/* بطاقة الترحيب */
+.au-hero{position:relative;overflow:hidden;border-radius:28px;padding:24px;margin:2px 0 16px;background:var(--grad);color:#fff}
+.au-hero:before{content:"";position:absolute;width:200px;height:200px;border-radius:50%;left:-70px;top:-70px;background:rgba(255,255,255,.12)}
+.au-hero:after{content:"";position:absolute;width:120px;height:120px;border-radius:50%;left:60px;bottom:-60px;background:rgba(45,212,191,.25)}
+.au-hero>*{position:relative}
+.au-tag{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.16);font-size:12px;font-weight:700}
+.au-hero h2{font-size:26px!important;font-weight:800!important;margin:16px 0 0!important;color:#fff}
+.au-hero p{margin:8px 0 0;font-size:15px;line-height:22px;color:rgba(255,255,255,.88)}
+.au-hero button.au-go{display:inline-flex!important;align-items:center;gap:8px;width:auto!important;margin-top:16px;padding:12px 24px!important;border-radius:999px!important;background:#fff!important;color:var(--pri)!important;font-weight:900!important;font-size:16px!important;border:0!important}
+.au-pair{display:flex!important;align-items:center;gap:12px;width:100%;padding:16px!important;border-radius:22px!important;background:var(--sf)!important;border:1px solid rgba(45,212,191,.33)!important;color:var(--tx)!important;text-align:right;margin-bottom:16px;font-weight:400!important}
+.au-pair .au-pi{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;background:rgba(45,212,191,.12);color:var(--acc);flex:none}
+.au-pair b{display:block;font-size:16px;font-weight:900}.au-pair small{display:block;font-size:13px;line-height:19px;color:var(--mut);margin-top:2px}
+.au-stats{display:flex;gap:8px;margin-bottom:8px}
+.au-stats div{flex:1;text-align:center;padding:12px 4px;background:var(--sf);border:1px solid var(--line);border-radius:22px}
+.au-stats b{display:block;font-size:22px;font-weight:900;margin-top:4px}.au-stats small{font-size:12px;color:var(--mut);font-weight:700}
+.au-stats .pi{color:var(--c)}
+/* الشريط السفلي العائم مع زر + في النص */
+#au-bar{position:fixed;left:16px;right:16px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:8;height:72px;border-radius:28px;background:rgba(16,18,27,.97);border:1px solid var(--line);box-shadow:0 8px 20px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:space-around;padding:0 8px}
+#au-bar button{flex:none!important;width:auto!important;min-width:64px;height:100%;background:none!important;border:0!important;padding:0!important;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--mut)!important;font-size:11px!important;font-weight:800!important}
+#au-bar button .ti{padding:4px 14px;border-radius:999px;line-height:0}
+#au-bar button.on{color:var(--tx)!important}
+#au-bar button.on .ti{background:var(--pris)}
+#au-bar button .pi svg{width:22px;height:22px}
+#au-bar .au-plus{margin-top:-34px;height:auto!important;min-width:0}
+#au-bar .au-plus span.pl{width:62px;height:62px;border-radius:50%;display:grid;place-items:center;background:var(--grad);border:4px solid var(--bg);color:#fff}
+#au-bar .au-plus .pi svg{width:30px;height:30px}
+body.aur #hb-fab{display:none!important}
+`;
+document.head.appendChild(st);
+
+function ic(n){
+  const P={home:'<path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/>',
+   apps:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
+   gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+   plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
+   tpl:'<path d="M12 3l1.8 4.9L19 10l-5.2 2.1L12 17l-1.8-4.9L5 10l5.2-2.1z"/><path d="M19 17v4"/><path d="M17 19h4"/>',
+   merge:'<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7"/><path d="M8.5 6H12a4 4 0 0 1 4 4v-.5"/>',
+   html:'<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
+   flutter:'<path d="M14 3 5 12l3 3L20 3z"/><path d="m14 12-4 4 4 4h6l-4-4 4-4z"/>',
+   python:'<path d="M12 3c-4 0-4 1.8-4 3v2h4v1H6c-2 0-3 1.5-3 4s1 4 3 4h2v-2.5c0-1.4 1.1-2.5 2.5-2.5h4c1.4 0 2.5-1.1 2.5-2.5V6c0-1.6-1.6-3-5.5-3z"/><path d="M12 21c4 0 4-1.8 4-3v-2h-4v-1h6c2 0 3-1.5 3-4s-1-4-3-4h-2"/>',
+   back:'<path d="M15 18l-6-6 6-6"/>'};
+  return '<span class="pi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+P[n]+'</svg></span>';
+}
+function bar(){
+  let b=$('#au-bar');
+  const top=tab==='home'||tab==='keys'||tab==='tpl'&&!S.cur;
+  if(!b){b=document.createElement('div');b.id='au-bar';document.body.appendChild(b)}
+  b.style.display=(tab==='home'||tab==='keys')?'':'none';
+  const it=function(t,lbl,n,fn){return '<button class="'+(tab===t?'on':'')+'" onclick="'+fn+'"><span class="ti">'+ic(n)+'</span>'+lbl+'</button>'};
+  b.innerHTML=it('home','الرئيسية','home',"go('home')")
+   +it('ov','مشروعي','apps',"if(S.cur){go('ov')}else toast('افتح مشروع من الرئيسية الأول')")
+   +'<button class="au-plus" onclick="cxHubNew()" aria-label="مشروع جديد"><span class="pl">'+ic('plus')+'</span></button>'
+   +it('keys','الإعدادات','gear',"window._st='';go('keys')");
+}
+function counts(){
+  const c={html:0,flutter:0,python:0};
+  (S.projects||[]).forEach(function(p){(p.apps||[]).forEach(function(a){if(a&&a.code&&String(a.code).trim()){const l=a.lang||'html';if(c[l]!=null)c[l]++}})});
+  return c;
+}
+function hero(){
+  const m=$('#main');if(!m||$('#au-hero'))return;
+  const c=counts();
+  const h='<div id="au-hero"><div class="au-hero"><span class="au-tag">'+ic('tpl')+'ذكاء اصطناعي · إصلاح تلقائي · APK</span><h2>ابنِ تطبيقك في دقائق</h2><p>صف فكرتك أو اختار قالب، ونحن نكتب الكود ونصلّح أخطاءه ونبني لك APK.</p><button class="au-go" onclick="window._hk=1;cxHubNew()">'+ic('plus')+'تطبيق جديد</button></div>'
+   +'<button class="au-pair" onclick="window._hk=2;cxHubNew()"><span class="au-pi">'+ic('merge')+'</span><span style="flex:1"><b>تطبيقين متصلين</b><small>زبون + إدارة على قاعدة واحدة، تسجيل دخول حقيقي، وإشعارات حتى والتطبيق مقفول</small></span><span style="color:var(--mut)">'+ic('back')+'</span></button>'
+   +'<div class="au-stats"><div style="--c:#F06529">'+ic('html')+'<b>'+c.html+'</b><small>HTML</small></div><div style="--c:#42A5F5">'+ic('flutter')+'<b>'+c.flutter+'</b><small>Flutter</small></div><div style="--c:#FFD43B">'+ic('python')+'<b>'+c.python+'</b><small>Python</small></div></div>'
+   +'<div class="hb-h3">مشاريعي</div></div>';
+  m.insertAdjacentHTML('afterbegin',h);
+}
+const _rA=render;
+render=function(){
+  _rA.apply(this,arguments);
+  document.body.classList.toggle('at-home',tab==='home');
+  document.body.classList.toggle('at-keys',tab==='keys');
+  if(tab==='home'){
+    hero();
+    const q=$('.hb-srch');if(q)q.placeholder=q.placeholder.replace(/^\s*🔍\s*/,'');
+    const t=$('#hb-top h1');if(t&&!t._au){t._au=1;t.innerHTML='أهلاً بيك 👋<small>شنو التطبيق الجاي اللي حنبنيه؟</small>'}
+  }
+  bar();
+};
+})();
 render();
 
 </script>
