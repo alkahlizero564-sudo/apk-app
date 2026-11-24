@@ -151,15 +151,25 @@ async function ai(prompt){const k=S.keys;
     return j.content.map(c=>c.text||'').join('')}
   const gk=[k.gemini,k.gemini2,k.gemini3].filter(Boolean);
   if(!gk.length)throw new Error('أدخل مفتاح Gemini في قائمة المفاتيح');
+  /* طلبات المراجعة والتحليل (ترجع JSON قصير) ما بتحتاج تفكير عميق: نقلله لتوفير الحصة */
+  const gb={contents:[{parts:[{text:prompt}]}]};
+  if(typeof prompt==='string'&&/^\s*(أنت مراجع|أنت محلل متطلبات|اقرأ كود التطبيق التالي)/.test(prompt)){
+    const gm=String(MODELS.gemini);
+    if(/gemini-2\.5-flash/.test(gm))gb.generationConfig={thinkingConfig:{thinkingBudget:0}};
+    else if(/gemini-2\.5-pro/.test(gm))gb.generationConfig={thinkingConfig:{thinkingBudget:128}};
+    else if(/gemini-[3-9]/.test(gm))gb.generationConfig={thinkingConfig:{thinkingLevel:'low'}};
+  }
+  /* لو في أكثر من مفتاح، طبقة fetch في آخر الملف هي البتبدّل بينهم؛ ما نكرر التدوير هنا (كان بيضاعف الطلبات) */
+  const gN=(window._gemRot&&gk.length>1)?1:gk.length;
   let last;
-  for(let n=0;n<gk.length;n++){
-    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS.gemini+':generateContent?key='+encodeURIComponent(gk[n]),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+  for(let n=0;n<gN;n++){
+    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS.gemini+':generateContent?key='+encodeURIComponent(gk[n]),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(gb)});
     const j=await r.json().catch(()=>({}));
     if(r.ok){if(!j.candidates||!j.candidates[0]||!j.candidates[0].content)throw new Error('رد فارغ من Gemini، حاول مرة أخرى.');return (j.candidates[0].content.parts||[]).map(p=>p.text||'').join('')}
     const msg=(j.error&&j.error.message)||'فشل الاتصال بـ Gemini';
     last=new Error(msg);
     if(!(r.status===429||/quota|exhaust/i.test(msg)))throw last;
-    if(n<gk.length-1)toast('حصة المفتاح '+(n+1)+' خلصت، التحويل للمفتاح '+(n+2))}
+    if(n<gN-1)toast('حصة المفتاح '+(n+1)+' خلصت، التحويل للمفتاح '+(n+2))}
   throw last}
 const AI_BASE=ai;
 function clean(t){const m=t.match(/```(?:\w+)?\n([\s\S]*?)```/);return (m?m[1]:t).trim()}
@@ -1681,8 +1691,14 @@ ai=async function(p){
   const k=p.indexOf(CS_MARK);
   if(k>-1&&p.indexOf('فهم مسبق للتطبيق الآخر')<0){
     try{
-      toast('أقرأ التطبيق الآخر وأفهمه أولاً...');
-      const sum=(await _ai5(CS_ASK+p.slice(k+CS_MARK.length))).trim();
+      const src=p.slice(k+CS_MARK.length);
+      window._csSum=window._csSum||{};
+      let sum=window._csSum[src];
+      if(!sum){
+        toast('أقرأ التطبيق الآخر وأفهمه أولاً...');
+        sum=(await _ai5(CS_ASK+src)).trim();
+        window._csSum={};window._csSum[src]=sum;
+      }
       p+='\n\nفهم مسبق للتطبيق الآخر (استخلصته من قراءة كوده، التزم به حرفياً في أسماء الجداول والحقول والقيم والمسارات ومفاتيح التخزين):\n'+sum;
     }catch(e){}
   }
@@ -5249,7 +5265,8 @@ function stageBPrompt(p,l,design){
 }
 
 async function completeness(l,code,spec,bk){
-  for(let n=0;n<2;n++){
+  window._cmpDone=true; /* المراجعة تمت هنا، فلا داعي لمراجعة «تنفيذ طلبك بحذافيره» مرة ثانية */
+  for(let n=0;n<1;n++){
     setSub('مراجعة اكتمال الوظائف'+(n?' (جولة '+(n+1)+')':'')+'...');
     let r;
     try{
@@ -5876,9 +5893,185 @@ function addImports(s){
   return s.slice(0,last)+'\n'+add.join('\n')+s.slice(last);
 }
 
+/* ===== إصلاحات Dart الحتمية (بدون ذكاء اصطناعي) ===== */
+/* ماسح بسيط لكود Dart: يعرف النصوص والتعليقات والاستيفاء ${...} */
+function dScan(src,onStr){
+  const n=src.length,out=[],st=[{t:'c',d:0}];
+  let i=0;
+  const idc=function(ch){return /[A-Za-z0-9_$]/.test(ch||'')};
+  while(i<n){
+    const top=st[st.length-1],c=src[i],nx=src[i+1];
+    if(top.t==='c'){
+      if(c==='/'&&nx==='/'){const e=src.indexOf('\n',i);const j=e<0?n:e;out.push(src.slice(i,j));i=j;continue}
+      if(c==='/'&&nx==='*'){let d=1,j=i+2;while(j<n&&d>0){if(src[j]==='/'&&src[j+1]==='*'){d++;j+=2}else if(src[j]==='*'&&src[j+1]==='/'){d--;j+=2}else j++}out.push(src.slice(i,j));i=j;continue}
+      let raw=false,k=i;
+      if(c==='r'&&(nx==='"'||nx==="'")&&!idc(src[i-1])){raw=true;k=i+1}
+      const q=src[k];
+      if(q==='"'||q==="'"){
+        const tri=src.substr(k,3)===q+q+q;
+        st.push({t:'s',q:q,tri:tri,raw:raw});
+        out.push(src.slice(i,k+(tri?3:1)));i=k+(tri?3:1);continue;
+      }
+      if(c==='{')top.d++;
+      else if(c==='}'){if(top.d===0&&st.length>1){st.pop();out.push(c);i++;continue}top.d--}
+      out.push(c);i++;continue;
+    }
+    /* داخل نص */
+    if(!top.raw&&c==='\\'){out.push(c+(nx===undefined?'':nx));i+=2;continue}
+    if(top.tri?src.substr(i,3)===top.q+top.q+top.q:c===top.q){const L=top.tri?3:1;out.push(src.substr(i,L));i+=L;st.pop();continue}
+    if(!top.tri&&c==='\n'){st.pop();out.push(c);i++;continue}
+    if(!top.raw&&c==='$'){
+      if(nx==='{'){out.push('${');i+=2;st.push({t:'c',d:0});continue}
+      if(/[A-Za-z_]/.test(nx||'')){out.push(c);i++;continue}
+      /* $ بدون اسم متغير بعده: خطأ تجميع في Dart، نحوله إلى \$ */
+      out.push(onStr?onStr('$'):'\\$');i++;continue;
+    }
+    out.push(c);i++;
+  }
+  return out.join('');
+}
+function dEscDollar(s){return dScan(s)}
+
+/* إيجاد القوس المقابل مع تجاهل النصوص والتعليقات */
+function dClose(src,open){
+  let d=0,i=open;const n=src.length;
+  while(i<n){
+    const c=src[i],nx=src[i+1];
+    if(c==='/'&&nx==='/'){const e=src.indexOf('\n',i);i=e<0?n:e;continue}
+    if(c==='/'&&nx==='*'){const e=src.indexOf('*/',i+2);i=e<0?n:e+2;continue}
+    if(c==='"'||c==="'"){
+      const tri=src.substr(i,3)===c+c+c,raw=src[i-1]==='r'&&!/[A-Za-z0-9_]/.test(src[i-2]||'');
+      let j=i+(tri?3:1),dd=0;
+      while(j<n){
+        if(!raw&&src[j]==='\\'){j+=2;continue}
+        if(!raw&&src[j]==='$'&&src[j+1]==='{'){dd++;j+=2;continue}
+        if(dd>0){if(src[j]==='{')dd++;else if(src[j]==='}')dd--;j++;continue}
+        if(tri?src.substr(j,3)===c+c+c:src[j]===c){j+=tri?3:1;break}
+        if(!tri&&src[j]==='\n')break;
+        j++;
+      }
+      i=j;continue;
+    }
+    if(c==='('||c==='['||c==='{')d++;
+    else if(c===')'||c===']'||c==='}'){d--;if(d===0)return i}
+    i++;
+  }
+  return -1;
+}
+/* تقسيم الوسائط على الفواصل في المستوى الأعلى */
+function dArgs(inner){
+  const out=[];let d=0,last=0,i=0;const n=inner.length;
+  while(i<n){
+    const c=inner[i];
+    if(c==='"'||c==="'"||(c==='/'&&(inner[i+1]==='/'||inner[i+1]==='*'))){
+      /* نستخدم dClose على غلاف مؤقت لتخطي النص */
+      const tmp='('+inner.slice(i)+')';
+      const probe=dSkip(tmp,1);i+=probe-1;continue;
+    }
+    if(c==='('||c==='['||c==='{')d++;
+    else if(c===')'||c===']'||c==='}')d--;
+    else if(c===','&&d===0){out.push(inner.slice(last,i));last=i+1}
+    i++;
+  }
+  const t=inner.slice(last);if(t.trim())out.push(t);
+  return out;
+}
+function dSkip(src,i){
+  const c=src[i],nx=src[i+1],n=src.length;
+  if(c==='/'&&nx==='/'){const e=src.indexOf('\n',i);return e<0?n:e}
+  if(c==='/'&&nx==='*'){const e=src.indexOf('*/',i+2);return e<0?n:e+2}
+  const tri=src.substr(i,3)===c+c+c;let j=i+(tri?3:1),dd=0;
+  while(j<n){
+    if(src[j]==='\\'){j+=2;continue}
+    if(src[j]==='$'&&src[j+1]==='{'){dd++;j+=2;continue}
+    if(dd>0){if(src[j]==='{')dd++;else if(src[j]==='}')dd--;j++;continue}
+    if(tri?src.substr(j,3)===c+c+c:src[j]===c)return j+(tri?3:1);
+    if(!tri&&src[j]==='\n')return j;
+    j++;
+  }
+  return n;
+}
+
+/* flutter_local_notifications: البناء يثبّت أحدث إصدار (20+)، وفيه الوسائط بالاسم.
+   الذكاء الاصطناعي غالباً يكتب الأسلوب القديم (بالترتيب)، فنحوله تلقائياً ونشيل الوسائط المحذوفة. */
+const FLN_POS={
+  initialize:['settings'],
+  show:['id','title','body','notificationDetails'],
+  cancel:['id'],
+  zonedSchedule:['id','title','body','scheduledDate','notificationDetails'],
+  periodicallyShow:['id','title','body','repeatInterval','notificationDetails'],
+  periodicallyShowWithDuration:['id','title','body','repeatDurationInterval','notificationDetails']
+};
+const FLN_NEED_MODE={zonedSchedule:1,periodicallyShow:1};
+const FLN_DROP=/^\s*(uiLocalNotificationDateInterpretation|androidAllowWhileIdle)\s*:/;
+function dFln(s){
+  if(s.indexOf('flutter_local_notifications')<0)return s;
+  const names={};
+  let m;const r1=/(\w+)\s*=\s*FlutterLocalNotificationsPlugin\s*\(/g,r2=/FlutterLocalNotificationsPlugin\??\s+(\w+)\b/g;
+  while((m=r1.exec(s)))names[m[1]]=1;
+  while((m=r2.exec(s)))names[m[1]]=1;
+  const ids=Object.keys(names).filter(function(x){return x!=='get'&&x!=='final'});
+  const recv=ids.map(function(x){return '\\b'+x+'\\s*[!?]?'}).concat(['FlutterLocalNotificationsPlugin\\s*\\(\\s*\\)']).join('|');
+  const re=new RegExp('(?:'+recv+')\\s*\\.\\s*('+Object.keys(FLN_POS).join('|')+')\\s*\\(','g');
+  let out='',pos=0;
+  while((m=re.exec(s))){
+    const open=m.index+m[0].length-1,close=dClose(s,open);
+    if(close<0)continue;
+    const meth=m[1],want=FLN_POS[meth];
+    const args=dArgs(s.slice(open+1,close));
+    const pos0=[],named=[];let drop=false;
+    args.forEach(function(a){
+      if(/^\s*\w+\s*:(?!:)/.test(a)){if(FLN_DROP.test(a))drop=true;else named.push(a.trim())}
+      else pos0.push(a.trim());
+    });
+    const hasMode=named.some(function(a){return /^androidScheduleMode\s*:/.test(a)});
+    const needMode=FLN_NEED_MODE[meth]&&!hasMode;
+    if(!pos0.length&&!drop&&!needMode)continue;
+    if(pos0.length>want.length)continue;
+    const fin=pos0.map(function(v,j){return want[j]+': '+v}).concat(named);
+    if(needMode)fin.push('androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle');
+    out+=s.slice(pos,open+1)+fin.join(', ')+')';
+    pos=close+1;re.lastIndex=close+1;
+  }
+  s=out+s.slice(pos);
+  s=s.replace(/^[ \t]*onDidReceiveLocalNotification\s*:\s*[\w.]+\s*,?[ \t]*\n/gm,'');
+  return s;
+}
+
+/* file_picker: الأداة تثبّت الإصدار 10 (FilePicker.platform.pickFiles) */
+function dFilePicker(s){
+  if(s.indexOf('file_picker')<0)return s;
+  return s.replace(/\bFilePicker\s*\.\s*(pickFiles|getDirectoryPath|saveFile|clearTemporaryFiles|pickFileAndDirectoryPaths)\s*\(/g,'FilePicker.platform.$1(');
+}
+
+/* أخطاء كتابة شائعة: ":color =" بدل "..color =" داخل Paint() وأمثالها */
+function dCascade(s){
+  const L=s.split('\n');
+  for(let i=0;i<L.length;i++){
+    const m=L[i].match(/^(\s*):(\w+)(\s*=[^=])/);
+    if(!m)continue;
+    let p=i-1;while(p>=0&&!L[p].trim())p--;
+    let q=i+1;while(q<L.length&&!L[q].trim())q++;
+    const prevOk=p>=0&&/(Paint\(\)|\.\.\w+\s*=.*)\s*$/.test(L[p]);
+    const nextOk=q<L.length&&/^\s*\.\.\w/.test(L[q]);
+    if(prevOk||nextOk)L[i]=m[1]+'..'+m[2]+L[i].slice(m[1].length+1+m[2].length);
+  }
+  return L.join('\n');
+}
+
+function dFixAll(s){
+  s=dEscDollar(s);
+  s=dFln(s);
+  s=dFilePicker(s);
+  s=dCascade(s);
+  return s;
+}
+
 function cnt(s){return (String(s).match(/[(){}\[\]]/g)||[]).length}
 function fixDart(code){
-  const orig=String(code);
+  let base=String(code);
+  try{base=dFixAll(base)}catch(e){}
+  const orig=base;
   let s=orig;
   try{
     s=s.replace(/\b(cardTheme|dialogTheme|tabBarTheme)\s*:\s*(CardTheme|DialogTheme|TabBarTheme)\s*\(/g,function(m,a,b){return a+': '+b+'Data('});
@@ -6091,7 +6284,7 @@ async function diagnose(){
         item(E,own?'ok':'warn',w[0]+': '+(v?'v'+v:'إصدار غير معروف')+' — '+(own?'مفتاح لكل تطبيق':'مفتاح عشوائي أو مشترك'));
       }
       const cf=await ghFile(repo,br,'.github/workflows/check-flutter.yml');
-      item(E,(cf!==null&&cf.indexOf('# ck6')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck6')>-1?'الأحدث (ck6)':'قديم، بيتحدث تلقائياً عند أول فحص')));
+      item(E,(cf!==null&&cf.indexOf('# ck7')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck7')>-1?'الأحدث (ck7)':'قديم، بيتحدث تلقائياً عند أول فحص')));
       try{
         const ks=await gh('/repos/'+repo+'/contents/keys?ref='+br);
         const n=(Array.isArray(ks)?ks:[]).filter(function(f){return /\.keystore$/.test(f.name)});
@@ -6203,10 +6396,11 @@ render=function(){
 /* ===== إضافة: فحص قبل البناء (حتى 100 محاولة + تصنيف الأخطاء + إصلاح ذاتي) ===== */
 (function(){
 
-function maxFix(){const v=parseInt(S.keys.maxFix3,10);return (v>=1&&v<=100)?v:30}
-function stallN(){const v=parseInt(S.keys.stall3,10);return (v>=3&&v<=50)?v:10}
+function maxFix(){const v=parseInt(S.keys.maxFix3,10);return (v>=1&&v<=100)?v:5}
+function stallN(){const v=parseInt(S.keys.stall3,10);return (v>=3&&v<=50)?v:3}
 
-const CK_FL=`# ck6
+const CK_FL=`# ck7
+# ck6
 # ck5
 # ck4
 # ck3
@@ -6247,7 +6441,7 @@ jobs:
             case "$p" in flutter|flutter_test|app_$APP) continue ;; flutter_localizations) flutter pub add flutter_localizations --sdk=flutter; continue ;; esac
             if echo " $ALLOW " | grep -q " $p "; then ADD="$ADD $p"; else BAD="$BAD $p"; fi
           done
-          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; *) echo "$x" ;; esac; done); fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; file_picker) echo "file_picker:^10.3.10" ;; *) echo "$x" ;; esac; done); fi
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
           cd ..
@@ -6334,7 +6528,7 @@ jobs:
 `;
 
 const CK={
-  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck6',main:'main.dart',name:'Flutter',min:'2-4'},
+  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck7',main:'main.dart',name:'Flutter',min:'2-4'},
   python:{file:'check-python.yml',yaml:CK_PY,mk:'# ck2',main:'main.py',name:'Python',min:'1'}
 };
 
@@ -6439,14 +6633,14 @@ function fixPrompt(i,l,old,errs,hist,stag,why){
 }
 async function fixOnce(i,l,old,errs,hist,stag){
   let why='';
-  for(let t=0;t<3;t++){
+  for(let t=0;t<2;t++){
     const out=await ai(fixPrompt(i,l,old,errs,hist,stag,why));
     const nw=clean(out);
     if(nw===old.trim()){why='الرد السابق لم يغيّر الكود. يجب أن تعدّل الكود فعلاً لإصلاح الأخطاء.';continue}
     if(nw.length<old.length*0.4||(l==='flutter'&&bal(old)&&!bal(nw))){why='الرد السابق كان ناقصاً (انقطع). أعد الكود كاملاً حتى آخره.';continue}
     return nw;
   }
-  throw new Error('الذكاء الاصطناعي لم يعطِ كوداً صالحاً بعد 3 محاولات متتالية.');
+  throw new Error('الذكاء الاصطناعي لم يعطِ كوداً صالحاً بعد محاولتين متتاليتين.');
 }
 
 const _bPrev=buildAny;
@@ -6568,7 +6762,7 @@ render=function(){
   const c=document.createElement('div');c.className='card';c.id='cx-chk3';
   c.innerHTML='<h2>🔎 فحص Flutter و Python قبل البناء</h2>'
    +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noChk3?'':'checked')+' onchange="S.keys.noChk3=!this.checked;save()"> فحص الكود وإصلاح الأخطاء تلقائياً قبل البناء</label>'
-   +'<label>أقصى عدد محاولات إصلاح (من 1 إلى 100)</label><input type="number" inputmode="numeric" min="1" max="100" value="'+maxFix()+'" onchange="S.keys.maxFix3=Math.max(1,Math.min(100,parseInt(this.value)||30));this.value=S.keys.maxFix3;save()">'
+   +'<label>أقصى عدد محاولات إصلاح (من 1 إلى 100)</label><input type="number" inputmode="numeric" min="1" max="100" value="'+maxFix()+'" onchange="S.keys.maxFix3=Math.max(1,Math.min(100,parseInt(this.value)||5));this.value=S.keys.maxFix3;save()">'
    +'<label>أوقف لو أقل عدد أخطاء ما تحسّن في آخر كم محاولة (من 3 إلى 50)</label><input type="number" inputmode="numeric" min="3" max="50" value="'+stallN()+'" onchange="S.keys.stall3=Math.max(3,Math.min(50,parseInt(this.value)||10));this.value=S.keys.stall3;save()">'
    +'<p class="note">كل محاولة تأخذ حوالي 2 إلى 4 دقائق في Flutter ودقيقة في Python. الأخطاء في كودك تذهب للذكاء الاصطناعي، وأخطاء إشعار التحديث بيعطّله تلقائياً، وأخطاء نظام التصميم بيوقف عندها فوراً. الشاشة بتفضل مضيئة أثناء الفحص.</p>';
   m.appendChild(c);
@@ -9506,7 +9700,8 @@ render=function(){
 })();
 /* ===== إضافة: ملفات البناء الأحدث (Flutter v8 وPython v8: مكتبات تلقائية + دعم العربي) ===== */
 (function(){
-const WF_FLUTTER8=`# v11
+const WF_FLUTTER8=`# v12
+# v11 compatible
 # v10 compatible
 # v9 compatible
 # v8 compatible
@@ -9654,7 +9849,7 @@ jobs:
           if [ -n "$BAD" ]; then echo "::error::unsupported packages:$BAD"; exit 1; fi
           echo "packages:$ADD"
           cd flutter_out
-          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; *) echo "$x" ;; esac; done); fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; file_picker) echo "file_picker:^10.3.10" ;; *) echo "$x" ;; esac; done); fi
           if [ "$LOC" = "1" ]; then flutter pub add flutter_localizations --sdk=flutter; fi
           [ -z "$ADD" ] && exit 0
           MF=android/app/src/main/AndroidManifest.xml
@@ -9662,6 +9857,8 @@ jobs:
           has(){ echo " $ADD " | grep -q " $1 "; }
           perm(){ grep -q "android.permission.$1\\"" $MF || sed -i "s|<application|<uses-permission android:name=\\"android.permission.$1\\"/><application|" $MF; }
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = maxOf(flutter.minSdkVersion, 23)/; s/minSdkVersion flutter.minSdkVersion/minSdkVersion Math.max(flutter.minSdkVersion, 23)/' "$G"
+          # مكتبات حديثة (مثل androidx.core 1.19) تحتاج compileSdk 37: نرفعه تلقائياً (لا يغير سلوك التطبيق ولا الأجهزة المدعومة)
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = maxOf(flutter.compileSdkVersion, 37)/; s/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion Math.max(flutter.compileSdkVersion, 37)/; s/compileSdk flutter.compileSdkVersion/compileSdk Math.max(flutter.compileSdkVersion, 37)/' "$G"
           if has geolocator; then perm ACCESS_FINE_LOCATION; perm ACCESS_COARSE_LOCATION; fi
           if has image_picker || has mobile_scanner; then perm CAMERA; fi
           if has flutter_local_notifications; then perm POST_NOTIFICATIONS; perm RECEIVE_BOOT_COMPLETED; perm VIBRATE; fi
@@ -10083,7 +10280,7 @@ else:
     sys.exit("no android app in firebase project " + P + " and could not create one. Add any Android app in Firebase console.")
 `;
 if(typeof WF!=='undefined'){if(WF.flutter)WF.flutter.yaml=WF_FLUTTER8;if(WF.python)WF.python.yaml=WF_PYTHON8}
-const WF_MK8={flutter:'# v11',python:'# v13'};
+const WF_MK8={flutter:'# v12',python:'# v13'};
 async function ensureWf8(l){
   if(typeof WF==='undefined'||!WF[l])return;
   const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
@@ -10101,7 +10298,7 @@ buildNative=async function(i,l){
 };
 
 /* تعريف الذكاء الاصطناعي بالمكتبات المتاحة */
-const FL_LIBS='\n\n=== مكتبات Flutter المتاحة (تُنزَّل وتُضبط تلقائياً وقت البناء مع صلاحيات أندرويد اللازمة) ===\nيمكنك استخدام هذه الحزم فقط عند الحاجة الفعلية (import \'package:الاسم/...\'): http, shared_preferences, path_provider, path, sqflite, intl, url_launcher, provider, google_fonts, fl_chart, image_picker, file_picker, share_plus, uuid, connectivity_plus, package_info_plus, device_info_plus, geolocator, permission_handler, cached_network_image, flutter_svg, lottie, audioplayers, video_player, webview_flutter, mobile_scanner, qr_flutter, local_auth, flutter_local_notifications, timezone, collection, crypto, table_calendar, shimmer, flutter_animate, animations, pdf, printing, csv, flutter_localizations.\nأمثلة: shared_preferences أو sqflite للحفظ الدائم، intl للتواريخ والأرقام، fl_chart للرسوم البيانية، image_picker للصور، url_launcher للاتصال والروابط وواتساب، share_plus للمشاركة، geolocator للموقع، pdf وprinting للفواتير، flutter_local_notifications للتنبيهات المحلية، google_fonts لخطوط عربية جميلة (مثل GoogleFonts.cairo أو tajawal). أي حزمة غير هذه ممنوعة. استخدم واجهة الحزم الحديثة (الإصدارات الأخيرة).';
+const FL_LIBS='\n\n=== مكتبات Flutter المتاحة (تُنزَّل وتُضبط تلقائياً وقت البناء مع صلاحيات أندرويد اللازمة) ===\nيمكنك استخدام هذه الحزم فقط عند الحاجة الفعلية (import \'package:الاسم/...\'): http, shared_preferences, path_provider, path, sqflite, intl, url_launcher, provider, google_fonts, fl_chart, image_picker, file_picker, share_plus, uuid, connectivity_plus, package_info_plus, device_info_plus, geolocator, permission_handler, cached_network_image, flutter_svg, lottie, audioplayers, video_player, webview_flutter, mobile_scanner, qr_flutter, local_auth, flutter_local_notifications, timezone, collection, crypto, table_calendar, shimmer, flutter_animate, animations, pdf, printing, csv, flutter_localizations.\nأمثلة: shared_preferences أو sqflite للحفظ الدائم، intl للتواريخ والأرقام، fl_chart للرسوم البيانية، image_picker للصور، url_launcher للاتصال والروابط وواتساب، share_plus للمشاركة، geolocator للموقع، pdf وprinting للفواتير، flutter_local_notifications للتنبيهات المحلية، google_fonts لخطوط عربية جميلة (مثل GoogleFonts.cairo أو tajawal). أي حزمة غير هذه ممنوعة. استخدم واجهة الحزم الحديثة (الإصدارات الأخيرة)، مع ملاحظات مهمة:\n- flutter_local_notifications أحدث إصدار (الوسائط بالاسم): plugin.initialize(settings: initSettings) و plugin.show(id: 1, title: t, body: b, notificationDetails: details) و plugin.cancel(id: 1) و plugin.zonedSchedule(id: 1, title: t, body: b, scheduledDate: date, notificationDetails: details, androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle). لا تستخدم uiLocalNotificationDateInterpretation ولا onDidReceiveLocalNotification.\n- file_picker الإصدار 10: FilePicker.platform.pickFiles(...) وتُرجع FilePickerResult?.\n- داخل النصوص في Dart علامة الدولار تُكتب \\$ (مثل \'السعر (\\$)\') لأن $ وحدها تعني متغيراً.';
 const PY_LIBS='\n\n=== مكتبات Python المتاحة (تُنزَّل تلقائياً وقت البناء) ===\nالمكتبة القياسية لبايثون، وkivy 2.3، وkivymd 1.2، وcertifi، وrequests، وPIL (pillow)، وplyer (gps وcamera وvibrator وnotification...)، وsqlite3، وnumpy، وdateutil، وqrcode، وpytz. أي مكتبة غير هذه ممنوعة.\nالعربي (مهم جداً): الخط العربي مضبوط تلقائياً كخط افتراضي، لكن Kivy لا يربط الحروف العربية بنفسه، لذلك أضف from apkar import ar في أول الملف ومرّر كل نص عربي معروض عبر ar() مثل Label(text=ar("مرحباً")) وButton(text=ar("حفظ"))، ولا تمرر النص عبر ar() مرتين، ولا تستخدمها مع النصوص المخزنة أو المرسلة للسيرفر.';
 function libsOn(p){
   return p.replace(/بدون أي حزم خارجية غير flutter\/material\.dart/g,'مستخدماً flutter/material.dart والحزم المتاحة المذكورة في آخر الطلب فقط')
@@ -10466,9 +10663,11 @@ ai=async function(p){
   let out;
   window._reqBusy=true;
   try{
+  window._cmpDone=false;
   try{window._reqTail=T;out=await _aiF(p)}finally{window._reqTail=''}
   const dsAfter=window._dsNext;
-  if(!spec||phase||!spec.features.length||S.keys.noVerify)return out;
+  const cmpDone=window._cmpDone;window._cmpDone=false;
+  if(!spec||phase||!spec.features.length||S.keys.noVerify||cmpDone)return out;
   try{
     toast('🔎 التحقق من تنفيذ كل طلباتك...');
     const code=clean(out),miss=await verify(spec,code);
@@ -11873,7 +12072,11 @@ render();
 /* ===== إضافة: تبديل مفاتيح Gemini تلقائياً ===== */
 (function(){
 const ofetch=window.fetch.bind(window);
-const CD={};let cur=0;
+let CD={},cur=0;
+try{const o=JSON.parse(localStorage.getItem('apk_gem_cd')||'null');if(o){CD=o.cd||{};cur=o.cur|0}}catch(e){}
+function keep(){try{const now=Date.now();Object.keys(CD).forEach(function(x){if(CD[x]<now)delete CD[x]});localStorage.setItem('apk_gem_cd',JSON.stringify({cd:CD,cur:cur}))}catch(e){}}
+function kid(k){return String(k).slice(-8)}
+window._gemRot=true;
 window.fetch=async function(input,init){
   const url=typeof input==='string'?input:((input&&input.url)||'');
   if(url.indexOf('generativelanguage.googleapis.com')<0||url.indexOf('key=')<0)return ofetch(input,init);
@@ -11881,21 +12084,21 @@ window.fetch=async function(input,init){
   if(keys.length<2)return ofetch(input,init);
   const now=Date.now(),order=[];
   for(let n=0;n<keys.length;n++)order.push((cur+n)%keys.length);
-  order.sort(function(a,b){return ((CD[keys[a]]||0)>now)-((CD[keys[b]]||0)>now)});
+  order.sort(function(a,b){return ((CD[kid(keys[a])]||0)>now)-((CD[kid(keys[b])]||0)>now)});
   let lastRes=null,lastErr=null;
   for(let q=0;q<order.length;q++){
     const idx=order[q];
     const u=url.replace(/([?&]key=)[^&]*/,'$1'+encodeURIComponent(keys[idx]));
     let r;
     try{r=await ofetch(u,init)}catch(e){lastErr=e;continue}
-    if(r.ok){cur=idx;return r}
+    if(r.ok){if(cur!==idx){cur=idx;keep()}return r}
     let txt='';
     try{txt=await r.clone().text()}catch(e){}
     const badKey=r.status===403||(r.status===400&&/api key|API_KEY/i.test(txt));
-    const retry=r.status===429||badKey||r.status>=500;
+    const retry=r.status===429||badKey;
     if(!retry)return r;
-    const ms=/per.?day/i.test(txt)?6*3600e3:badKey?3600e3:r.status===429?70e3:15e3;
-    CD[keys[idx]]=Date.now()+ms;
+    const ms=/per.?day/i.test(txt)?6*3600e3:badKey?3600e3:70e3;
+    CD[kid(keys[idx])]=Date.now()+ms;keep();
     lastRes=r;
     if(q<order.length-1)toast('المفتاح '+(idx+1)+' فشل ('+r.status+')، التحويل للمفتاح التالي');
   }
@@ -11904,6 +12107,161 @@ window.fetch=async function(input,init){
 };
 })();
 render();
+
+/* ===== التصميم الجديد v3: يستبدل كل طبقات التصميم القديمة بنظام واحد ===== */
+(function(){
+const CSS="/* ================= APK App — نظام التصميم الموحد (v3) =================\n   ملف واحد بدل كل طبقات التصميم القديمة. فاتح وداكن حسب الجهاز أو اختيار المستخدم. */\n:root{\n  --font:system-ui,-apple-system,\"Segoe UI\",Roboto,\"Noto Sans Arabic\",\"Noto Sans Arabic UI\",Tahoma,sans-serif;\n  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,\"Roboto Mono\",monospace;\n  --r1:8px;--r2:10px;--r3:14px;--r4:18px;\n  --h-ctl:44px;\n  --bg:#F4F5F7;--sf:#FFFFFF;--sf2:#F4F5F7;--sf3:#E9ECF0;--fld:#FFFFFF;\n  --line:#E2E5EA;--line2:#CDD2DA;\n  --tx:#111827;--tx2:#374151;--mut:#5F6878;--mut2:#8C95A4;\n  --pri:#0F766E;--pri2:#0B5E58;--pris:#E7F3F1;--onpri:#FFFFFF;--prit:#0F766E;\n  --ok:#15803D;--oks:#E8F5EC;--warn:#B45309;--warns:#FDF3E3;--bad:#C62828;--bads:#FCECEC;--info:#1D4ED8;--infos:#EAF0FD;\n  --shadow:0 1px 2px rgba(16,24,40,.05);--shadow2:0 8px 24px rgba(16,24,40,.10);\n  --scrim:rgba(17,24,39,.45);--bar:rgba(255,255,255,.92);\n  /* أسماء قديمة يستخدمها الكود داخل العناصر */\n  --card:var(--sf);--acc:var(--warn);--it:var(--prit);--ib:var(--line2);--grad:var(--pri);--warn2:var(--warn);\n}\n:root[data-theme=\"dark\"]{\n  --bg:#0C1015;--sf:#141A21;--sf2:#1A212A;--sf3:#232C37;--fld:#10151B;\n  --line:#25303C;--line2:#334050;\n  --tx:#E9EEF4;--tx2:#C9D2DD;--mut:#97A3B3;--mut2:#6B7787;\n  --pri:#2FB4A4;--pri2:#28A091;--pris:rgba(47,180,164,.13);--onpri:#03211E;--prit:#5CD0C1;\n  --ok:#4ADE80;--oks:rgba(74,222,128,.12);--warn:#FBBF24;--warns:rgba(251,191,36,.12);--bad:#F87171;--bads:rgba(248,113,113,.12);--info:#93B4FF;--infos:rgba(147,180,255,.12);\n  --shadow:0 1px 2px rgba(0,0,0,.3);--shadow2:0 10px 30px rgba(0,0,0,.45);\n  --scrim:rgba(0,0,0,.6);--bar:rgba(20,26,33,.94);\n}\n\n/* ---------- الأساس ---------- */\n*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}\nhtml{background:var(--bg)}\nbody{margin:0;background:var(--bg);color:var(--tx);font-family:var(--font);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased;\n  padding-top:env(safe-area-inset-top);padding-bottom:calc(84px + env(safe-area-inset-bottom))}\nbody *{font-family:inherit}\ncode,pre,textarea.code,[style*=\"monospace\"]{font-family:var(--mono)!important}\nmain{padding:16px;max-width:720px;margin:0 auto}\nh1,h2,h3,h4{color:var(--tx);letter-spacing:0}\nh2{margin:0 0 12px;font-size:17px;font-weight:700}\nh3{font-size:16px;font-weight:700}\na{color:var(--prit)}\nb,strong{font-weight:700}\nhr{border:0;border-top:1px solid var(--line);margin:14px 0}\n::selection{background:var(--pris)}\n::-webkit-scrollbar{width:6px;height:6px}\n::-webkit-scrollbar-thumb{background:var(--sf3);border-radius:6px}\n\n/* الترويسة والتنقل القديمان (مخفيان: الأداة تستخدم الشريط العلوي والسفلي الجديد) */\nheader{display:none!important}\nnav{display:none!important}\n#pj-bar{display:none!important}\n\n/* ---------- الحقول ---------- */\nlabel{display:block;margin:14px 0 6px;color:var(--tx2);font-size:13px;font-weight:600}\ninput,select,textarea{width:100%;min-height:var(--h-ctl);background:var(--fld);color:var(--tx);border:1px solid var(--line2);border-radius:var(--r2);\n  padding:10px 12px;font-size:15px;font-family:inherit;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}\nselect{background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238C95A4' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\");\n  background-repeat:no-repeat;background-position:left 12px center;padding-left:36px}\ntextarea{min-height:96px;line-height:1.6;resize:vertical}\ninput:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px var(--pris)}\ninput::placeholder,textarea::placeholder{color:var(--mut2)}\ninput[type=checkbox],input[type=radio]{width:20px;height:20px;min-height:0;padding:0;margin:0;flex:none;accent-color:var(--pri);-webkit-appearance:auto;appearance:auto;box-shadow:none}\ninput[type=range]{min-height:0;padding:0;border:0;accent-color:var(--pri);-webkit-appearance:auto;appearance:auto}\ninput[type=file]{padding:8px}\ninput:disabled,select:disabled,textarea:disabled{opacity:.6}\ninput.name{font-weight:700;font-size:16px}\ntextarea.req{min-height:96px;margin-top:8px}\ntextarea.code{height:300px;margin-top:8px;direction:ltr;text-align:left;font-size:12.5px;line-height:1.6;tab-size:2;background:var(--fld)}\n#main textarea.code{height:300px}\n#main textarea.code.cx-big{height:70vh}\n\n/* ---------- الأزرار ---------- */\nbutton,.btn{flex:1;display:block;min-height:var(--h-ctl);padding:10px 16px;border-radius:var(--r2);border:1px solid transparent;\n  background:var(--pri);color:var(--onpri);font-size:15px;font-weight:600;font-family:inherit;text-align:center;text-decoration:none;\n  cursor:pointer;line-height:1.3;box-shadow:none;transition:background .15s,border-color .15s,opacity .15s,transform .08s}\nbutton:active,.btn:active{transform:scale(.985)}\nbutton:disabled{opacity:.5;pointer-events:none}\nbutton.acc,.btn.acc{background:var(--pri);color:var(--onpri);border-color:transparent}\nbutton.sec,.btn.sec{background:var(--sf);color:var(--tx);border-color:var(--line2)}\nbutton.sec:active{background:var(--sf2)}\nbutton.ghost{background:transparent;color:var(--mut);border:1px solid var(--line);width:100%;margin-top:10px}\n.row{display:flex;gap:8px;margin-top:10px}\n.row>*{min-width:0}\n.link{margin:4px 0 12px;display:flex;gap:8px}\n\n/* ---------- الكروت والنصوص ---------- */\n.card{background:var(--sf);border:1px solid var(--line);border-radius:var(--r3);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}\n.card>h2:first-child,.card>h3:first-child{margin-top:0}\n.note{color:var(--mut);font-size:13px;line-height:1.75}\n.errbox{color:var(--bad);font-size:13px;white-space:pre-wrap}\n.errbox:not(:empty){background:var(--bads);border:1px solid color-mix(in srgb,var(--bad) 25%,transparent);border-radius:var(--r2);padding:10px 12px;margin-top:10px}\n.explain{background:var(--sf2);border:1px solid var(--line);border-radius:var(--r2);padding:12px;margin-top:10px;font-size:14px;line-height:1.8;white-space:pre-wrap;color:var(--tx2)}\n.desc{margin-top:10px;border:1px dashed var(--line2);border-radius:var(--r2);padding:10px}\n.desc[hidden],.edit[hidden]{display:none}\n.edit{margin-top:10px;border-top:1px solid var(--line);padding-top:10px}\ndetails{margin-top:12px;color:var(--mut);font-size:14px}\ndetails>summary{cursor:pointer;color:var(--tx);font-weight:600;list-style:none;padding:4px 0}\ndetails>summary::-webkit-details-marker{display:none}\ndetails>summary::before{content:\"\";display:inline-block;width:7px;height:7px;border:solid var(--mut);border-width:0 0 2px 2px;transform:rotate(45deg);margin-inline-end:10px;vertical-align:2px;transition:transform .15s}\ndetails[open]>summary::before{transform:rotate(-45deg)}\n.ver{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}\n.ver button{flex:none;min-height:34px;padding:6px 12px;font-size:13px}\niframe{width:100%;height:300px;border:1px solid var(--line);border-radius:var(--r2);background:#fff;margin-top:8px}\n#main section.card iframe{height:440px}\niframe.cx-fs{position:fixed!important;inset:0;width:100%!important;height:100%!important;margin:0!important;border:0!important;border-radius:0!important;z-index:50}\n#cxx{position:fixed;top:calc(10px + env(safe-area-inset-top));left:10px;z-index:60;display:none;width:auto;flex:none;min-height:36px;padding:6px 14px;background:var(--tx);color:var(--bg);border-radius:var(--r2);font-size:14px}\n.em-h{display:none}\n\n/* ---------- الأيقونات ---------- */\n.pi,.fxi{display:inline-grid;place-items:center;line-height:0;vertical-align:middle}\n.pi svg{width:20px;height:20px}\n.fxi{margin-inline-end:6px;vertical-align:-4px}\n.fxi svg{width:18px;height:18px}\nsmall .fxi svg,.hb-bd .fxi svg,.cx-bd .fxi svg{width:13px;height:13px}\n.hb-bd .fxi,.cx-bd .fxi{vertical-align:-2px;margin-inline-end:4px}\n\n/* ---------- الشريط العلوي ---------- */\n#hb-top{position:sticky;top:0;z-index:6;background:var(--bar);-webkit-backdrop-filter:saturate(1.4) blur(12px);backdrop-filter:saturate(1.4) blur(12px);\n  border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 16px 10px;margin-top:calc(-1 * env(safe-area-inset-top))}\n#hb-top .hb-bar{display:flex;align-items:center;gap:10px;max-width:720px;margin:auto}\n#hb-top h1{margin:0;flex:1;min-width:0;font-size:18px;font-weight:700;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)}\n#hb-top h1 small{display:block;font-size:12.5px;font-weight:500;color:var(--mut);margin-top:1px;overflow:hidden;text-overflow:ellipsis}\n.hb-ib{flex:none!important;width:40px;height:40px;min-height:40px;padding:0!important;border-radius:var(--r2)!important;background:var(--sf)!important;border:1px solid var(--line)!important;\n  color:var(--tx)!important;display:grid!important;place-items:center;font-size:17px}\n.hb-ib .pi svg{width:19px;height:19px}\n\n/* تبويبات وقطع اختيار (Segmented) */\n.hb-tabs,.hb-seg,.cd-seg,.cx-seg,.cx-pt{display:flex;gap:2px;background:var(--sf3);border:0;border-radius:var(--r2);padding:3px;overflow-x:auto;scrollbar-width:none}\n.hb-tabs{max-width:720px;margin:10px auto 0}\n.hb-seg{margin-top:8px}.cx-seg{margin-top:14px}.cx-pt{margin-top:8px}.cd-seg{margin-bottom:12px}\n.hb-tabs::-webkit-scrollbar,.cd-seg::-webkit-scrollbar{display:none}\n.hb-tabs button,.hb-seg button,.cd-seg button,.cx-seg button,.cx-pt button{flex:1 0 auto;min-height:34px;background:transparent;color:var(--mut);border:0;border-radius:calc(var(--r2) - 3px);\n  padding:6px 12px;font-size:13.5px;font-weight:600;white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:none}\n.hb-tabs button.on,.hb-seg button.on,.cd-seg button.on,.cx-seg button.on,.cx-pt button.on{background:var(--sf);color:var(--tx);box-shadow:0 1px 2px rgba(16,24,40,.12)}\n:root[data-theme=\"dark\"] .hb-tabs button.on,:root[data-theme=\"dark\"] .hb-seg button.on,:root[data-theme=\"dark\"] .cd-seg button.on,:root[data-theme=\"dark\"] .cx-seg button.on,:root[data-theme=\"dark\"] .cx-pt button.on{background:var(--sf2)}\n.cd-seg button .pi svg,.cx-seg button .pi svg{width:16px;height:16px}\n\n/* شرائح الفلترة */\n.hb-chips,.hb-st,.cx-chips,.st-q{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 12px;padding:1px}\n.hb-chips::-webkit-scrollbar,.hb-st::-webkit-scrollbar,.cx-chips::-webkit-scrollbar,.st-q::-webkit-scrollbar{display:none}\n.hb-chips button,.hb-st button,.cx-chip,.cx-chips>*,.st-q button,.cd-chips button{flex:none!important;width:auto!important;min-height:32px;padding:5px 12px!important;border-radius:var(--r1)!important;\n  background:var(--sf)!important;border:1px solid var(--line2)!important;color:var(--tx2)!important;font-size:13px!important;font-weight:600!important;box-shadow:none!important}\n.hb-chips button.on,.hb-st button.on,.cx-chip.on,.cx-chips>.on{background:var(--tx)!important;border-color:var(--tx)!important;color:var(--bg)!important}\n.cd-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}\n\n/* البحث */\n.hb-srch{width:100%;margin:0 0 12px;padding-inline-start:40px!important;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%238C95A4' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E\");\n  background-repeat:no-repeat;background-position:right 12px center}\n\n/* ---------- القوائم والبطاقات ---------- */\n.hb-h3,.cx-h{font-size:13px;font-weight:700;color:var(--mut);margin:22px 2px 8px;text-transform:none}\n.hb-card{display:block;width:100%;text-align:right;background:var(--sf);border:1px solid var(--line);border-radius:var(--r3);padding:14px;margin-bottom:8px;color:var(--tx);font-weight:400;cursor:pointer;box-shadow:var(--shadow);min-height:0}\n.hb-card:active{background:var(--sf2)}\n.hb-card.cur{border-color:var(--pri);box-shadow:0 0 0 1px var(--pri)}\n.hb-row{display:flex;align-items:center;gap:12px}\n.hb-ic{width:42px;height:42px;border-radius:var(--r2);background:var(--pris);color:var(--prit);display:grid;place-items:center;font-size:20px;flex:none;overflow:hidden;border:0}\n.hb-ic img{width:100%;height:100%;object-fit:cover}\n.hb-ic .pi svg{width:21px;height:21px}\n.hb-t{flex:1;min-width:0}\n.hb-t b{display:block;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)}\n.hb-t small{display:block;font-size:13px;color:var(--mut);line-height:1.5;margin-top:1px}\n.hb-mt{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}\n.hb-two{display:grid;grid-template-columns:1fr 1fr;gap:8px}\n.hb-tile{display:block;width:100%;text-align:right;background:var(--sf);border:1px solid var(--line);border-radius:var(--r3);padding:14px;color:var(--tx);font-weight:400;cursor:pointer;box-shadow:var(--shadow);min-height:0}\n.hb-tile .hb-ic{margin-bottom:10px}\n.hb-tile b{display:block;font-size:14.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.hb-tile small{font-size:12.5px;color:var(--mut)}\n.hb-tile.add{border-style:dashed;border-color:var(--line2);background:transparent;box-shadow:none;display:grid;place-items:center;text-align:center;color:var(--mut)}\n.hb-acts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}\n.hb-acts button{background:var(--sf);border:1px solid var(--line);color:var(--tx);padding:12px 6px;font-size:13px;font-weight:600;border-radius:var(--r3);box-shadow:var(--shadow);min-height:0}\n.hb-acts button span{display:grid;place-items:center;margin-bottom:6px;color:var(--prit)}\n.hb-acts .pi svg{width:22px;height:22px}\n.hb-big{width:100%;margin-top:12px;min-height:48px;font-size:15.5px;font-weight:600}\n.hb-opt{display:flex!important;align-items:center;gap:12px;width:100%;text-align:right;background:var(--sf)!important;border:1px solid var(--line2)!important;color:var(--tx)!important;\n  padding:12px 14px!important;border-radius:var(--r3)!important;margin-top:8px;font-weight:400!important;min-height:0}\n.hb-opt.on,.hb-opt:active{border-color:var(--pri)!important;background:var(--pris)!important;box-shadow:0 0 0 1px var(--pri)}\n.hb-opt b{display:block;font-size:15px;font-weight:600}\n.hb-opt small{color:var(--mut);font-size:13px}\n.hb-imp{background:var(--sf2);border:1px solid var(--line);border-radius:var(--r3);padding:12px;margin-top:10px}\n.hb-imp textarea{height:120px;direction:ltr;text-align:left;font-size:12px;margin-top:8px}\n.hb-imp .hb-chips{margin:8px 0 0}\n.hb-chk{font-size:13px;line-height:1.9;margin-top:6px}\n\n/* الشارات */\n.hb-bd,.cx-bd,.cx-lg,.lg-b,.cx-pil{display:inline-flex;align-items:center;gap:4px;font-size:11.5px!important;font-weight:600!important;padding:2px 8px!important;border-radius:6px!important;line-height:1.6;white-space:nowrap;\n  background:var(--sf3)!important;color:var(--tx2)!important;border:0!important}\n.hb-bd.g,.cx-bd.ok{background:var(--oks)!important;color:var(--ok)!important}\n.hb-bd.o,.cx-bd.no{background:var(--warns)!important;color:var(--warn)!important}\n.hb-bd.b,.cx-lg{background:var(--pris)!important;color:var(--prit)!important}\n.hb-bd.r{background:var(--bads)!important;color:var(--bad)!important}\n.cx-bd.no{background:var(--sf3)!important;color:var(--mut)!important}\n\n/* تنبيه */\n.hb-warn{background:var(--infos);border:1px solid color-mix(in srgb,var(--info) 22%,transparent);color:var(--tx2);border-radius:var(--r2);padding:12px 14px;font-size:13.5px;line-height:1.8;margin-bottom:12px}\n.hb-warn b{color:var(--tx)}\n.hb-warn button{margin-top:10px}\n\n/* الحالة الفاضية */\n.hb-empty,.empty-tpl{text-align:center;padding:36px 16px;color:var(--mut);line-height:1.8}\n.hb-empty div{width:56px;height:56px;border-radius:var(--r3);background:var(--sf3);color:var(--mut);display:grid!important;place-items:center;margin:0 auto 12px;font-size:24px}\n.hb-empty b{display:block;font-size:16px;color:var(--tx);margin-bottom:4px}\n\n/* الإعدادات: مجموعات صفوف داخل كرت واحد */\n.hb-menu .hb-card{border-radius:0;margin:0;border-top-width:0;box-shadow:none;padding:13px 14px}\n.hb-menu .hb-h3+.hb-card,.hb-menu>.hb-card:first-child{border-top-width:1px;border-top-left-radius:var(--r3);border-top-right-radius:var(--r3)}\n.hb-menu .hb-card:has(+ .hb-h3),.hb-menu .hb-card:last-child{border-bottom-left-radius:var(--r3);border-bottom-right-radius:var(--r3)}\n.hb-menu .hb-ic{width:36px;height:36px;border-radius:var(--r1)}\n.hb-menu .hb-ic .pi svg{width:19px;height:19px}\n\n/* ---------- الصفحة الرئيسية ---------- */\n.au-hero{position:relative;border-radius:var(--r3);padding:20px;margin:4px 0 12px;background:var(--sf);border:1px solid var(--line);color:var(--tx);box-shadow:var(--shadow)}\n.au-hero:before,.au-hero:after{display:none!important}\n.au-tag{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:6px;background:var(--pris);color:var(--prit);font-size:12px;font-weight:600}\n.au-tag .pi svg{width:14px;height:14px}\n.au-hero h2{font-size:22px!important;font-weight:700!important;margin:12px 0 0!important;color:var(--tx)!important;line-height:1.35}\n.au-hero p{margin:6px 0 0;font-size:14.5px;line-height:1.7;color:var(--mut)!important}\n.au-hero button.au-go{display:inline-flex!important;align-items:center;justify-content:center;gap:8px;width:auto!important;margin-top:16px;padding:10px 20px!important;border-radius:var(--r2)!important;\n  background:var(--pri)!important;color:var(--onpri)!important;font-weight:600!important;font-size:15px!important;border:0!important}\n.au-pair{display:flex!important;align-items:center;gap:12px;width:100%;padding:14px!important;border-radius:var(--r3)!important;background:var(--sf)!important;border:1px solid var(--line)!important;\n  color:var(--tx)!important;text-align:right;margin-bottom:12px;font-weight:400!important;box-shadow:var(--shadow);min-height:0}\n.au-pair .au-pi{width:42px;height:42px;border-radius:var(--r2);display:grid;place-items:center;background:var(--pris);color:var(--prit);flex:none}\n.au-pair b{display:block;font-size:15px;font-weight:600}\n.au-pair small{display:block;font-size:13px;line-height:1.55;color:var(--mut);margin-top:2px}\n.au-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}\n.au-stats div{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 14px;background:var(--sf);border:1px solid var(--line);border-radius:var(--r3);box-shadow:var(--shadow);text-align:right}\n.au-stats b{display:block;font-size:22px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums;color:var(--tx)}\n.au-stats small{font-size:12.5px;color:var(--mut);font-weight:600}\n.au-stats .pi{color:var(--c,var(--prit))}\n.au-stats .pi svg{width:18px;height:18px}\n\n/* ---------- الشريط السفلي ---------- */\n#au-bar{position:fixed;left:0;right:0;bottom:0;z-index:8;height:calc(64px + env(safe-area-inset-bottom));padding:0 6px env(safe-area-inset-bottom);\n  background:var(--bar);-webkit-backdrop-filter:saturate(1.4) blur(12px);backdrop-filter:saturate(1.4) blur(12px);border-top:1px solid var(--line);\n  display:flex;align-items:stretch;justify-content:space-around;box-shadow:none;border-radius:0}\n#au-bar button{flex:1!important;width:auto!important;min-width:0;min-height:0;height:64px;background:none!important;border:0!important;padding:0!important;border-radius:0!important;\n  display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--mut)!important;font-size:11.5px!important;font-weight:600!important}\n#au-bar button .ti{line-height:0;padding:0;border-radius:0;background:none!important}\n#au-bar button .pi svg{width:22px;height:22px}\n#au-bar button.on{color:var(--prit)!important}\n#au-bar .au-plus{margin-top:0!important;height:64px!important}\n#au-bar .au-plus span.pl{width:40px;height:32px;border-radius:var(--r2);display:grid;place-items:center;background:var(--pri);border:0;color:var(--onpri)}\n#au-bar .au-plus .pi svg{width:20px;height:20px}\n.hb-fab,#hb-fab{display:none!important}\n\n/* ---------- النوافذ السفلية ---------- */\n#sheet{display:none;position:fixed;inset:0;background:var(--scrim);z-index:20;align-items:flex-end}\n#sheet.on{display:flex}\n.sheetbox{background:var(--sf);width:100%;max-width:720px;margin:0 auto;max-height:88vh;overflow:auto;border-radius:var(--r4) var(--r4) 0 0;border:1px solid var(--line);border-bottom:0;\n  padding:10px 16px calc(18px + env(safe-area-inset-bottom));box-shadow:var(--shadow2)}\n.sheetbox::before{content:\"\";display:block;width:36px;height:4px;border-radius:4px;background:var(--line2);margin:0 auto 12px}\n.sheetbox h3{font-size:17px;font-weight:700;margin:4px 0 10px}\n.sh-x{float:left;flex:none!important;width:34px!important;height:34px!important;min-height:34px;border-radius:var(--r1)!important;padding:0!important;display:grid!important;place-items:center;\n  background:var(--sf2)!important;border:1px solid var(--line)!important;color:var(--tx)!important;margin:-2px 0 6px 0!important}\n#toast{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:30;display:none;max-width:92%;\n  padding:10px 16px;border-radius:var(--r2);background:var(--tx);color:var(--bg);font-size:14px;font-weight:500;text-align:center;box-shadow:var(--shadow2)}\n\n/* خطوات العمليات (البناء والإنشاء) */\n.step{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}\n.step small{display:block;color:var(--mut);margin-top:2px;white-space:pre-wrap}\n.step.ok span{color:var(--ok)}.step.bad span{color:var(--bad)}.step.run span{color:var(--pri)}\n.sheetbox .step{position:relative;display:flex!important;flex-direction:row;gap:12px;padding:0!important;border:0!important;min-height:52px}\n.sheetbox .step>span{flex:none;position:relative;width:22px;height:22px;margin-top:1px;border-radius:50%;border:2px solid var(--line2);background:var(--sf);display:grid;place-items:center;font-size:0!important;color:transparent}\n.sheetbox .step:has(+ .step)::after{content:\"\";position:absolute;top:27px;bottom:3px;right:10px;width:2px;border-radius:1px;background:var(--line)}\n.sheetbox .step.ok>span{border-color:var(--ok);background:var(--ok)}\n.sheetbox .step.ok>span::before{content:\"\";width:9px;height:5px;border:2px solid var(--sf);border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}\n.sheetbox .step.ok:has(+ .step)::after{background:var(--ok)}\n.sheetbox .step.run>span{border-color:var(--pri);border-top-color:transparent;animation:ui3spin .8s linear infinite}\n.sheetbox .step.bad>span{border-color:var(--bad);background:var(--bads)}\n.sheetbox .step.bad>span::before{content:\"\";width:8px;height:8px;background:linear-gradient(45deg,transparent 43%,var(--bad) 43% 57%,transparent 57%),linear-gradient(-45deg,transparent 43%,var(--bad) 43% 57%,transparent 57%)}\n.sheetbox .step>div{flex:1;font-size:14.5px;font-weight:600;color:var(--tx);padding:1px 0 16px}\n.sheetbox .step.wait>div{color:var(--mut);font-weight:500}\n.sheetbox .step small{font-size:12.5px!important;font-weight:400;color:var(--mut)!important;margin-top:2px;line-height:1.6}\n.sheetbox .step small.el{display:block;font-variant-numeric:tabular-nums}\n@keyframes ui3spin{to{transform:rotate(360deg)}}\n\n/* ---------- معالج «تطبيق جديد» (صفحة كاملة) ---------- */\n#sheet.wiz{background:var(--bg)!important;align-items:stretch!important}\n#sheet.wiz .sheetbox{max-width:none;max-height:none!important;height:100%;border-radius:0!important;border:0!important;box-shadow:none;background:var(--bg)!important;overflow:auto;\n  padding:calc(10px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))!important}\n#sheet.wiz .sheetbox>*{max-width:688px;margin-inline:auto}\n#sheet.wiz .sheetbox::before{display:none!important}\n#sheet.wiz .sheetbox>h3{font-size:20px!important;font-weight:700!important;margin:4px auto 6px!important}\n.wz-top{display:flex;align-items:center;gap:10px;margin:0 0 14px}\n.wz-top b{flex:1;font-size:16px;font-weight:700;color:var(--tx)}\n.wz-x{flex:none!important;width:38px!important;height:38px!important;min-height:38px;border-radius:var(--r2)!important;padding:0!important;display:grid!important;place-items:center;background:var(--sf)!important;border:1px solid var(--line)!important;color:var(--tx)!important}\n.wz-st{display:flex;gap:6px;margin:0 0 22px}\n.wz-st div{flex:1;min-width:0}\n.wz-st i{display:block;height:3px;border-radius:2px;background:var(--line)}\n.wz-st div.done i{background:var(--pri)}\n.wz-st div.on i{background:var(--pri);opacity:.55}\n.wz-st span{display:block;margin-top:6px;font-size:11.5px;font-weight:600;color:var(--mut2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n.wz-st div.done span,.wz-st div.on span{color:var(--tx)}\n.wz-lang{display:flex!important;align-items:center;gap:14px;width:100%;text-align:right;padding:14px!important;margin-bottom:10px;border-radius:var(--r3)!important;background:var(--sf)!important;\n  border:1px solid var(--line2)!important;color:var(--tx)!important;font-weight:400!important;min-height:0}\n.wz-lang.on{border-color:var(--pri)!important;background:var(--pris)!important;box-shadow:0 0 0 1px var(--pri)}\n.wz-lang .li{width:44px;height:44px;border-radius:var(--r2);display:grid;place-items:center;flex:none}\n.wz-lang b{display:block;font-size:15px;font-weight:600}\n.wz-lang small{display:block;font-size:13px;line-height:1.55;color:var(--mut);margin-top:2px}\n.wz-foot{position:sticky;bottom:calc(-24px - env(safe-area-inset-bottom));margin:18px -16px calc(-24px - env(safe-area-inset-bottom));padding:12px 16px calc(14px + env(safe-area-inset-bottom));\n  background:var(--bar);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;gap:8px}\n.wz-foot button{min-height:48px;font-size:15px}\n.wz-foot .nx{flex:2;background:var(--pri)!important;color:var(--onpri)!important;border:0!important}\n.wz-foot .bk{flex:1;background:var(--sf)!important;border:1px solid var(--line2)!important;color:var(--tx)!important}\n.wz-cnt{float:left;font-size:12px;color:var(--mut);font-weight:500}\n\n/* ---------- خانة العمل: الكود والتصميم ---------- */\n#cd{margin-bottom:10px}\n.cd-sw,.cx-sw{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}\n.cd-sw button,.cx-sw button{display:flex!important;align-items:center;gap:10px;text-align:right;background:var(--sf)!important;border:1px solid var(--line2)!important;color:var(--tx)!important;\n  padding:10px!important;border-radius:var(--r3)!important;font-weight:400!important;box-shadow:none!important;min-height:0}\n.cd-sw button.on,.cx-sw button.on{border-color:var(--pri)!important;background:var(--pris)!important;box-shadow:0 0 0 1px var(--pri)!important;color:var(--tx)!important}\n.cd-sw .hb-ic{width:36px;height:36px;border-radius:var(--r1)}\n.cd-sw b,.cx-sw b{display:block;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.cd-sw small,.cx-sw small{display:block;font-size:12px;color:var(--mut)}\n.cd-sw span.t{flex:1;min-width:0}\n.cx-sw button .nm{display:inline-block;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom}\n.cx-sw button>b:first-child{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:6px;background:var(--sf3);color:var(--tx);font-size:12px;flex:none}\n.cd-pane{background:var(--sf);border:1px solid var(--line);border-radius:var(--r3);padding:14px;box-shadow:var(--shadow)}\n.cd-pane .cx-ed{margin:0}\n.cd-pane textarea.code{height:62vh}\n.cd-pane textarea.req{height:110px}\n.cd-pane .desc{border:0;padding:0;margin:0}\n.cd-pane details{margin-top:12px}\n.cd-pane .cx-in{display:block!important}\n.cd-lbl{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--tx2);margin:14px 2px 6px}\n.cd-lbl:first-child{margin-top:0}\n.cd-lbl .pi svg{width:16px;height:16px;color:var(--prit)}\n.cd-ph,.cx-ph,.st-ph{margin:4px auto 0;max-width:340px;border:6px solid #0B0F14;border-radius:28px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px var(--line2),var(--shadow2)}\n.cd-ph iframe{display:block!important;width:100%;height:600px;border:0;margin:0;border-radius:0}\n.cx-ph{margin:10px auto;background:#000}\n.cx-ph iframe{display:block;border:0;border-radius:0;margin:0;width:100%;height:500px;background:#fff}\n.cd-foot{position:fixed;left:0;right:0;bottom:0;z-index:7;padding:10px 16px calc(12px + env(safe-area-inset-bottom));background:var(--bar);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;gap:8px}\n.cd-foot button{min-height:48px;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}\n.cd-foot .go{flex:2;background:var(--pri);color:var(--onpri)}\n.cd-foot .sm{flex:1;background:var(--sf);border:1px solid var(--line2);color:var(--tx)}\nbody.hb.hb-code{padding-bottom:calc(150px + env(safe-area-inset-bottom))}\nbody.hb.hb-code #cx-rv,body.hb.hb-code .link,body.hb.hb-build #main>.card:first-child{display:none!important}\n\n.cx-hd{display:flex;align-items:center;gap:10px}\n.cx-n{flex:none;width:28px;height:28px;border-radius:var(--r1);display:grid;place-items:center;background:var(--pris);color:var(--prit);font-weight:700;font-size:13px}\n.cx-hd input.name{flex:1;margin:0;background:transparent;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:8px 4px;box-shadow:none}\n.cx-set{margin-top:12px}\n.cx-set summary{padding:11px 12px;background:var(--sf2);border:1px solid var(--line);border-radius:var(--r2);color:var(--tx);font-size:14px}\n.cx-in{padding:4px 2px 8px}\n.cx-cr{margin-top:6px}\n.cx-tb{display:none;gap:6px;margin-top:8px;flex-wrap:wrap}\n.cx-tb button{flex:none;min-height:32px;padding:5px 12px;font-size:13px;font-weight:600;background:var(--sf);border:1px solid var(--line2);color:var(--tx);border-radius:var(--r1)}\n.cx-ai{display:none;margin-top:8px}\n.cx-ax{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}\n.cx-ax button{width:100%;font-size:14px}\n.cx-ax .bld{grid-column:1/-1;background:var(--pri);color:var(--onpri);font-size:15px}\n.cx-lc{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}\n.cx-vw{display:flex;gap:6px;margin-top:10px}\n.cx-vw button{flex:1;min-height:36px;padding:6px;font-size:13px}\n\n/* المحرر الملوّن */\n.cx-ed{position:relative;margin-top:8px;border-radius:var(--r2);overflow:hidden;border:1px solid var(--line2);background:var(--ed-bg)}\n.cx-ed textarea.code{position:relative;z-index:2;display:block;margin:0!important;border:0!important;border-radius:0!important;background:transparent!important;color:transparent!important;\n  -webkit-text-fill-color:transparent;caret-color:var(--ed-cur);box-shadow:none!important;min-height:0}\n.cx-ed textarea.code::selection{background:var(--ed-sel);color:transparent;-webkit-text-fill-color:transparent}\n.cx-ed pre.cx-hl,.cx-ed .cx-gut{position:absolute;top:0;bottom:0;margin:0;overflow:hidden;pointer-events:none;font-size:var(--ed-fs);line-height:1.6;font-family:var(--mono);tab-size:2}\n.cx-ed pre.cx-hl{left:0;right:0;z-index:1;white-space:pre;color:var(--ed-tx);direction:ltr;text-align:left;padding-left:calc(var(--ed-gw) + 10px)}\n.cx-ed .cx-gut{left:0;width:var(--ed-gw);z-index:3;background:var(--ed-gut);color:var(--ed-gn);text-align:right;direction:ltr;border-right:1px solid rgba(127,127,127,.18)}\n.cx-ed .cx-gut div{padding-right:6px;white-space:pre}\n.cx-ed .cx-gut div.on{color:#fff;background:#DC2626}\n.cx-ed .cx-tb{display:flex;gap:6px;justify-content:flex-end;padding:6px 8px;margin:0;background:var(--ed-gut);border-bottom:1px solid rgba(127,127,127,.18)}\n.cx-ed .cx-box{position:relative}\n.cx-ed .cx-tb button{width:auto;min-height:26px;padding:3px 9px;font-size:12px;border-radius:6px;background:rgba(127,127,127,.2);color:var(--ed-tx);border:0;margin:0;box-shadow:none}\n.cx-ed .h-cm{color:var(--ed-cm);font-style:italic}.cx-ed .h-st{color:var(--ed-st)}.cx-ed .h-kw{color:var(--ed-kw)}.cx-ed .h-ty{color:var(--ed-ty)}\n.cx-ed .h-fn{color:var(--ed-fn)}.cx-ed .h-nu{color:var(--ed-nu)}.cx-ed .h-an{color:var(--ed-an)}.cx-ed .h-tg{color:var(--ed-tg)}.cx-ed .h-at{color:var(--ed-at)}.cx-ed .h-pu{color:var(--ed-pu)}\n.cx-thp{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}\n.cx-thp button{text-align:left;direction:ltr;padding:8px;border-radius:var(--r2);font-family:var(--mono);font-size:11px;line-height:1.5;border:1px solid var(--line2);white-space:pre;overflow:hidden;min-height:0;color:inherit}\n.cx-thp button.on{border-color:var(--pri);box-shadow:0 0 0 1px var(--pri)}\n\n/* سجل البناء المباشر */\n#cx-live{margin-top:12px;border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;background:var(--sf2)}\n#cx-live .lh{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 12px;font-size:13px;font-weight:600;border-bottom:1px solid var(--line)}\n#cx-live .lh a{font-weight:500;font-size:12px;color:var(--prit);text-decoration:none;white-space:nowrap}\n#cx-live .ls{max-height:260px;overflow:auto;padding:4px 0}\n#cx-live .st{display:flex;align-items:center;gap:8px;padding:5px 12px;font-size:12.5px}\n#cx-live .st .tm,#cx-live .lf b{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}\n#cx-live .st .ic{width:18px;text-align:center;flex:none}\n#cx-live .st .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n#cx-live .st .tm{color:var(--mut);font-size:11px;flex:none}\n#cx-live .st.ok .ic{color:var(--ok)}\n#cx-live .st.bad{background:var(--bads)}#cx-live .st.bad .ic{color:var(--bad)}\n#cx-live .st.run .ic{color:var(--pri);display:inline-block;animation:ui3spin 1s linear infinite}\n#cx-live .st.wait{opacity:.5}#cx-live .st.skip{opacity:.35}\n#cx-live .lf{padding:7px 12px;font-size:12px;border-top:1px solid var(--line);color:var(--mut)}\n\n/* ---------- النشر والبناء ---------- */\n.bd-card{background:var(--sf);border:1px solid var(--line);border-radius:var(--r3);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}\n.bd-card details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}\n.bd-stat{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}\n.bd-stat div{background:var(--sf2);border:1px solid var(--line);border-radius:var(--r2);padding:10px 12px}\n.bd-stat small{display:block;font-size:12px;color:var(--mut);font-weight:500}\n.bd-stat b{font-size:15px;font-weight:700}\n.bd-acts{display:flex;gap:8px;margin-top:12px}\n.bd-acts>*{flex:1;margin:0!important}\n.bd-hero{background:var(--sf);border:1px solid var(--line);border-inline-start:3px solid var(--pri);border-radius:var(--r3);padding:16px;margin-bottom:12px;color:var(--tx);box-shadow:var(--shadow)}\n.bd-hero b{font-size:16px;font-weight:700}\n.bd-hero p{margin:4px 0 12px;color:var(--mut)!important;font-size:13.5px;line-height:1.7}\n.bd-hero button{background:var(--pri)!important;color:var(--onpri)!important;border-radius:var(--r2)!important;font-weight:600!important}\n.bd-tools{display:flex;gap:8px;flex-wrap:wrap}\n.bd-tools button{flex:1 1 45%;font-size:13.5px;min-height:40px;padding:8px 6px}\n\n/* ---------- القوالب ---------- */\n.cx-tc{background:var(--sf);border:1px solid var(--line);border-radius:var(--r3);overflow:hidden;margin-bottom:12px;box-shadow:var(--shadow);transition:transform .1s}\n.cx-tc:active{transform:scale(.985)}\n.cx-th{height:84px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;border-bottom:1px solid var(--line)}\n.cx-th .e{font-size:40px}\n.cx-tb2{padding:12px 14px 14px}\n.cx-tb2 b{font-size:16px;font-weight:600}\n.cx-tb2 p{margin:6px 0;color:var(--mut);font-size:13px;line-height:1.7}\n.cx-tg{font-size:12px;color:var(--prit);font-weight:600;margin-bottom:10px}\n.cx-tb2 button{width:100%;margin-top:6px}\n#cx-list.cx-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}\n#cx-list.cx-grid>.cx-h,#cx-list.cx-grid>.empty-tpl{grid-column:1/-1}\n#cx-list.cx-grid .cx-tc{margin:0}\n#cx-list.cx-grid .cx-tb2 p,#cx-list.cx-grid .cx-tb2 button{display:none}\n#cx-list.cx-grid .cx-tb2{padding:8px 10px 10px}\n#cx-list.cx-grid .cx-tb2 b{font-size:13.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n#cx-list.cx-grid .cx-tg{font-size:11px;margin:2px 0 0}\n#cx-list.cx-grid .cx-shot .cx-pil{display:none}\n.cx-th.cx-shot{position:relative;height:var(--sh-h,210px)!important;padding:0!important;display:flex!important;justify-content:center;align-items:flex-start;gap:6px;overflow:hidden;background:var(--sf2)!important;background-image:none!important}\n.cx-shot .ph{position:relative;flex:none;margin-top:12px;border-radius:12px;overflow:hidden;background:var(--sf);box-shadow:var(--shadow2);border:1px solid var(--line2)}\n.cx-shot .ph iframe{position:absolute;top:0;left:0;width:390px;height:844px;border:0;transform-origin:0 0;pointer-events:none;background:#fff;margin:0;border-radius:0}\n.cx-shot .ph .ld{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:24px}\n.cx-shot .cx-pil{position:absolute;bottom:8px;right:8px;z-index:2}\n.cx-shot .em{position:absolute;top:6px;left:8px;font-size:18px;z-index:2}\n\n/* ---------- استوديو التحديث ---------- */\n.st-apps{display:flex;gap:8px;margin:6px 0 10px}\n.st-apps button{flex:1;min-height:40px;padding:8px 6px;font-size:13.5px}\n.st-info{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}\n.st-info span{padding:2px 8px;border-radius:6px;background:var(--sf3);color:var(--tx2);font-size:12px;font-weight:600}\n.st-info span.ok{background:var(--oks);color:var(--ok)}\n.st-info span.no{background:var(--warns);color:var(--warn)}\n.st-ph{position:relative;margin:4px auto 10px;width:100%;height:520px}\n.st-ph iframe{width:100%;height:100%;border:0;background:#fff;display:block;margin:0;border-radius:0}\n.st-ph .ld{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(12,16,21,.82);color:#E9EEF4;font-size:14px;text-align:center;padding:20px}\n.st-ph .ld.on{display:flex}\n.st-ph .ld b{font-size:30px;animation:ui3spin 1.2s linear infinite;display:inline-block}\n.st-log{margin:8px 0;padding:10px 12px;border-radius:var(--r2);background:var(--sf2);border:1px solid var(--line);font-size:13px;line-height:1.9}\n.st-log b{display:block;font-size:12px;color:var(--mut)}\n.st-send{background:var(--pri)!important;color:var(--onpri)!important;border:0!important;width:100%;margin-top:10px;min-height:48px}\n\n/* ---------- الإعدادات (المفاتيح) ---------- */\ndetails.cx-ks,.cx-ks{background:var(--sf);border:1px solid var(--line);border-radius:var(--r3);margin:0 0 10px;color:var(--tx);font-size:15px;box-shadow:var(--shadow);padding:0}\n.cx-ks summary{display:flex;align-items:center;gap:12px;padding:14px;list-style:none;cursor:pointer;font-weight:600;color:var(--tx)}\n.cx-ks summary::before{display:none}\n.cx-ks summary::after{content:\"\";width:7px;height:7px;border:solid var(--mut);border-width:0 0 2px 2px;transform:rotate(-45deg);margin-inline-start:4px;transition:transform .15s;flex:none}\n.cx-ks[open] summary::after{transform:rotate(135deg)}\n.cx-ic{width:34px;height:34px;border-radius:var(--r1);background:var(--pris);color:var(--prit);display:grid;place-items:center;font-size:18px;flex:none}\n.cx-tt{flex:1;font-weight:600}\n.cx-kb{padding:0 14px 14px;border-top:1px solid var(--line)}\n.cx-kb input,.cx-kb select{text-align:left}\n.cx-pw{position:relative}\n.cx-pw input{padding-left:46px!important}\n.cx-eye{position:absolute;left:4px;top:50%;transform:translateY(-50%);width:36px;height:36px;min-height:36px;flex:none;padding:0;border:0;background:transparent;color:var(--mut);font-size:17px;border-radius:var(--r1)}\n.cx-res{margin-top:10px;font-size:13px;line-height:1.8;white-space:pre-wrap}\n.cx-sub{border:1px solid var(--line);border-radius:var(--r2);padding:4px 12px 12px;margin-top:12px}\n.cx-sub.on{border-color:var(--pri)}\n.cx-st{margin-top:8px;font-weight:600;font-size:14px}\n.cf-sec{background:var(--sf2);border:1px solid var(--line);border-radius:var(--r2);padding:12px 14px;margin:10px 0}\n.cf-sec h4{margin:0 0 8px;font-size:14.5px;font-weight:700}\n.cf-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:13.5px;border-bottom:1px solid var(--line)}\n.cf-row:last-child{border-bottom:0}\n.cf-row span:first-child{color:var(--mut)}\n.cf-row b{direction:ltr;text-align:left;word-break:break-all;font-weight:600}\n.cf-ok{color:var(--ok)}.cf-bad{color:var(--warn)}\n.cf-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}\n.cf-btns button{font-size:13.5px}\nimg#ic0,img#ic1{background:var(--sf2);border-radius:var(--r2)}\n\n/* ---------- شاشة الفتح ---------- */\n#fx-splash{position:fixed;inset:0;z-index:100000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .3s ease}\n#fx-splash.out{opacity:0;pointer-events:none}\n#fx-splash .lg{width:76px;height:76px;border-radius:20px;background:var(--pri);display:grid;place-items:center;color:var(--onpri);box-shadow:var(--shadow2);animation:ui3pop .45s cubic-bezier(.2,.8,.2,1)}\n#fx-splash b{font-size:20px;font-weight:700;color:var(--tx)}\n#fx-splash small{font-size:13px;color:var(--mut)}\n@keyframes ui3pop{from{transform:scale(.7);opacity:0}to{transform:none;opacity:1}}\n\n/* ---------- ألوان قديمة مكتوبة داخل العناصر ---------- */\n[style*=\"#0e1730\"],[style*=\"#131c31\"],[style*=\"#1c2742\"],[style*=\"#0a0f1f\"],[style*=\"#0b1220\"],[style*=\"#1e293b\"],[style*=\"rgba(19,28,49\"]{background-color:var(--sf2)!important;border-color:var(--line)!important}\n[style*=\"#243557\"]{background-color:var(--sf3)!important}\n[style*=\"#1b2440\"]{border-color:#0B0F14!important}\n[style*=\"#0d47a1\"],[style*=\"#4f46e5\"],[style*=\"#2f80ff\"],[style*=\"#ffb300\"][style*=\"background\"]{background:var(--pri)!important;border-color:transparent!important;color:var(--onpri)!important}\n[style*=\"color:#8fa0c4\"],[style*=\"color: #8fa0c4\"]{color:var(--mut)!important}\n[style*=\"color:#ffb300\"]{color:var(--warn)!important}\n\n/* شاشات أوسع (تابلت) */\n@media (min-width:760px){\n  main{padding:24px}\n  .hb-acts{grid-template-columns:repeat(6,1fr)}\n}\n\n/* ================= الهيكل: المشاريع + الخطوات ================= */\n#au-bar,#hb-fab,#cd-foot{display:none!important}\nbody{padding-bottom:calc(24px + env(safe-area-inset-bottom))}\nbody.ui-ws{padding-bottom:calc(92px + env(safe-area-inset-bottom))}\nbody.ui-ws.hb-code{padding-bottom:calc(92px + env(safe-area-inset-bottom))}\n.ui-bar{gap:8px}\n#hb-top{padding-bottom:12px}\nbody.ui-home #hb-top h1{font-size:24px;font-weight:700}\nbody.ui-home #hb-top{border-bottom:0;background:var(--bg);-webkit-backdrop-filter:none;backdrop-filter:none}\n.ui-new{flex:none!important;width:auto!important;display:inline-flex!important;align-items:center;gap:6px;min-height:40px;padding:0 14px 0 16px;font-size:14.5px}\n.ui-new .pi svg{width:18px;height:18px}\n\n/* مبدّل التطبيق في الترويسة */\n.ui-app{flex:none!important;width:auto!important;max-width:44%;display:inline-flex!important;align-items:center;gap:6px;min-height:36px;padding:0 10px;font-size:13px;font-weight:600;\n  background:var(--sf)!important;color:var(--tx)!important;border:1px solid var(--line2)!important;border-radius:999px}\n.ui-app span:not(.pi){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}\n.ui-app .pi svg{width:16px;height:16px}.ui-app .dn svg{width:14px;height:14px;color:var(--mut)}\n\n/* الخطوات المرقّمة */\n.ui-steps{display:flex;max-width:720px;margin:12px auto 0;position:relative}\n.ui-st{flex:1;min-width:0;min-height:0;padding:0;background:none!important;border:0!important;color:var(--mut2)!important;display:flex!important;flex-direction:column;align-items:center;gap:6px;\n  font-size:12px;font-weight:600;position:relative;border-radius:0}\n.ui-st::before{content:\"\";position:absolute;top:13px;left:50%;width:100%;height:2px;background:var(--line);z-index:0}\n.ui-st:first-child::before{display:none}\n.ui-st.done::before,.ui-st.on::before{background:var(--pri)}\n.ui-st i{position:relative;z-index:1;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:13px;font-weight:700;\n  background:var(--sf);border:2px solid var(--line2);color:var(--mut);font-variant-numeric:tabular-nums}\n.ui-st i .pi svg{width:15px;height:15px}\n.ui-st.done i{background:var(--pri);border-color:var(--pri);color:var(--onpri)}\n.ui-st.on i{background:var(--sf);border-color:var(--pri);color:var(--prit);box-shadow:0 0 0 4px var(--pris)}\n.ui-st.on{color:var(--tx)!important}\n.ui-st.done{color:var(--tx2)!important}\n.ui-st span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}\n.hb-tabs{display:none!important}\n\n/* الشريط السفلي: السابق · الإجراء · التالي */\n#ui-foot{position:fixed;left:0;right:0;bottom:0;z-index:9;display:flex;gap:8px;align-items:center;padding:10px 16px calc(10px + env(safe-area-inset-bottom));\n  background:var(--bar);-webkit-backdrop-filter:saturate(1.4) blur(12px);backdrop-filter:saturate(1.4) blur(12px);border-top:1px solid var(--line)}\n#ui-foot>*{max-width:720px}\n.ui-nav{flex:none!important;width:48px;height:48px;min-height:48px;padding:0;display:grid!important;place-items:center;background:var(--sf)!important;color:var(--tx)!important;border:1px solid var(--line2)!important}\n.ui-nav:disabled{opacity:.35}\n.ui-main{flex:1;min-height:48px;font-size:15px;font-weight:600}\n.ui-main.ui-sec{background:var(--sf);color:var(--tx);border-color:var(--line2)}\n\n/* الرئيسية: شبكة المشاريع */\n#hb-list{display:grid;grid-template-columns:1fr 1fr;gap:10px}\n#hb-list>.hb-empty,#hb-list>.ui-start{grid-column:1/-1}\n#hb-list .hb-card{margin:0;display:flex;flex-direction:column;gap:12px;padding:14px;position:relative;min-height:156px}\n#hb-list .hb-row{flex-direction:column;align-items:flex-start;gap:12px}\n#hb-list .hb-row>.hb-bd{position:absolute;top:12px;left:12px}\n#hb-list .hb-ic{width:44px;height:44px}\n#hb-list .hb-t b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:15px;line-height:1.35}\n#hb-list .hb-t small{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}\n#hb-list .hb-mt{margin-top:auto;gap:4px}\n#hb-list .hb-mt .hb-bd{font-size:11px!important;padding:1px 6px!important}\n.ui-start{text-align:center;padding:40px 20px;border:1px dashed var(--line2);border-radius:var(--r3);background:var(--sf)}\n.ui-start .big{width:56px;height:56px;border-radius:var(--r3);background:var(--pris);color:var(--prit);margin:0 auto 14px;display:grid}\n.ui-start .big svg{width:26px;height:26px}\n.ui-start b{display:block;font-size:17px;color:var(--tx)}\n.ui-start p{color:var(--mut);font-size:14px;line-height:1.7;margin:6px auto 18px;max-width:360px}\n.ui-start button{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;max-width:320px;margin:8px auto 0}\n.ui-start .pi svg{width:18px;height:18px}\n\n/* داخل خطوة الكود: مبدّل التطبيق انتقل للترويسة، والتبويبات الداخلية تحت خط */\n.cd-sw{display:none!important}\n.cd-seg{background:transparent;border-radius:0;padding:0;gap:0;border-bottom:1px solid var(--line);margin-bottom:14px}\n.cd-seg button{border-radius:0!important;min-height:40px;padding:6px 10px;border-bottom:2px solid transparent!important;margin-bottom:-1px}\n.cd-seg button.on,:root[data-theme=\"dark\"] .cd-seg button.on{background:transparent!important;box-shadow:none!important;color:var(--prit)!important;border-bottom-color:var(--pri)!important}\nbody.ui-ws #toast{bottom:calc(84px + env(safe-area-inset-bottom))}\n";
+/* المظهر: تلقائي حسب الجهاز، أو فاتح/داكن حسب اختيار المستخدم */
+function thPref(){try{return localStorage.getItem('apk_theme')||'auto'}catch(e){return 'auto'}}
+const mq=window.matchMedia?matchMedia('(prefers-color-scheme: dark)'):null;
+function applyTheme(){
+  const p=thPref(),dark=p==='dark'||(p==='auto'&&mq&&mq.matches);
+  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  let m=document.querySelector('meta[name="theme-color"]');
+  if(!m){m=document.createElement('meta');m.name='theme-color';document.head.appendChild(m)}
+  m.content=dark?'#0C1015':'#F4F5F7';
+}
+if(mq&&mq.addEventListener)mq.addEventListener('change',applyTheme);
+applyTheme();
+window.cxTheme=function(v){try{localStorage.setItem('apk_theme',v)}catch(e){}applyTheme();render()};
+
+/* حذف كل ملفات التصميم القديمة وتركيب الجديد */
+function purge(){document.querySelectorAll('head style:not(#ui3)').forEach(function(s){s.remove()})}
+purge();
+const st=document.createElement('style');st.id='ui3';st.textContent=CSS;document.head.appendChild(st);
+try{new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes.forEach(function(n){if(n.tagName==='STYLE'&&n.id!=='ui3')n.remove()})})}).observe(document.head,{childList:true})}catch(e){}
+
+/* تنظيف العنوان من الإيموجي، وبطاقة المظهر في الإعدادات */
+const EMO=/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu;
+const _r=render;
+render=function(){
+  _r.apply(this,arguments);
+  const h=document.querySelector('#hb-top h1');
+  if(h)h.childNodes.forEach(function(n){if(n.nodeType===3&&EMO.test(n.nodeValue))n.nodeValue=n.nodeValue.replace(EMO,'').replace(/\s+$/,'')});
+  if(typeof tab!=='undefined'&&tab==='keys'){
+    const m=document.getElementById('main');
+    if(m&&!document.getElementById('ui3-th')){
+      const p=thPref();
+      const c=document.createElement('div');c.className='card';c.id='ui3-th';
+      c.innerHTML='<h2>المظهر</h2><div class="hb-seg">'+[['auto','تلقائي'],['light','فاتح'],['dark','داكن']].map(function(x){return '<button class="'+(p===x[0]?'on':'')+'" onclick="cxTheme(\''+x[0]+'\')">'+x[1]+'</button>'}).join('')+'</div><p class="note" style="margin:10px 0 0">«تلقائي» يتبع وضع الجهاز (فاتح أو داكن).</p>';
+      m.insertBefore(c,m.firstChild);
+    }
+  }
+};
+render();
+})();
+
+/* ===== الهيكل الجديد: «المشاريع + الخطوات» =====
+   الرئيسية = قائمة المشاريع (بحث + شبكة) وزر «جديد» واحد في الترويسة.
+   داخل المشروع = خطوات مرقّمة بدل التبويبات المتداخلة، ومبدّل التطبيق في الترويسة،
+   وشريط سفلي ثابت: السابق · الإجراء الأساسي للخطوة · التالي. */
+(function(){
+const STEPS=[['ov','المشروع'],['tpl','التصميم'],['code','الكود'],['data','البيانات'],['build','النشر']];
+const P={
+ back:'<path d="M9 18l6-6-6-6"/>',fwd:'<path d="M15 18l-6-6 6-6"/>',
+ plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+ dots:'<circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',check:'<path d="M20 6 9 17l-5-5"/>',
+ phone:'<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M11 18h2"/>',
+ admin:'<path d="M3 3v18h18"/><path d="M7 15v2"/><path d="M11 11v6"/><path d="M15 7v10"/><path d="M19 12v5"/>',
+ merge:'<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="12" r="2.5"/><path d="M6 8.5v7"/><path d="M8.5 6H12a4 4 0 0 1 4 4v-.5"/>',
+ folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>'
+};
+function ic(n,c){return '<span class="pi'+(c?' '+c:'')+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+P[n]+'</svg></span>'}
+function e(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function has(a){return !!(a&&a.code&&String(a.code).trim())}
+function proj(){return (S.projects||[]).find(function(p){return p.id===S.cur})}
+function inWs(){return STEPS.some(function(s){return s[0]===tab})}
+function appName(i){const a=S.apps[i]||{};return (a.set&&a.set.label)||a.name||(i?'التطبيق الثاني':'التطبيق الأول')}
+function twoApps(){const p=proj();return has(S.apps[1])||(p&&p.kind===1)}
+
+/* ---------- الترويسة ---------- */
+function topHome(){
+  const n=(S.projects||[]).length;
+  return '<div class="hb-bar ui-bar">'
+   +'<h1>مشاريعي<small>'+(n?n+' مشروع':'ابدأ أول مشروع')+'</small></h1>'
+   +'<button class="hb-ib" title="الإعدادات" onclick="window._st=\'\';go(\'keys\')">'+ic('gear')+'</button>'
+   +'<button class="ui-new" onclick="cxHubNew()">'+ic('plus')+'جديد</button></div>';
+}
+function stepDone(k){
+  const any=has(S.apps[0])||has(S.apps[1]);
+  if(k==='ov')return !!S.cur;
+  if(k==='tpl'||k==='code')return any;
+  if(k==='build')return !!((S.apps[0]&&S.apps[0].apk)||(S.apps[1]&&S.apps[1].apk));
+  return false;
+}
+function topWs(){
+  const p=proj(),i=window._ap|0;
+  let h='<div class="hb-bar ui-bar"><button class="hb-ib" title="المشاريع" onclick="go(\'home\')">'+ic('back')+'</button>'
+   +'<h1>'+e(p?p.name:'خانة العمل')+'<small>'+(p?(twoApps()?'نظام من تطبيقين':'تطبيق واحد'):'غير محفوظ في المشاريع')+'</small></h1>';
+  if(twoApps())h+='<button class="ui-app" onclick="cxUiApps()">'+ic(i?'admin':'phone')+'<span>'+e(appName(i))+'</span>'+ic('down','dn')+'</button>';
+  h+='<button class="hb-ib" title="المزيد" onclick="cxHubMenu()">'+ic('dots')+'</button></div>';
+  const cur=STEPS.findIndex(function(s){return s[0]===tab});
+  h+='<div class="ui-steps">'+STEPS.map(function(s,k){
+    const d=stepDone(s[0])&&k!==cur;
+    return '<button class="ui-st'+(k===cur?' on':'')+(d?' done':'')+'" onclick="go(\''+s[0]+'\')"><i>'+(d?ic('check'):(k+1))+'</i><span>'+s[1]+'</span></button>';
+  }).join('')+'</div>';
+  return h;
+}
+window.cxUiApps=function(){
+  const sh=document.getElementById('sheet');if(!sh)return;
+  const i=window._ap|0;
+  sh.className='on';
+  sh.innerHTML='<div class="sheetbox"><h3>اختر التطبيق</h3>'+[0,1].map(function(k){
+    const a=S.apps[k]||{};
+    return '<button class="hb-opt'+(k===i?' on':'')+'" onclick="closeSheet();window._ap='+k+';if(typeof cxCdApp===\'function\'&&tab===\'code\')cxCdApp('+k+');else render()">'
+      +'<span class="hb-ic">'+(a.icon?'<img src="'+e(a.icon)+'">':ic(k?'admin':'phone'))+'</span><span style="flex:1"><b>'+e(appName(k))+'</b><small>'+(k?'تطبيق الإدارة':'تطبيق الزبون')+' · '+(has(a)?'فيه كود':'فاضي')+'</small></span>'+(k===i?ic('check'):'')+'</button>';
+  }).join('')+'</div>';
+};
+
+/* ---------- الشريط السفلي للخطوات ---------- */
+function foot(){
+  let f=document.getElementById('ui-foot');
+  if(!inWs()){if(f)f.style.display='none';document.body.classList.remove('ui-ws');return}
+  if(!f){f=document.createElement('div');f.id='ui-foot';document.body.appendChild(f)}
+  document.body.classList.add('ui-ws');
+  const k=STEPS.findIndex(function(s){return s[0]===tab}),prev=STEPS[k-1],next=STEPS[k+1];
+  /* الإجراء الأساسي: زر الخطوة الأصلي إن وجد، وإلا «التالي» */
+  let main=null;
+  if(tab==='code'){const g=document.querySelector('#cd-foot .go');if(g)main={t:g.textContent.replace(/^[^؀-ۿA-Za-z]+/,'').trim(),src:g}}
+  else if(tab==='build'){const b=document.querySelector('#main button[onclick^="cxBuildBoth"],#main button[onclick^="buildAny("]');if(b)main={t:'بناء APK',src:b}}
+  f.style.display='flex';
+  f.innerHTML='<button class="ui-nav" '+(prev?'onclick="go(\''+prev[0]+'\')"':'disabled')+' title="السابق">'+ic('back')+'</button>'
+   +(main?'<button class="ui-main" id="ui-main">'+e(main.t)+'</button>'
+     :next?'<button class="ui-main" onclick="go(\''+next[0]+'\')">التالي: '+next[1]+'</button>'
+     :'<button class="ui-main ui-sec" onclick="go(\'home\')">رجوع للمشاريع</button>')
+   +'<button class="ui-nav" '+(next?'onclick="go(\''+next[0]+'\')"':'disabled')+' title="التالي">'+ic('fwd')+'</button>';
+  if(main){const m=document.getElementById('ui-main');m.onclick=function(){main.src.click()};if(main.src.disabled)m.disabled=true}
+}
+
+/* ---------- الرئيسية ---------- */
+function home(){
+  const h=document.getElementById('au-hero');if(h)h.remove();
+  const L=document.getElementById('hb-list');
+  if(L&&!(S.projects||[]).length&&!L.querySelector('.ui-start')){
+    L.innerHTML='<div class="ui-start">'+ic('folder','big')+'<b>ما عندك مشاريع لسه</b><p>ابدأ بتطبيق واحد، أو بنظام من تطبيقين متصلين (زبون + إدارة) على قاعدة بيانات واحدة.</p>'
+     +'<button onclick="cxHubNew()">'+ic('plus')+'تطبيق جديد</button>'
+     +'<button class="sec" onclick="window._hk=2;cxHubNew()">'+ic('merge')+'تطبيقين متصلين</button></div>';
+  }
+  const q=document.querySelector('.hb-srch');if(q)q.placeholder='ابحث في المشاريع أو الزبائن';
+  document.querySelectorAll('.hb-chips button').forEach(function(b){b.textContent=b.textContent.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu,'').trim()});
+}
+
+const _r=render;
+render=function(){
+  _r.apply(this,arguments);
+  const top=document.getElementById('hb-top');
+  document.body.classList.toggle('ui-home',tab==='home');
+  if(top){
+    if(tab==='home')top.innerHTML=topHome();
+    else if(inWs())top.innerHTML=topWs();
+  }
+  if(tab==='home')home();
+  foot();
+};
+render();
+})();
 
 </script>
 </body>

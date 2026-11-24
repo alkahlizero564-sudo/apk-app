@@ -753,11 +753,14 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
         body: JSON.stringify({
           contents: [{
             parts: [
-              { inline_data: { mime_type: curFile.type || 'video/mp4', data: b64 } },
+              { inline_data: { mime_type: curFile.type || 'video/mp4', data: b64 }, video_metadata: { fps: 0.5 } },
               { text: prompt }
             ]
           }],
-          generationConfig: { responseMimeType: 'application/json' }
+          // توفير استهلاك المفتاح: دقة وسائط منخفضة وإيقاف/تقليل التفكير المدفوع
+          generationConfig: Object.assign({ responseMimeType: 'application/json', mediaResolution: 'MEDIA_RESOLUTION_LOW' },
+            /2\.5-flash/.test(getModel()) ? { thinkingConfig: { thinkingBudget: 0 } } :
+            /2\.5-pro/.test(getModel()) ? { thinkingConfig: { thinkingBudget: 128 } } : {})
         })
       });
 
