@@ -151,15 +151,25 @@ async function ai(prompt){const k=S.keys;
     return j.content.map(c=>c.text||'').join('')}
   const gk=[k.gemini,k.gemini2,k.gemini3].filter(Boolean);
   if(!gk.length)throw new Error('أدخل مفتاح Gemini في قائمة المفاتيح');
+  /* طلبات المراجعة والتحليل (ترجع JSON قصير) ما بتحتاج تفكير عميق: نقلله لتوفير الحصة */
+  const gb={contents:[{parts:[{text:prompt}]}]};
+  if(typeof prompt==='string'&&/^\s*(أنت مراجع|أنت محلل متطلبات|اقرأ كود التطبيق التالي)/.test(prompt)){
+    const gm=String(MODELS.gemini);
+    if(/gemini-2\.5-flash/.test(gm))gb.generationConfig={thinkingConfig:{thinkingBudget:0}};
+    else if(/gemini-2\.5-pro/.test(gm))gb.generationConfig={thinkingConfig:{thinkingBudget:128}};
+    else if(/gemini-[3-9]/.test(gm))gb.generationConfig={thinkingConfig:{thinkingLevel:'low'}};
+  }
+  /* لو في أكثر من مفتاح، طبقة fetch في آخر الملف هي البتبدّل بينهم؛ ما نكرر التدوير هنا (كان بيضاعف الطلبات) */
+  const gN=(window._gemRot&&gk.length>1)?1:gk.length;
   let last;
-  for(let n=0;n<gk.length;n++){
-    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS.gemini+':generateContent?key='+encodeURIComponent(gk[n]),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+  for(let n=0;n<gN;n++){
+    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS.gemini+':generateContent?key='+encodeURIComponent(gk[n]),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(gb)});
     const j=await r.json().catch(()=>({}));
     if(r.ok){if(!j.candidates||!j.candidates[0]||!j.candidates[0].content)throw new Error('رد فارغ من Gemini، حاول مرة أخرى.');return (j.candidates[0].content.parts||[]).map(p=>p.text||'').join('')}
     const msg=(j.error&&j.error.message)||'فشل الاتصال بـ Gemini';
     last=new Error(msg);
     if(!(r.status===429||/quota|exhaust/i.test(msg)))throw last;
-    if(n<gk.length-1)toast('حصة المفتاح '+(n+1)+' خلصت، التحويل للمفتاح '+(n+2))}
+    if(n<gN-1)toast('حصة المفتاح '+(n+1)+' خلصت، التحويل للمفتاح '+(n+2))}
   throw last}
 const AI_BASE=ai;
 function clean(t){const m=t.match(/```(?:\w+)?\n([\s\S]*?)```/);return (m?m[1]:t).trim()}
@@ -1681,8 +1691,14 @@ ai=async function(p){
   const k=p.indexOf(CS_MARK);
   if(k>-1&&p.indexOf('فهم مسبق للتطبيق الآخر')<0){
     try{
-      toast('أقرأ التطبيق الآخر وأفهمه أولاً...');
-      const sum=(await _ai5(CS_ASK+p.slice(k+CS_MARK.length))).trim();
+      const src=p.slice(k+CS_MARK.length);
+      window._csSum=window._csSum||{};
+      let sum=window._csSum[src];
+      if(!sum){
+        toast('أقرأ التطبيق الآخر وأفهمه أولاً...');
+        sum=(await _ai5(CS_ASK+src)).trim();
+        window._csSum={};window._csSum[src]=sum;
+      }
       p+='\n\nفهم مسبق للتطبيق الآخر (استخلصته من قراءة كوده، التزم به حرفياً في أسماء الجداول والحقول والقيم والمسارات ومفاتيح التخزين):\n'+sum;
     }catch(e){}
   }
@@ -5249,7 +5265,8 @@ function stageBPrompt(p,l,design){
 }
 
 async function completeness(l,code,spec,bk){
-  for(let n=0;n<2;n++){
+  window._cmpDone=true; /* المراجعة تمت هنا، فلا داعي لمراجعة «تنفيذ طلبك بحذافيره» مرة ثانية */
+  for(let n=0;n<1;n++){
     setSub('مراجعة اكتمال الوظائف'+(n?' (جولة '+(n+1)+')':'')+'...');
     let r;
     try{
@@ -6203,8 +6220,8 @@ render=function(){
 /* ===== إضافة: فحص قبل البناء (حتى 100 محاولة + تصنيف الأخطاء + إصلاح ذاتي) ===== */
 (function(){
 
-function maxFix(){const v=parseInt(S.keys.maxFix3,10);return (v>=1&&v<=100)?v:30}
-function stallN(){const v=parseInt(S.keys.stall3,10);return (v>=3&&v<=50)?v:10}
+function maxFix(){const v=parseInt(S.keys.maxFix3,10);return (v>=1&&v<=100)?v:5}
+function stallN(){const v=parseInt(S.keys.stall3,10);return (v>=3&&v<=50)?v:3}
 
 const CK_FL=`# ck6
 # ck5
@@ -6439,14 +6456,14 @@ function fixPrompt(i,l,old,errs,hist,stag,why){
 }
 async function fixOnce(i,l,old,errs,hist,stag){
   let why='';
-  for(let t=0;t<3;t++){
+  for(let t=0;t<2;t++){
     const out=await ai(fixPrompt(i,l,old,errs,hist,stag,why));
     const nw=clean(out);
     if(nw===old.trim()){why='الرد السابق لم يغيّر الكود. يجب أن تعدّل الكود فعلاً لإصلاح الأخطاء.';continue}
     if(nw.length<old.length*0.4||(l==='flutter'&&bal(old)&&!bal(nw))){why='الرد السابق كان ناقصاً (انقطع). أعد الكود كاملاً حتى آخره.';continue}
     return nw;
   }
-  throw new Error('الذكاء الاصطناعي لم يعطِ كوداً صالحاً بعد 3 محاولات متتالية.');
+  throw new Error('الذكاء الاصطناعي لم يعطِ كوداً صالحاً بعد محاولتين متتاليتين.');
 }
 
 const _bPrev=buildAny;
@@ -6568,7 +6585,7 @@ render=function(){
   const c=document.createElement('div');c.className='card';c.id='cx-chk3';
   c.innerHTML='<h2>🔎 فحص Flutter و Python قبل البناء</h2>'
    +'<label style="display:flex;gap:10px;align-items:center;color:var(--tx);font-size:15px;margin:0"><input type="checkbox" style="width:22px;height:22px;flex:none" '+(S.keys.noChk3?'':'checked')+' onchange="S.keys.noChk3=!this.checked;save()"> فحص الكود وإصلاح الأخطاء تلقائياً قبل البناء</label>'
-   +'<label>أقصى عدد محاولات إصلاح (من 1 إلى 100)</label><input type="number" inputmode="numeric" min="1" max="100" value="'+maxFix()+'" onchange="S.keys.maxFix3=Math.max(1,Math.min(100,parseInt(this.value)||30));this.value=S.keys.maxFix3;save()">'
+   +'<label>أقصى عدد محاولات إصلاح (من 1 إلى 100)</label><input type="number" inputmode="numeric" min="1" max="100" value="'+maxFix()+'" onchange="S.keys.maxFix3=Math.max(1,Math.min(100,parseInt(this.value)||5));this.value=S.keys.maxFix3;save()">'
    +'<label>أوقف لو أقل عدد أخطاء ما تحسّن في آخر كم محاولة (من 3 إلى 50)</label><input type="number" inputmode="numeric" min="3" max="50" value="'+stallN()+'" onchange="S.keys.stall3=Math.max(3,Math.min(50,parseInt(this.value)||10));this.value=S.keys.stall3;save()">'
    +'<p class="note">كل محاولة تأخذ حوالي 2 إلى 4 دقائق في Flutter ودقيقة في Python. الأخطاء في كودك تذهب للذكاء الاصطناعي، وأخطاء إشعار التحديث بيعطّله تلقائياً، وأخطاء نظام التصميم بيوقف عندها فوراً. الشاشة بتفضل مضيئة أثناء الفحص.</p>';
   m.appendChild(c);
@@ -10466,9 +10483,11 @@ ai=async function(p){
   let out;
   window._reqBusy=true;
   try{
+  window._cmpDone=false;
   try{window._reqTail=T;out=await _aiF(p)}finally{window._reqTail=''}
   const dsAfter=window._dsNext;
-  if(!spec||phase||!spec.features.length||S.keys.noVerify)return out;
+  const cmpDone=window._cmpDone;window._cmpDone=false;
+  if(!spec||phase||!spec.features.length||S.keys.noVerify||cmpDone)return out;
   try{
     toast('🔎 التحقق من تنفيذ كل طلباتك...');
     const code=clean(out),miss=await verify(spec,code);
@@ -11873,7 +11892,11 @@ render();
 /* ===== إضافة: تبديل مفاتيح Gemini تلقائياً ===== */
 (function(){
 const ofetch=window.fetch.bind(window);
-const CD={};let cur=0;
+let CD={},cur=0;
+try{const o=JSON.parse(localStorage.getItem('apk_gem_cd')||'null');if(o){CD=o.cd||{};cur=o.cur|0}}catch(e){}
+function keep(){try{const now=Date.now();Object.keys(CD).forEach(function(x){if(CD[x]<now)delete CD[x]});localStorage.setItem('apk_gem_cd',JSON.stringify({cd:CD,cur:cur}))}catch(e){}}
+function kid(k){return String(k).slice(-8)}
+window._gemRot=true;
 window.fetch=async function(input,init){
   const url=typeof input==='string'?input:((input&&input.url)||'');
   if(url.indexOf('generativelanguage.googleapis.com')<0||url.indexOf('key=')<0)return ofetch(input,init);
@@ -11881,21 +11904,21 @@ window.fetch=async function(input,init){
   if(keys.length<2)return ofetch(input,init);
   const now=Date.now(),order=[];
   for(let n=0;n<keys.length;n++)order.push((cur+n)%keys.length);
-  order.sort(function(a,b){return ((CD[keys[a]]||0)>now)-((CD[keys[b]]||0)>now)});
+  order.sort(function(a,b){return ((CD[kid(keys[a])]||0)>now)-((CD[kid(keys[b])]||0)>now)});
   let lastRes=null,lastErr=null;
   for(let q=0;q<order.length;q++){
     const idx=order[q];
     const u=url.replace(/([?&]key=)[^&]*/,'$1'+encodeURIComponent(keys[idx]));
     let r;
     try{r=await ofetch(u,init)}catch(e){lastErr=e;continue}
-    if(r.ok){cur=idx;return r}
+    if(r.ok){if(cur!==idx){cur=idx;keep()}return r}
     let txt='';
     try{txt=await r.clone().text()}catch(e){}
     const badKey=r.status===403||(r.status===400&&/api key|API_KEY/i.test(txt));
-    const retry=r.status===429||badKey||r.status>=500;
+    const retry=r.status===429||badKey;
     if(!retry)return r;
-    const ms=/per.?day/i.test(txt)?6*3600e3:badKey?3600e3:r.status===429?70e3:15e3;
-    CD[keys[idx]]=Date.now()+ms;
+    const ms=/per.?day/i.test(txt)?6*3600e3:badKey?3600e3:70e3;
+    CD[kid(keys[idx])]=Date.now()+ms;keep();
     lastRes=r;
     if(q<order.length-1)toast('المفتاح '+(idx+1)+' فشل ('+r.status+')، التحويل للمفتاح التالي');
   }
