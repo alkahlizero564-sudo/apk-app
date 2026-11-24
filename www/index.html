@@ -9857,6 +9857,8 @@ jobs:
           has(){ echo " $ADD " | grep -q " $1 "; }
           perm(){ grep -q "android.permission.$1\\"" $MF || sed -i "s|<application|<uses-permission android:name=\\"android.permission.$1\\"/><application|" $MF; }
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = maxOf(flutter.minSdkVersion, 23)/; s/minSdkVersion flutter.minSdkVersion/minSdkVersion Math.max(flutter.minSdkVersion, 23)/' "$G"
+          # مكتبات حديثة (مثل androidx.core 1.19) تحتاج compileSdk 37: نرفعه تلقائياً (لا يغير سلوك التطبيق ولا الأجهزة المدعومة)
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = maxOf(flutter.compileSdkVersion, 37)/; s/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion Math.max(flutter.compileSdkVersion, 37)/; s/compileSdk flutter.compileSdkVersion/compileSdk Math.max(flutter.compileSdkVersion, 37)/' "$G"
           if has geolocator; then perm ACCESS_FINE_LOCATION; perm ACCESS_COARSE_LOCATION; fi
           if has image_picker || has mobile_scanner; then perm CAMERA; fi
           if has flutter_local_notifications; then perm POST_NOTIFICATIONS; perm RECEIVE_BOOT_COMPLETED; perm VIBRATE; fi
