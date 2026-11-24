@@ -2481,7 +2481,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> {
                         controller: usdCtrl,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                          labelText: isAr ? 'السعر الأساسي بالدولار ($)' : 'USD Price',
+                          labelText: isAr ? 'السعر الأساسي بالدولار (\$)' : 'USD Price',
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -3743,7 +3743,7 @@ class SalesBarChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final Paint barPaint = Paint()
-      :color = primaryColor
+      ..color = primaryColor
       ..style = PaintingStyle.fill;
 
     final Paint bgPaint = Paint()
