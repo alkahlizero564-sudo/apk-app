@@ -1542,35 +1542,103 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     say('تم حفظ ' + total + ' مفتاح API بنجاح وضبط الموديل إلى ' + m);
   });
 
+  // --- توفير استهلاك المفاتيح ---
+  // 1) إيقاف/تقليل "التفكير" (Thinking) الذي يُحتسب كتوكنات مخرجات مدفوعة.
+  // 2) دقة وسائط منخفضة + عدد إطارات أقل: الفيديو كان يُرسل بدقة كاملة (~258 توكن لكل ثانية).
+  function buildGenConfig(model) {
+    const cfg = { responseMimeType: 'application/json', mediaResolution: 'MEDIA_RESOLUTION_LOW' };
+    const m = String(model || '').toLowerCase();
+    if (/gemini-2\.5-flash/.test(m)) cfg.thinkingConfig = { thinkingBudget: 0 };
+    else if (/gemini-2\.5-pro/.test(m)) cfg.thinkingConfig = { thinkingBudget: 128 };
+    else if (/gemini-3/.test(m)) cfg.thinkingConfig = { thinkingLevel: 'low' };
+    return cfg;
+  }
+
+  // --- تتبع المفاتيح المستنفدة حتى لا نعيد استنزافها في كل طلب ---
+  const COOL_KEY = 'gemini_key_cooldown';
+  const LAST_KEY = 'gemini_last_good_key';
+  function keyId(k) { return k.slice(-8); }
+  function getCooldowns() { try { return JSON.parse(store(COOL_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function setCooldown(k, ms) {
+    const c = getCooldowns(); const now = Date.now();
+    Object.keys(c).forEach(id => { if (c[id] < now) delete c[id]; });
+    c[keyId(k)] = now + ms;
+    store(COOL_KEY, JSON.stringify(c));
+  }
+  function cooldownMs(status, data, msg) {
+    if (status === 401 || status === 403 || /API key not valid|API_KEY_INVALID|permission/i.test(msg)) return 12 * 3600e3;
+    if (/per ?day|PerDay|daily/i.test(msg)) return 6 * 3600e3; // حصة يومية: لا فائدة من إعادة المحاولة قريباً
+    const det = (data && data.error && data.error.details) || [];
+    for (const d of det) {
+      if (d && d.retryDelay) { const sec = parseFloat(d.retryDelay); if (sec > 0) return (sec + 2) * 1000; }
+    }
+    return 65 * 1000; // حد الطلبات في الدقيقة
+  }
+
+  // --- ذاكرة مؤقتة للنتائج: إعادة تحليل نفس الفيديو لا تستهلك المفتاح مرة أخرى ---
+  const CACHE_KEY = 'gemini_result_cache';
+  function cacheId(file, model) { return [file.name, file.size, file.lastModified, model].join('|'); }
+  function cacheGet(id) { try { return (JSON.parse(store(CACHE_KEY) || '{}') || {})[id] || null; } catch (e) { return null; } }
+  function cachePut(id, text) {
+    let c = {};
+    try { c = JSON.parse(store(CACHE_KEY) || '{}') || {}; } catch (e) {}
+    c[id] = { t: Date.now(), text: text };
+    const ids = Object.keys(c).sort((a, b) => c[b].t - c[a].t);
+    ids.slice(8).forEach(x => delete c[x]);
+    try { store(CACHE_KEY, JSON.stringify(c)); } catch (e) {}
+  }
+
   // --- دالة طلب Gemini مع التبديل التلقائي الذكي بين المفاتيح ---
+  // لا ننتقل للمفتاح التالي إلا عند خطأ يخص المفتاح نفسه (نفاد الحصة/مفتاح غير صالح)،
+  // أما أخطاء الطلب أو الشبكة فتتوقف فوراً بدل تكرار نفس الطلب الثقيل على كل المفاتيح.
   async function callGeminiWithFailover(payload, model) {
-    const keys = getAllApiKeys();
-    if (!keys.length) {
+    const all = getAllApiKeys();
+    if (!all.length) {
       throw new Error('يرجى إضافة مفتاح Gemini API واحد على الأقل في الإعدادات.');
     }
 
+    // ابدأ بآخر مفتاح نجح، وتخطَّ المفاتيح المستنفدة مؤقتاً
+    const last = store(LAST_KEY);
+    const li = all.findIndex(k => keyId(k) === last);
+    const ordered = li > 0 ? all.slice(li).concat(all.slice(0, li)) : all.slice();
+    const cd = getCooldowns(); const now = Date.now();
+    let keys = ordered.filter(k => !(cd[keyId(k)] > now));
+    if (!keys.length) {
+      const wait = Math.ceil((Math.min.apply(null, ordered.map(k => cd[keyId(k)])) - now) / 60000);
+      throw new Error('جميع المفاتيح مستنفدة مؤقتاً. حاول بعد ~' + wait + ' دقيقة أو أضف مفتاحاً جديداً.');
+    }
+
+    const body = JSON.stringify(payload);
     let lastError = null;
     for (let i = 0; i < keys.length; i++) {
       const activeKey = keys[i];
+      say('⏳ جارٍ الاتصال بـ Gemini بالمفتاح [' + (i + 1) + '/' + keys.length + ']...');
+      let res;
       try {
-        say('⏳ جارٍ الاتصال بـ Gemini بالمفتاح [' + (i + 1) + '/' + keys.length + ']...');
-        const res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+        res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': activeKey },
-          body: JSON.stringify(payload)
+          body: body
         });
-
-        const data = await res.json();
-        if (!res.ok) {
-          const errMsg = (data.error && data.error.message) || ('HTTP ' + res.status);
-          throw new Error(errMsg);
-        }
-        return data; // نجح الطلب
-      } catch (err) {
-        lastError = err;
-        console.warn('فشل المفتاح ' + (i + 1) + ': ' + err.message);
-        // المحاولة مع المفتاح التالي إن وجد
+      } catch (netErr) {
+        throw new Error('تعذر الاتصال بالشبكة: ' + netErr.message);
       }
+
+      let data = null;
+      try { data = await res.json(); } catch (e) {}
+      if (res.ok) {
+        store(LAST_KEY, keyId(activeKey));
+        return data;
+      }
+
+      const errMsg = (data && data.error && data.error.message) || ('HTTP ' + res.status);
+      const keyProblem = res.status === 429 || res.status === 401 || res.status === 403 ||
+        (res.status === 400 && /API key|API_KEY/i.test(errMsg));
+      if (!keyProblem) throw new Error(errMsg); // خطأ في الطلب نفسه: لا داعي لحرق بقية المفاتيح
+
+      setCooldown(activeKey, cooldownMs(res.status, data, errMsg));
+      lastError = new Error(errMsg);
+      console.warn('المفتاح ' + (i + 1) + ' مستنفد/غير صالح: ' + errMsg);
     }
     throw new Error('فشلت جميع المفاتيح (' + keys.length + '). الخطأ الأخير: ' + (lastError ? lastError.message : 'غير معروف'));
   }
@@ -1593,6 +1661,11 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
     say('⏳ جارٍ قراءة الفيديو وتحليله بالمونتاج السردي الحديث...');
 
     try {
+      const cid = cacheId(curFile, activeModel);
+      const cached = cacheGet(cid);
+      let rawText = cached ? cached.text : '';
+      if (cached) say('♻️ تم استخدام نتيجة محفوظة لنفس الفيديو (بدون استهلاك المفتاح).');
+      if (!cached) {
       const b64 = await new Promise((resolve, reject) => {
         const fr = new FileReader();
         fr.onload = () => resolve(String(fr.result).split(',')[1]);
@@ -1612,17 +1685,18 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       const payload = {
         contents: [{
           parts: [
-            { inline_data: { mime_type: curFile.type || 'video/mp4', data: b64 } },
+            { inline_data: { mime_type: curFile.type || 'video/mp4', data: b64 }, video_metadata: { fps: 0.5 } },
             { text: prompt }
           ]
         }],
-        generationConfig: { responseMimeType: 'application/json' }
+        generationConfig: buildGenConfig(activeModel)
       };
 
       const data = await callGeminiWithFailover(payload, activeModel);
 
-      const rawText = ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [])
+      rawText = ((data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [])
         .map(p => p.text || '').join('');
+      }
 
       let parsed = null;
       try {
@@ -1635,6 +1709,7 @@ input[type=range]{accent-color:var(--red);cursor:pointer}
       if (!parsed || !Array.isArray(parsed.captions)) {
         throw new Error('لم يتم استلام هيكل JSON سليم من الذكاء الاصطناعي');
       }
+      if (!cached) cachePut(cid, rawText);
 
       if (parsed.narrative && $('narrativeMode')) $('narrativeMode').value = parsed.narrative;
       if (parsed.cutTechnique && $('cutTechnique')) $('cutTechnique').value = parsed.cutTechnique;
