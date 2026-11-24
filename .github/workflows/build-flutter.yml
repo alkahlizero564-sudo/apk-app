@@ -1,4 +1,6 @@
-# v10
+# v12
+# v11 compatible
+# v10 compatible
 # v9 compatible
 # v8 compatible
 # v7 compatible
@@ -145,7 +147,7 @@ jobs:
           if [ -n "$BAD" ]; then echo "::error::unsupported packages:$BAD"; exit 1; fi
           echo "packages:$ADD"
           cd flutter_out
-          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; *) echo "$x" ;; esac; done); fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; flutter_local_notifications) echo "flutter_local_notifications:^19.5.0" ;; file_picker) echo "file_picker:^10.3.10" ;; *) echo "$x" ;; esac; done); fi
           if [ "$LOC" = "1" ]; then flutter pub add flutter_localizations --sdk=flutter; fi
           [ -z "$ADD" ] && exit 0
           MF=android/app/src/main/AndroidManifest.xml
@@ -209,6 +211,10 @@ jobs:
           VN=$(jq -r '.versionName // "1.0.0"' ../apps/$APP/settings.json 2>/dev/null || echo 1.0.0)
           VC=$(jq -r '.versionCode // 1' ../apps/$APP/settings.json 2>/dev/null || echo 1)
           flutter build apk --release --build-name=$VN --build-number=$VC
+          if grep -qs '^on' ../apps/$APP/store.txt; then
+            echo "=== Google Play file (.aab) ==="
+            flutter build appbundle --release --build-name=$VN --build-number=$VC
+          fi
       - name: verify signing
         if: always()
         continue-on-error: true
@@ -228,4 +234,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: flutter-${{ inputs.app }}-build-${{ github.run_number }}
-          files: flutter_out/build/app/outputs/flutter-apk/app-release.apk
+          files: |
+            flutter_out/build/app/outputs/flutter-apk/app-release.apk
+            flutter_out/build/app/outputs/bundle/release/app-release.aab

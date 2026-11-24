@@ -5893,9 +5893,192 @@ function addImports(s){
   return s.slice(0,last)+'\n'+add.join('\n')+s.slice(last);
 }
 
+/* ===== إصلاحات Dart الحتمية (بدون ذكاء اصطناعي) ===== */
+/* ماسح بسيط لكود Dart: يعرف النصوص والتعليقات والاستيفاء ${...} */
+function dScan(src,onStr){
+  const n=src.length,out=[],st=[{t:'c',d:0}];
+  let i=0;
+  const idc=function(ch){return /[A-Za-z0-9_$]/.test(ch||'')};
+  while(i<n){
+    const top=st[st.length-1],c=src[i],nx=src[i+1];
+    if(top.t==='c'){
+      if(c==='/'&&nx==='/'){const e=src.indexOf('\n',i);const j=e<0?n:e;out.push(src.slice(i,j));i=j;continue}
+      if(c==='/'&&nx==='*'){let d=1,j=i+2;while(j<n&&d>0){if(src[j]==='/'&&src[j+1]==='*'){d++;j+=2}else if(src[j]==='*'&&src[j+1]==='/'){d--;j+=2}else j++}out.push(src.slice(i,j));i=j;continue}
+      let raw=false,k=i;
+      if(c==='r'&&(nx==='"'||nx==="'")&&!idc(src[i-1])){raw=true;k=i+1}
+      const q=src[k];
+      if(q==='"'||q==="'"){
+        const tri=src.substr(k,3)===q+q+q;
+        st.push({t:'s',q:q,tri:tri,raw:raw});
+        out.push(src.slice(i,k+(tri?3:1)));i=k+(tri?3:1);continue;
+      }
+      if(c==='{')top.d++;
+      else if(c==='}'){if(top.d===0&&st.length>1){st.pop();out.push(c);i++;continue}top.d--}
+      out.push(c);i++;continue;
+    }
+    /* داخل نص */
+    if(!top.raw&&c==='\\'){out.push(c+(nx===undefined?'':nx));i+=2;continue}
+    if(top.tri?src.substr(i,3)===top.q+top.q+top.q:c===top.q){const L=top.tri?3:1;out.push(src.substr(i,L));i+=L;st.pop();continue}
+    if(!top.tri&&c==='\n'){st.pop();out.push(c);i++;continue}
+    if(!top.raw&&c==='$'){
+      if(nx==='{'){out.push('${');i+=2;st.push({t:'c',d:0});continue}
+      if(/[A-Za-z_]/.test(nx||'')){out.push(c);i++;continue}
+      /* $ بدون اسم متغير بعده: خطأ تجميع في Dart، نحوله إلى \$ */
+      out.push(onStr?onStr('$'):'\\$');i++;continue;
+    }
+    out.push(c);i++;
+  }
+  return out.join('');
+}
+function dEscDollar(s){return dScan(s)}
+
+/* إيجاد القوس المقابل مع تجاهل النصوص والتعليقات */
+function dClose(src,open){
+  let d=0,i=open;const n=src.length;
+  while(i<n){
+    const c=src[i],nx=src[i+1];
+    if(c==='/'&&nx==='/'){const e=src.indexOf('\n',i);i=e<0?n:e;continue}
+    if(c==='/'&&nx==='*'){const e=src.indexOf('*/',i+2);i=e<0?n:e+2;continue}
+    if(c==='"'||c==="'"){
+      const tri=src.substr(i,3)===c+c+c,raw=src[i-1]==='r'&&!/[A-Za-z0-9_]/.test(src[i-2]||'');
+      let j=i+(tri?3:1),dd=0;
+      while(j<n){
+        if(!raw&&src[j]==='\\'){j+=2;continue}
+        if(!raw&&src[j]==='$'&&src[j+1]==='{'){dd++;j+=2;continue}
+        if(dd>0){if(src[j]==='{')dd++;else if(src[j]==='}')dd--;j++;continue}
+        if(tri?src.substr(j,3)===c+c+c:src[j]===c){j+=tri?3:1;break}
+        if(!tri&&src[j]==='\n')break;
+        j++;
+      }
+      i=j;continue;
+    }
+    if(c==='('||c==='['||c==='{')d++;
+    else if(c===')'||c===']'||c==='}'){d--;if(d===0)return i}
+    i++;
+  }
+  return -1;
+}
+/* تقسيم الوسائط على الفواصل في المستوى الأعلى */
+function dArgs(inner){
+  const out=[];let d=0,last=0,i=0;const n=inner.length;
+  while(i<n){
+    const c=inner[i];
+    if(c==='"'||c==="'"||(c==='/'&&(inner[i+1]==='/'||inner[i+1]==='*'))){
+      /* نستخدم dClose على غلاف مؤقت لتخطي النص */
+      const tmp='('+inner.slice(i)+')';
+      const probe=dSkip(tmp,1);i+=probe-1;continue;
+    }
+    if(c==='('||c==='['||c==='{')d++;
+    else if(c===')'||c===']'||c==='}')d--;
+    else if(c===','&&d===0){out.push(inner.slice(last,i));last=i+1}
+    i++;
+  }
+  const t=inner.slice(last);if(t.trim())out.push(t);
+  return out;
+}
+function dSkip(src,i){
+  const c=src[i],nx=src[i+1],n=src.length;
+  if(c==='/'&&nx==='/'){const e=src.indexOf('\n',i);return e<0?n:e}
+  if(c==='/'&&nx==='*'){const e=src.indexOf('*/',i+2);return e<0?n:e+2}
+  const tri=src.substr(i,3)===c+c+c;let j=i+(tri?3:1),dd=0;
+  while(j<n){
+    if(src[j]==='\\'){j+=2;continue}
+    if(src[j]==='$'&&src[j+1]==='{'){dd++;j+=2;continue}
+    if(dd>0){if(src[j]==='{')dd++;else if(src[j]==='}')dd--;j++;continue}
+    if(tri?src.substr(j,3)===c+c+c:src[j]===c)return j+(tri?3:1);
+    if(!tri&&src[j]==='\n')return j;
+    j++;
+  }
+  return n;
+}
+
+/* flutter_local_notifications: الأداة تثبّت الإصدار 19 (الوسائط بالترتيب).
+   لو الذكاء الاصطناعي كتب أسلوب الإصدار 20+ (وسائط بالاسم) نحوله تلقائياً، ونشيل الوسائط المحذوفة. */
+const FLN_POS={
+  initialize:['settings'],
+  show:['id','title','body','notificationDetails'],
+  cancel:['id'],
+  zonedSchedule:['id','title','body','scheduledDate','notificationDetails'],
+  periodicallyShow:['id','title','body','repeatInterval','notificationDetails'],
+  periodicallyShowWithDuration:['id','title','body','repeatDurationInterval','notificationDetails']
+};
+const FLN_NEED_MODE={zonedSchedule:1,periodicallyShow:1};
+const FLN_DROP=/^\s*(uiLocalNotificationDateInterpretation|androidAllowWhileIdle)\s*:/;
+function dFln(s){
+  if(s.indexOf('flutter_local_notifications')<0)return s;
+  const names={};
+  let m;const r1=/(\w+)\s*=\s*FlutterLocalNotificationsPlugin\s*\(/g,r2=/FlutterLocalNotificationsPlugin\??\s+(\w+)\b/g;
+  while((m=r1.exec(s)))names[m[1]]=1;
+  while((m=r2.exec(s)))names[m[1]]=1;
+  const ids=Object.keys(names).filter(function(x){return x!=='get'&&x!=='final'});
+  const recv=ids.map(function(x){return '\\b'+x+'\\s*[!?]?'}).concat(['FlutterLocalNotificationsPlugin\\s*\\(\\s*\\)']).join('|');
+  const re=new RegExp('(?:'+recv+')\\s*\\.\\s*('+Object.keys(FLN_POS).join('|')+')\\s*\\(','g');
+  let out='',pos=0;
+  while((m=re.exec(s))){
+    const open=m.index+m[0].length-1,close=dClose(s,open);
+    if(close<0)continue;
+    const meth=m[1],want=FLN_POS[meth];
+    const args=dArgs(s.slice(open+1,close));
+    const named={},pos0=[],rest=[];
+    args.forEach(function(a){
+      const k=a.match(/^\s*(\w+)\s*:(?!:)/);
+      if(k&&want.indexOf(k[1])>-1)named[k[1]]=a.slice(a.indexOf(':')+1).trim();
+      else if(k){if(!FLN_DROP.test(a))rest.push(a.trim())}
+      else pos0.push(a.trim());
+    });
+    if(!Object.keys(named).length&&!args.some(function(a){return FLN_DROP.test(a)})&&!(FLN_NEED_MODE[meth]&&!rest.some(function(a){return /^androidScheduleMode\s*:/.test(a)})))continue;
+    const fin=[];let ok=true;
+    for(let j=0;j<want.length;j++){
+      if(j<pos0.length)fin.push(pos0[j]);
+      else if(named[want[j]]!==undefined)fin.push(named[want[j]]);
+      else if(want[j]==='title'||want[j]==='body')fin.push('null');
+      else {ok=false;break}
+    }
+    if(!ok)continue;
+    if(FLN_NEED_MODE[meth]&&!rest.some(function(a){return /^androidScheduleMode\s*:/.test(a)}))rest.push('androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle');
+    out+=s.slice(pos,open+1)+fin.concat(rest).join(', ')+')';
+    pos=close+1;re.lastIndex=close+1;
+  }
+  s=out+s.slice(pos);
+  /* حقل محذوف في إعدادات iOS */
+  s=s.replace(/^[ \t]*onDidReceiveLocalNotification\s*:\s*[\w.]+\s*,?[ \t]*\n/gm,'');
+  return s;
+}
+
+/* file_picker: الأداة تثبّت الإصدار 10 (FilePicker.platform.pickFiles) */
+function dFilePicker(s){
+  if(s.indexOf('file_picker')<0)return s;
+  return s.replace(/\bFilePicker\s*\.\s*(pickFiles|getDirectoryPath|saveFile|clearTemporaryFiles|pickFileAndDirectoryPaths)\s*\(/g,'FilePicker.platform.$1(');
+}
+
+/* أخطاء كتابة شائعة: ":color =" بدل "..color =" داخل Paint() وأمثالها */
+function dCascade(s){
+  const L=s.split('\n');
+  for(let i=0;i<L.length;i++){
+    const m=L[i].match(/^(\s*):(\w+)(\s*=[^=])/);
+    if(!m)continue;
+    let p=i-1;while(p>=0&&!L[p].trim())p--;
+    let q=i+1;while(q<L.length&&!L[q].trim())q++;
+    const prevOk=p>=0&&/(Paint\(\)|\.\.\w+\s*=.*)\s*$/.test(L[p]);
+    const nextOk=q<L.length&&/^\s*\.\.\w/.test(L[q]);
+    if(prevOk||nextOk)L[i]=m[1]+'..'+m[2]+L[i].slice(m[1].length+1+m[2].length);
+  }
+  return L.join('\n');
+}
+
+function dFixAll(s){
+  s=dEscDollar(s);
+  s=dFln(s);
+  s=dFilePicker(s);
+  s=dCascade(s);
+  return s;
+}
+
 function cnt(s){return (String(s).match(/[(){}\[\]]/g)||[]).length}
 function fixDart(code){
-  const orig=String(code);
+  let base=String(code);
+  try{base=dFixAll(base)}catch(e){}
+  const orig=base;
   let s=orig;
   try{
     s=s.replace(/\b(cardTheme|dialogTheme|tabBarTheme)\s*:\s*(CardTheme|DialogTheme|TabBarTheme)\s*\(/g,function(m,a,b){return a+': '+b+'Data('});
@@ -6108,7 +6291,7 @@ async function diagnose(){
         item(E,own?'ok':'warn',w[0]+': '+(v?'v'+v:'إصدار غير معروف')+' — '+(own?'مفتاح لكل تطبيق':'مفتاح عشوائي أو مشترك'));
       }
       const cf=await ghFile(repo,br,'.github/workflows/check-flutter.yml');
-      item(E,(cf!==null&&cf.indexOf('# ck6')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck6')>-1?'الأحدث (ck6)':'قديم، بيتحدث تلقائياً عند أول فحص')));
+      item(E,(cf!==null&&cf.indexOf('# ck7')>-1)?'ok':'info','check-flutter.yml: '+(cf===null?'غير موجود (بيتنشأ عند أول فحص)':(cf.indexOf('# ck7')>-1?'الأحدث (ck7)':'قديم، بيتحدث تلقائياً عند أول فحص')));
       try{
         const ks=await gh('/repos/'+repo+'/contents/keys?ref='+br);
         const n=(Array.isArray(ks)?ks:[]).filter(function(f){return /\.keystore$/.test(f.name)});
@@ -6223,7 +6406,8 @@ render=function(){
 function maxFix(){const v=parseInt(S.keys.maxFix3,10);return (v>=1&&v<=100)?v:5}
 function stallN(){const v=parseInt(S.keys.stall3,10);return (v>=3&&v<=50)?v:3}
 
-const CK_FL=`# ck6
+const CK_FL=`# ck7
+# ck6
 # ck5
 # ck4
 # ck3
@@ -6264,7 +6448,7 @@ jobs:
             case "$p" in flutter|flutter_test|app_$APP) continue ;; flutter_localizations) flutter pub add flutter_localizations --sdk=flutter; continue ;; esac
             if echo " $ALLOW " | grep -q " $p "; then ADD="$ADD $p"; else BAD="$BAD $p"; fi
           done
-          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; *) echo "$x" ;; esac; done); fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; flutter_local_notifications) echo "flutter_local_notifications:^19.5.0" ;; file_picker) echo "file_picker:^10.3.10" ;; *) echo "$x" ;; esac; done); fi
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
           cd ..
@@ -6351,7 +6535,7 @@ jobs:
 `;
 
 const CK={
-  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck6',main:'main.dart',name:'Flutter',min:'2-4'},
+  flutter:{file:'check-flutter.yml',yaml:CK_FL,mk:'# ck7',main:'main.dart',name:'Flutter',min:'2-4'},
   python:{file:'check-python.yml',yaml:CK_PY,mk:'# ck2',main:'main.py',name:'Python',min:'1'}
 };
 
@@ -9523,7 +9707,8 @@ render=function(){
 })();
 /* ===== إضافة: ملفات البناء الأحدث (Flutter v8 وPython v8: مكتبات تلقائية + دعم العربي) ===== */
 (function(){
-const WF_FLUTTER8=`# v11
+const WF_FLUTTER8=`# v12
+# v11 compatible
 # v10 compatible
 # v9 compatible
 # v8 compatible
@@ -9671,7 +9856,7 @@ jobs:
           if [ -n "$BAD" ]; then echo "::error::unsupported packages:$BAD"; exit 1; fi
           echo "packages:$ADD"
           cd flutter_out
-          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; *) echo "$x" ;; esac; done); fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; flutter_local_notifications) echo "flutter_local_notifications:^19.5.0" ;; file_picker) echo "file_picker:^10.3.10" ;; *) echo "$x" ;; esac; done); fi
           if [ "$LOC" = "1" ]; then flutter pub add flutter_localizations --sdk=flutter; fi
           [ -z "$ADD" ] && exit 0
           MF=android/app/src/main/AndroidManifest.xml
@@ -10100,7 +10285,7 @@ else:
     sys.exit("no android app in firebase project " + P + " and could not create one. Add any Android app in Firebase console.")
 `;
 if(typeof WF!=='undefined'){if(WF.flutter)WF.flutter.yaml=WF_FLUTTER8;if(WF.python)WF.python.yaml=WF_PYTHON8}
-const WF_MK8={flutter:'# v11',python:'# v13'};
+const WF_MK8={flutter:'# v12',python:'# v13'};
 async function ensureWf8(l){
   if(typeof WF==='undefined'||!WF[l])return;
   const repo=await repoFull(),info=await gh('/repos/'+repo),br=info.default_branch||'main';
@@ -10118,7 +10303,7 @@ buildNative=async function(i,l){
 };
 
 /* تعريف الذكاء الاصطناعي بالمكتبات المتاحة */
-const FL_LIBS='\n\n=== مكتبات Flutter المتاحة (تُنزَّل وتُضبط تلقائياً وقت البناء مع صلاحيات أندرويد اللازمة) ===\nيمكنك استخدام هذه الحزم فقط عند الحاجة الفعلية (import \'package:الاسم/...\'): http, shared_preferences, path_provider, path, sqflite, intl, url_launcher, provider, google_fonts, fl_chart, image_picker, file_picker, share_plus, uuid, connectivity_plus, package_info_plus, device_info_plus, geolocator, permission_handler, cached_network_image, flutter_svg, lottie, audioplayers, video_player, webview_flutter, mobile_scanner, qr_flutter, local_auth, flutter_local_notifications, timezone, collection, crypto, table_calendar, shimmer, flutter_animate, animations, pdf, printing, csv, flutter_localizations.\nأمثلة: shared_preferences أو sqflite للحفظ الدائم، intl للتواريخ والأرقام، fl_chart للرسوم البيانية، image_picker للصور، url_launcher للاتصال والروابط وواتساب، share_plus للمشاركة، geolocator للموقع، pdf وprinting للفواتير، flutter_local_notifications للتنبيهات المحلية، google_fonts لخطوط عربية جميلة (مثل GoogleFonts.cairo أو tajawal). أي حزمة غير هذه ممنوعة. استخدم واجهة الحزم الحديثة (الإصدارات الأخيرة).';
+const FL_LIBS='\n\n=== مكتبات Flutter المتاحة (تُنزَّل وتُضبط تلقائياً وقت البناء مع صلاحيات أندرويد اللازمة) ===\nيمكنك استخدام هذه الحزم فقط عند الحاجة الفعلية (import \'package:الاسم/...\'): http, shared_preferences, path_provider, path, sqflite, intl, url_launcher, provider, google_fonts, fl_chart, image_picker, file_picker, share_plus, uuid, connectivity_plus, package_info_plus, device_info_plus, geolocator, permission_handler, cached_network_image, flutter_svg, lottie, audioplayers, video_player, webview_flutter, mobile_scanner, qr_flutter, local_auth, flutter_local_notifications, timezone, collection, crypto, table_calendar, shimmer, flutter_animate, animations, pdf, printing, csv, flutter_localizations.\nأمثلة: shared_preferences أو sqflite للحفظ الدائم، intl للتواريخ والأرقام، fl_chart للرسوم البيانية، image_picker للصور، url_launcher للاتصال والروابط وواتساب، share_plus للمشاركة، geolocator للموقع، pdf وprinting للفواتير، flutter_local_notifications للتنبيهات المحلية، google_fonts لخطوط عربية جميلة (مثل GoogleFonts.cairo أو tajawal). أي حزمة غير هذه ممنوعة. استخدم واجهة الحزم الحديثة (الإصدارات الأخيرة)، مع استثناءين مثبّتين على إصدار محدد:\n- flutter_local_notifications الإصدار 19 (الوسائط بالترتيب وليس بالاسم): plugin.initialize(initSettings) و plugin.show(id, title, body, details) و plugin.cancel(id) و plugin.zonedSchedule(id, title, body, scheduledDate, details, androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle). لا تستخدم uiLocalNotificationDateInterpretation ولا onDidReceiveLocalNotification.\n- file_picker الإصدار 10: FilePicker.platform.pickFiles(...) وتُرجع FilePickerResult?.\n- داخل النصوص في Dart علامة الدولار تُكتب \\$ (مثل \'السعر (\\$)\') لأن $ وحدها تعني متغيراً.';
 const PY_LIBS='\n\n=== مكتبات Python المتاحة (تُنزَّل تلقائياً وقت البناء) ===\nالمكتبة القياسية لبايثون، وkivy 2.3، وkivymd 1.2، وcertifi، وrequests، وPIL (pillow)، وplyer (gps وcamera وvibrator وnotification...)، وsqlite3، وnumpy، وdateutil، وqrcode، وpytz. أي مكتبة غير هذه ممنوعة.\nالعربي (مهم جداً): الخط العربي مضبوط تلقائياً كخط افتراضي، لكن Kivy لا يربط الحروف العربية بنفسه، لذلك أضف from apkar import ar في أول الملف ومرّر كل نص عربي معروض عبر ar() مثل Label(text=ar("مرحباً")) وButton(text=ar("حفظ"))، ولا تمرر النص عبر ar() مرتين، ولا تستخدمها مع النصوص المخزنة أو المرسلة للسيرفر.';
 function libsOn(p){
   return p.replace(/بدون أي حزم خارجية غير flutter\/material\.dart/g,'مستخدماً flutter/material.dart والحزم المتاحة المذكورة في آخر الطلب فقط')
