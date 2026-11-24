@@ -148,18 +148,13 @@ async function ai(prompt){const k=S.keys;
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'content-type':'application/json','x-api-key':k.claude,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:MODELS.claude,max_tokens:16000,messages:[{role:'user',content:prompt}]})});
     const j=await r.json();if(!r.ok)throw new Error((j.error&&j.error.message)||'فشل الاتصال بـ Claude');
     return j.content.map(c=>c.text||'').join('')}
-  const gk=[k.gemini,k.gemini2,k.gemini3].filter(Boolean);
+    const gk=[k.gemini,k.gemini2,k.gemini3].filter(Boolean);
   if(!gk.length)throw new Error('أدخل مفتاح Gemini في قائمة المفاتيح');
-  let last;
-  for(let n=0;n<gk.length;n++){
-    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS.gemini+':generateContent?key='+encodeURIComponent(gk[n]),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
-    const j=await r.json().catch(()=>({}));
-    if(r.ok){if(!j.candidates||!j.candidates[0]||!j.candidates[0].content)throw new Error('رد فارغ من Gemini، حاول مرة أخرى.');return (j.candidates[0].content.parts||[]).map(p=>p.text||'').join('')}
-    const msg=(j.error&&j.error.message)||'فشل الاتصال بـ Gemini';
-    last=new Error(msg);
-    if(!(r.status===429||/quota|exhaust/i.test(msg)))throw last;
-    if(n<gk.length-1)toast('حصة المفتاح '+(n+1)+' خلصت، التحويل للمفتاح '+(n+2))}
-  throw last}
+  const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+MODELS.gemini+':generateContent?key='+encodeURIComponent(gk[0]),{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error((j.error&&j.error.message)||'فشل الاتصال بـ Gemini');
+  if(!j.candidates||!j.candidates[0]||!j.candidates[0].content)throw new Error('رد فارغ من Gemini، حاول مرة أخرى.');
+  return (j.candidates[0].content.parts||[]).map(p=>p.text||'').join('')}
 function clean(t){const m=t.match(/```(?:\w+)?\n([\s\S]*?)```/);return (m?m[1]:t).trim()}
 const SYS='أنت مبرمج محترف. التطبيق مكتوب بـ HTML وCSS وJavaScript في ملف واحد index.html ويعمل داخل تطبيق أندرويد. أعد الكود الكامل فقط داخل كتلة ```html بدون أي شرح.\n\n';
 async function busy(btn,fn){const t=btn.textContent;btn.disabled=true;btn.textContent='⏳ جاري العمل...';try{await fn()}catch(e){toast(arErr(e))}finally{btn.disabled=false;btn.textContent=t}}
