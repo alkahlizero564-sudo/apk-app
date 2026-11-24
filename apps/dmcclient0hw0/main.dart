@@ -29,7 +29,7 @@ Future<void> initLocalNotifications() async {
         AndroidInitializationSettings('@mipmap/ic_launcher');
     const InitializationSettings initializationSettings =
         InitializationSettings(android: initializationSettingsAndroid);
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await flutterLocalNotificationsPlugin.initialize(settings: initializationSettings);
   } catch (_) {}
 }
 
@@ -44,12 +44,7 @@ Future<void> triggerNotification(String title, String body) async {
     );
     const NotificationDetails platformDetails =
         NotificationDetails(android: androidDetails);
-    await flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
-      platformDetails,
-    );
+    await flutterLocalNotificationsPlugin.show(id: DateTime.now().millisecondsSinceEpoch ~/ 1000, title: title, body: body, notificationDetails: platformDetails);
   } catch (_) {}
 }
 
@@ -3292,7 +3287,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         controller: priceUsdCtrl,
                         keyboardType: TextInputType.number,
                         decoration: InputDecoration(
-                            labelText: isAr ? 'السعر الأساسي ($)' : 'USD Price ($)',
+                            labelText: isAr ? 'السعر الأساسي (\$)' : 'USD Price (\$)',
                             border: OutlineInputBorder()),
                       ),
                     ),
