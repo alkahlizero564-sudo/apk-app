@@ -5992,8 +5992,8 @@ function dSkip(src,i){
   return n;
 }
 
-/* flutter_local_notifications: الأداة تثبّت الإصدار 19 (الوسائط بالترتيب).
-   لو الذكاء الاصطناعي كتب أسلوب الإصدار 20+ (وسائط بالاسم) نحوله تلقائياً، ونشيل الوسائط المحذوفة. */
+/* flutter_local_notifications: البناء يثبّت أحدث إصدار (20+)، وفيه الوسائط بالاسم.
+   الذكاء الاصطناعي غالباً يكتب الأسلوب القديم (بالترتيب)، فنحوله تلقائياً ونشيل الوسائط المحذوفة. */
 const FLN_POS={
   initialize:['settings'],
   show:['id','title','body','notificationDetails'],
@@ -6019,28 +6019,21 @@ function dFln(s){
     if(close<0)continue;
     const meth=m[1],want=FLN_POS[meth];
     const args=dArgs(s.slice(open+1,close));
-    const named={},pos0=[],rest=[];
+    const pos0=[],named=[];let drop=false;
     args.forEach(function(a){
-      const k=a.match(/^\s*(\w+)\s*:(?!:)/);
-      if(k&&want.indexOf(k[1])>-1)named[k[1]]=a.slice(a.indexOf(':')+1).trim();
-      else if(k){if(!FLN_DROP.test(a))rest.push(a.trim())}
+      if(/^\s*\w+\s*:(?!:)/.test(a)){if(FLN_DROP.test(a))drop=true;else named.push(a.trim())}
       else pos0.push(a.trim());
     });
-    if(!Object.keys(named).length&&!args.some(function(a){return FLN_DROP.test(a)})&&!(FLN_NEED_MODE[meth]&&!rest.some(function(a){return /^androidScheduleMode\s*:/.test(a)})))continue;
-    const fin=[];let ok=true;
-    for(let j=0;j<want.length;j++){
-      if(j<pos0.length)fin.push(pos0[j]);
-      else if(named[want[j]]!==undefined)fin.push(named[want[j]]);
-      else if(want[j]==='title'||want[j]==='body')fin.push('null');
-      else {ok=false;break}
-    }
-    if(!ok)continue;
-    if(FLN_NEED_MODE[meth]&&!rest.some(function(a){return /^androidScheduleMode\s*:/.test(a)}))rest.push('androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle');
-    out+=s.slice(pos,open+1)+fin.concat(rest).join(', ')+')';
+    const hasMode=named.some(function(a){return /^androidScheduleMode\s*:/.test(a)});
+    const needMode=FLN_NEED_MODE[meth]&&!hasMode;
+    if(!pos0.length&&!drop&&!needMode)continue;
+    if(pos0.length>want.length)continue;
+    const fin=pos0.map(function(v,j){return want[j]+': '+v}).concat(named);
+    if(needMode)fin.push('androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle');
+    out+=s.slice(pos,open+1)+fin.join(', ')+')';
     pos=close+1;re.lastIndex=close+1;
   }
   s=out+s.slice(pos);
-  /* حقل محذوف في إعدادات iOS */
   s=s.replace(/^[ \t]*onDidReceiveLocalNotification\s*:\s*[\w.]+\s*,?[ \t]*\n/gm,'');
   return s;
 }
@@ -6448,7 +6441,7 @@ jobs:
             case "$p" in flutter|flutter_test|app_$APP) continue ;; flutter_localizations) flutter pub add flutter_localizations --sdk=flutter; continue ;; esac
             if echo " $ALLOW " | grep -q " $p "; then ADD="$ADD $p"; else BAD="$BAD $p"; fi
           done
-          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; flutter_local_notifications) echo "flutter_local_notifications:^19.5.0" ;; file_picker) echo "file_picker:^10.3.10" ;; *) echo "$x" ;; esac; done); fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; file_picker) echo "file_picker:^10.3.10" ;; *) echo "$x" ;; esac; done); fi
           flutter pub get
           flutter analyze --no-fatal-infos --no-fatal-warnings > ../analyze.txt 2>&1 || true
           cd ..
@@ -9856,7 +9849,7 @@ jobs:
           if [ -n "$BAD" ]; then echo "::error::unsupported packages:$BAD"; exit 1; fi
           echo "packages:$ADD"
           cd flutter_out
-          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; flutter_local_notifications) echo "flutter_local_notifications:^19.5.0" ;; file_picker) echo "file_picker:^10.3.10" ;; *) echo "$x" ;; esac; done); fi
+          if [ -n "$ADD" ]; then flutter pub add $(for x in $ADD; do case "$x" in google_fonts) echo "google_fonts:<9.0.0" ;; file_picker) echo "file_picker:^10.3.10" ;; *) echo "$x" ;; esac; done); fi
           if [ "$LOC" = "1" ]; then flutter pub add flutter_localizations --sdk=flutter; fi
           [ -z "$ADD" ] && exit 0
           MF=android/app/src/main/AndroidManifest.xml
@@ -10303,7 +10296,7 @@ buildNative=async function(i,l){
 };
 
 /* تعريف الذكاء الاصطناعي بالمكتبات المتاحة */
-const FL_LIBS='\n\n=== مكتبات Flutter المتاحة (تُنزَّل وتُضبط تلقائياً وقت البناء مع صلاحيات أندرويد اللازمة) ===\nيمكنك استخدام هذه الحزم فقط عند الحاجة الفعلية (import \'package:الاسم/...\'): http, shared_preferences, path_provider, path, sqflite, intl, url_launcher, provider, google_fonts, fl_chart, image_picker, file_picker, share_plus, uuid, connectivity_plus, package_info_plus, device_info_plus, geolocator, permission_handler, cached_network_image, flutter_svg, lottie, audioplayers, video_player, webview_flutter, mobile_scanner, qr_flutter, local_auth, flutter_local_notifications, timezone, collection, crypto, table_calendar, shimmer, flutter_animate, animations, pdf, printing, csv, flutter_localizations.\nأمثلة: shared_preferences أو sqflite للحفظ الدائم، intl للتواريخ والأرقام، fl_chart للرسوم البيانية، image_picker للصور، url_launcher للاتصال والروابط وواتساب، share_plus للمشاركة، geolocator للموقع، pdf وprinting للفواتير، flutter_local_notifications للتنبيهات المحلية، google_fonts لخطوط عربية جميلة (مثل GoogleFonts.cairo أو tajawal). أي حزمة غير هذه ممنوعة. استخدم واجهة الحزم الحديثة (الإصدارات الأخيرة)، مع استثناءين مثبّتين على إصدار محدد:\n- flutter_local_notifications الإصدار 19 (الوسائط بالترتيب وليس بالاسم): plugin.initialize(initSettings) و plugin.show(id, title, body, details) و plugin.cancel(id) و plugin.zonedSchedule(id, title, body, scheduledDate, details, androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle). لا تستخدم uiLocalNotificationDateInterpretation ولا onDidReceiveLocalNotification.\n- file_picker الإصدار 10: FilePicker.platform.pickFiles(...) وتُرجع FilePickerResult?.\n- داخل النصوص في Dart علامة الدولار تُكتب \\$ (مثل \'السعر (\\$)\') لأن $ وحدها تعني متغيراً.';
+const FL_LIBS='\n\n=== مكتبات Flutter المتاحة (تُنزَّل وتُضبط تلقائياً وقت البناء مع صلاحيات أندرويد اللازمة) ===\nيمكنك استخدام هذه الحزم فقط عند الحاجة الفعلية (import \'package:الاسم/...\'): http, shared_preferences, path_provider, path, sqflite, intl, url_launcher, provider, google_fonts, fl_chart, image_picker, file_picker, share_plus, uuid, connectivity_plus, package_info_plus, device_info_plus, geolocator, permission_handler, cached_network_image, flutter_svg, lottie, audioplayers, video_player, webview_flutter, mobile_scanner, qr_flutter, local_auth, flutter_local_notifications, timezone, collection, crypto, table_calendar, shimmer, flutter_animate, animations, pdf, printing, csv, flutter_localizations.\nأمثلة: shared_preferences أو sqflite للحفظ الدائم، intl للتواريخ والأرقام، fl_chart للرسوم البيانية، image_picker للصور، url_launcher للاتصال والروابط وواتساب، share_plus للمشاركة، geolocator للموقع، pdf وprinting للفواتير، flutter_local_notifications للتنبيهات المحلية، google_fonts لخطوط عربية جميلة (مثل GoogleFonts.cairo أو tajawal). أي حزمة غير هذه ممنوعة. استخدم واجهة الحزم الحديثة (الإصدارات الأخيرة)، مع ملاحظات مهمة:\n- flutter_local_notifications أحدث إصدار (الوسائط بالاسم): plugin.initialize(settings: initSettings) و plugin.show(id: 1, title: t, body: b, notificationDetails: details) و plugin.cancel(id: 1) و plugin.zonedSchedule(id: 1, title: t, body: b, scheduledDate: date, notificationDetails: details, androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle). لا تستخدم uiLocalNotificationDateInterpretation ولا onDidReceiveLocalNotification.\n- file_picker الإصدار 10: FilePicker.platform.pickFiles(...) وتُرجع FilePickerResult?.\n- داخل النصوص في Dart علامة الدولار تُكتب \\$ (مثل \'السعر (\\$)\') لأن $ وحدها تعني متغيراً.';
 const PY_LIBS='\n\n=== مكتبات Python المتاحة (تُنزَّل تلقائياً وقت البناء) ===\nالمكتبة القياسية لبايثون، وkivy 2.3، وkivymd 1.2، وcertifi، وrequests، وPIL (pillow)، وplyer (gps وcamera وvibrator وnotification...)، وsqlite3، وnumpy، وdateutil، وqrcode، وpytz. أي مكتبة غير هذه ممنوعة.\nالعربي (مهم جداً): الخط العربي مضبوط تلقائياً كخط افتراضي، لكن Kivy لا يربط الحروف العربية بنفسه، لذلك أضف from apkar import ar في أول الملف ومرّر كل نص عربي معروض عبر ar() مثل Label(text=ar("مرحباً")) وButton(text=ar("حفظ"))، ولا تمرر النص عبر ar() مرتين، ولا تستخدمها مع النصوص المخزنة أو المرسلة للسيرفر.';
 function libsOn(p){
   return p.replace(/بدون أي حزم خارجية غير flutter\/material\.dart/g,'مستخدماً flutter/material.dart والحزم المتاحة المذكورة في آخر الطلب فقط')
