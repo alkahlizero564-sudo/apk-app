@@ -12263,6 +12263,132 @@ render=function(){
 render();
 })();
 
+/* ===== فصل الأدوار في النظام المتكامل: تطبيق الزبون بدون واجهة إدارة، وتطبيق الإدارة بدون واجهة زبون ===== */
+(function(){
+/* كشف واجهة الدور الآخر داخل تطبيق من نظام (زبون / إدارة) */
+const ROLE_RX={
+  c:[/_?open(Admin|Staff|Manager|Owner)\w*\s*\(/i,/(Admin|Manager|Owner|Staff)\s*(Panel|Dashboard|Login|Mode|Screen|Page)\b/i,/Staff\s*(Admin\s*)?Login/i,/admin_panel_settings/,
+     /لوحة\s*(ال)?(تحكم\s*)?(ال)?(إدارة|مدير|مالك|صاحب)/,/دخول\s*(كادر\s*)?(ال)?(إدارة|مدير|موظفين|موظف)/,/تسجيل\s*دخول\s*(كادر\s*|ال)?(إدارة|مدير|موظف|الموظفين)/,
+     /(وضع|واجهة|شاشة)\s*(ال)?(إدارة|مدير|موظفين)/,/(isAdmin|adminMode|isAdminMode|showAdmin|isManager|isOwner|isStaff|staffMode)\s*[=:]/],
+  a:[/is(Customer|Client)View/i,/(customer|client)Mode\s*[=:]/i,/switchTo(Customer|Client)/i,/(واجهة|وضع|عرض|شاشة)\s*(ال)?(زبون|زبائن|عميل|عملاء)\b/,/(Customer|Client)\s*(View|Mode)\b/,/(عرض|ادخل|تصفح)\s*(ك|بصفة\s*)(زبون|عميل)/]
+};
+function roleHits(code,r){const s=String(code||'');return (ROLE_RX[r]||[]).filter(function(x){return x.test(s)}).map(function(x){const m=s.match(x);return m?m[0]:''})}
+
+const MK='=== فصل الأدوار (إلزامي) ===';
+const RULE={
+ c:'\n\n'+MK+'\nهذا هو تطبيق الزبائن فقط. الإدارة لها تطبيق منفصل تماماً. ممنوع منعاً باتاً أن يحتوي هذا التطبيق على: زر أو رابط أو شاشة أو نافذة لدخول الإدارة أو الموظفين، أو لوحة تحكم، أو إدارة الطلبات أو المنتجات أو الأسعار أو المستخدمين، أو سجل نشاط الموظفين، أو أي وضع يحوّل التطبيق لواجهة الإدارة. يرى الزبون ردود الإدارة وحالة طلباته فقط (قراءة)، ولا يغيّرها. لا تنسخ أي شاشة إدارة من كود التطبيق الآخر.',
+ a:'\n\n'+MK+'\nهذا هو تطبيق الإدارة (صاحب النشاط) فقط. الزبائن لهم تطبيق منفصل تماماً. ممنوع منعاً باتاً أن يحتوي هذا التطبيق على: واجهة الزبون، أو وضع «عرض كزبون»، أو زر للتبديل بين الإدارة والزبون، أو تسجيل دخول بصفة زبون، أو شاشات التسوق والطلب الخاصة بالزبون. لا تنسخ أي شاشة زبون من كود التطبيق الآخر.'
+};
+const RN={c:'تطبيق الزبون',a:'تطبيق الإدارة'},OTHER={c:'الإدارة',a:'الزبون'};
+function has(a){return !!(a&&a.code&&String(a.code).trim())}
+function isSys(){const p=(S.projects||[]).find(function(x){return x.id===S.cur});return (has(S.apps[0])&&has(S.apps[1]))||!!(p&&p.kind===1)}
+function roleOfIdx(i){return isSys()?(i?'a':'c'):''}
+function roleOfPrompt(p){
+  if(p.indexOf('دور التطبيق: تطبيق الإدارة')>-1||p.indexOf('تطبيق الإدارة (صاحب النشاط)')>-1&&p.indexOf('دور التطبيق: تطبيق الزبائن')<0)return 'a';
+  if(p.indexOf('دور التطبيق: تطبيق الزبائن')>-1)return 'c';
+  /* طلب تعديل أو إصلاح: نعرف التطبيق من الكود المرفق نفسه (مش من آخر تطبيق اتفتح) */
+  const k=p.indexOf('الكود الحالي:');
+  if(k>-1&&isSys()){
+    const m=p.slice(k).match(/```\w*\n([\s\S]*?)```/);
+    if(m){const b=m[1].trim().slice(0,400);for(let i=0;i<2;i++){if(has(S.apps[i])&&String(S.apps[i].code).trim().slice(0,400)===b)return roleOfIdx(i)}}
+  }
+  return '';
+}
+function fenceLang(t){const m=String(t).match(/```(\w+)/);return m?m[1]:'html'}
+function codeOf(t){const m=String(t).match(/```(?:\w+)?\n([\s\S]*?)```/);return (m?m[1]:String(t)).trim()}
+function okish(old,nw,l){
+  if(!nw||nw.length<old.length*0.45)return false;
+  if(l==='html')return /<\/html>|<\/body>/i.test(nw);
+  if(l==='dart'){const o=(nw.match(/\{/g)||[]).length,c=(nw.match(/\}/g)||[]).length;return o===c}
+  return true;
+}
+/* طلب واحد بس لحذف واجهة الدور الآخر (يُستخدم فقط لو اتكشفت) */
+async function strip(code,r,lang){
+  const hits=roleHits(code,r);
+  const p=(lang==='html'?SYS:'أنت مبرمج محترف. أعد الكود الكامل فقط داخل كتلة '+BT+lang+' بدون أي شرح.\n\n')
+   +'هذا '+RN[r]+' في نظام من تطبيقين، لكن الكود فيه واجهة '+OTHER[r]+' (وجدت مثلاً: '+hits.join('، ')+').'
+   +'\nاحذف بالكامل كل ما يخص '+OTHER[r]+': الأزرار والشاشات والنوافذ والدوال والمتغيرات المرتبطة بها، وأبقِ كل وظائف '+RN[r]+' وتصميمه وبياناته كما هي تماماً، وتأكد أن الكود يعمل بعد الحذف (لا دوال أو متغيرات محذوفة ما زالت مستخدمة).'
+   +RULE[r]+'\n\nالكود الحالي:\n'+BT+lang+'\n'+code+'\n'+BT;
+  const out=await AI_BASE(p);
+  const nw=codeOf(out);
+  if(!okish(code,nw,lang))throw new Error('رد الذكاء الاصطناعي ما كان كاملاً، حاول مرة ثانية.');
+  return nw;
+}
+window.cxRoleHits=function(i){const r=roleOfIdx(i);return r?roleHits(S.apps[i]&&S.apps[i].code,r):[]};
+
+/* كل طلب كود لتطبيق في نظام: أضف قاعدة فصل الأدوار، وبعد الرد افحص */
+const _aiR=ai;
+ai=async function(p){
+  if(typeof p==='string'&&p.indexOf('صمم نظاماً من تطبيقين مترابطين')>-1&&p.indexOf(MK)<0){
+    p+='\n\n'+MK+'\nd1 لتطبيق الزبائن فقط وd2 لتطبيق الإدارة فقط. لا تضع في d1 أي دخول للإدارة أو الموظفين أو لوحة تحكم أو إدارة طلبات ومنتجات، ولا تضع في d2 أي واجهة أو وضع زبون. كل ميزة تذهب لتطبيق واحد حسب من يستخدمها.';
+    return _aiR(p);
+  }
+  if(typeof p!=='string'||/^\s*(أنت مراجع|أنت محلل|اقرأ كود التطبيق التالي)/.test(p)||!/```(html|dart|python)/.test(p))return _aiR(p);
+  const r=roleOfPrompt(p);
+  if(!r)return _aiR(p);
+  if(p.indexOf(MK)<0){p+=RULE[r];if(p.indexOf('كود التطبيق الآخر')>-1)p+='\nكود التطبيق الآخر مرفق فقط لتعرف أسماء البيانات والمسارات والحقول وطريقة الاتصال. لا تنسخ منه أي شاشة أو زر أو نافذة.'}
+  const out=await _aiR(p);
+  try{
+    const lang=fenceLang(out),code=codeOf(out);
+    if(roleHits(code,r).length){
+      toast('الذكاء أضاف واجهة '+OTHER[r]+' في '+RN[r]+'، جاري حذفها...');
+      const nw=await strip(code,r,lang);
+      return BT+lang+'\n'+nw+'\n'+BT;
+    }
+  }catch(e){}
+  return out;
+};
+
+/* بوابة قبل كل بناء: ما يتبني تطبيق زبون فيه واجهة إدارة ولا العكس */
+const _bR=buildAny;
+buildAny=async function(i){
+  const r=roleOfIdx(i),a=S.apps[i];
+  if(r&&has(a)&&roleHits(a.code,r).length){
+    toast('قبل البناء: حذف واجهة '+OTHER[r]+' من '+RN[r]+'...');
+    try{
+      const nw=await strip(String(a.code),r,FENCE[langOf(i)]||'html');
+      setCode(i,nw);save();
+    }catch(e){
+      toast('ما قدرت أحذف واجهة '+OTHER[r]+' تلقائياً، فوقفت البناء. افتح خطوة الكود واضغط زر الحذف.');
+      return;
+    }
+    if(roleHits(S.apps[i].code,r).length){toast('لسه في أجزاء من واجهة '+OTHER[r]+' في '+RN[r]+'. وقفت البناء، افتح خطوة الكود وراجعها.');render();return}
+  }
+  return _bR.apply(this,arguments);
+};
+window.buildAny=buildAny;
+
+/* تنبيه + زر إصلاح للتطبيقات الموجودة */
+window.cxRoleFix=async function(i,btn){
+  const r=roleOfIdx(i),a=S.apps[i];if(!r||!has(a))return;
+  if(btn){btn.disabled=true;btn.textContent='جاري الحذف...'}
+  try{
+    const lang=FENCE[langOf(i)]||'html';
+    const nw=await strip(String(a.code),r,lang);
+    setCode(i,nw);save();
+    const left=roleHits(nw,r);
+    toast(left.length?'اتحذف أغلبها، راجع الكود':'✔ اتحذفت واجهة '+OTHER[r]+' من '+RN[r]);
+  }catch(e){toast(typeof arErr==='function'?arErr(e):e.message)}
+  render();
+};
+function banner(i){
+  const r=roleOfIdx(i),h=window.cxRoleHits(i);
+  if(!r||!h.length)return '';
+  return '<div class="hb-warn ui-role"><b>'+RN[r]+' فيه واجهة '+OTHER[r]+'</b><br>الذكاء الاصطناعي أضاف داخل '+RN[r]+' شاشات تخص '+OTHER[r]+' (مثل: '+h.slice(0,3).map(function(x){return '<code>'+String(x).replace(/[<>&]/g,'')+'</code>'}).join('، ')+'). '+OTHER[r]+' لها تطبيقها المنفصل.'
+   +'<button class="acc" style="width:100%" onclick="cxRoleFix('+i+',this)">احذف واجهة '+OTHER[r]+' من '+RN[r]+'</button></div>';
+}
+const _rR=render;
+render=function(){
+  _rR.apply(this,arguments);
+  if(typeof tab==='undefined')return;
+  const m=document.getElementById('main');if(!m)return;
+  m.querySelectorAll('.ui-role').forEach(function(x){x.remove()});
+  if(tab==='code'){const h=banner(window._ap|0);if(h){const cd=document.getElementById('cd');(cd||m).insertAdjacentHTML('afterbegin',h)}}
+  else if(tab==='build'||tab==='ov'){const h=banner(0)+banner(1);if(h)m.insertAdjacentHTML('afterbegin',h)}
+};
+render();
+})();
+
 </script>
 </body>
 </html>
