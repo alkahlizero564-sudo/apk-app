@@ -133,7 +133,8 @@ function restore(i,j){pushVersion(i);S.apps[i].code=S.apps[i].versions[j].code;s
 
 /* ---------- الذكاء الاصطناعي ---------- */
 const OAI={openrouter:{url:'https://openrouter.ai/api/v1/chat/completions',key:'orKey',model:'orModel',def:'',name:'OpenRouter'},groq:{url:'https://api.groq.com/openai/v1/chat/completions',key:'gqKey',model:'gqModel',def:'openai/gpt-oss-120b',name:'Groq'}};
-async function ai(prompt){const k=S.keys;
+async function ai(prompt){return (typeof window._patchAI==='function')?window._patchAI(prompt,aiRaw):aiRaw(prompt)}
+async function aiRaw(prompt){const k=S.keys;
   if(window._reqTail&&typeof prompt==='string'&&/```(html|dart|python)/.test(prompt)&&!/^أنت مراجع/.test(prompt)&&prompt.indexOf(window._reqTail)<0)prompt+=window._reqTail;
   if(OAI[k.provider]){const c=OAI[k.provider];const key=k[c.key],model=k[c.model]||c.def;
     if(!key)throw new Error('أدخل مفتاح '+c.name+' في قائمة المفاتيح');
@@ -12544,6 +12545,127 @@ if(typeof _sysGo==='function')window.cxHubSysGo=function(){return list('sys').le
   try{if(n==='aiCreate')aiCreate=w;else aiEdit=w}catch(e){}
 });
 drawBars();
+})();
+
+/* ===== توفير المفاتيح: التعديلات بالفرق فقط + عدّاد الاستهلاك =====
+   أي طلب تعديل أو إصلاح لملف كبير: الذكاء يرجّع التغييرات فقط (بحث واستبدال) بدل إعادة كتابة الملف كله.
+   لو التغييرات ما انطبقت بأمان، نرجع تلقائياً للطلب الكامل (نفس جودة قبل). */
+(function(){
+const MIN=6000;
+const NO_PATCH=/ارتقِ بتصميم|أعد تصميم واجهة هذا التطبيق بالكامل|Pro Max/;
+const RULE='\n\n=== طريقة الرد (إلزامي، ويلغي أي طلب سابق بإعادة الكود كاملاً) ===\n'
+ +'لا تُعد كتابة الملف. أعد التغييرات فقط بكتل بحث واستبدال، كل كتلة بهذا الشكل حرفياً:\n'
+ +'<<<<<<< SEARCH\n(سطور موجودة حرفياً في الكود الحالي، من 2 إلى 15 سطراً، تكفي لتكون فريدة في الملف)\n=======\n(السطور الجديدة بدلها)\n>>>>>>> REPLACE\n'
+ +'- للإضافة: ابحث عن سطور موجودة بجانب مكان الإضافة وأعدها في REPLACE ومعها الكود الجديد.\n'
+ +'- للحذف: اترك ما بين ======= و>>>>>>> REPLACE فارغاً.\n'
+ +'- انسخ سطور SEARCH حرفياً من الكود الحالي (نفس المسافات والرموز).\n'
+ +'- نفّذ المطلوب كاملاً بعدد الكتل اللازم، ولا تكتب أي شرح ولا علامات ```.';
+
+function codeIn(p){
+  const k=p.indexOf('الكود الحالي:');if(k<0)return null;
+  const m=p.slice(k).match(/```(\w*)\n([\s\S]*?)\n```/);
+  return m?{lang:m[1]||'html',code:m[2]}:null;
+}
+function blocks(t){
+  const out=[],re=/<{5,}\s*SEARCH[ \t]*\r?\n([\s\S]*?)\r?\n={5,}[ \t]*\r?\n([\s\S]*?)>{5,}\s*REPLACE/g;let m;
+  while((m=re.exec(String(t)))){out.push({s:m[1],r:m[2].replace(/\r?\n$/,'')})}
+  return out;
+}
+/* إيجاد سطور البحث: حرفياً أولاً، وبعدين بتجاهل المسافات في أطراف السطور. لازم تكون فريدة */
+function locate(code,s){
+  const i=code.indexOf(s);
+  if(i>-1)return code.indexOf(s,i+1)>-1?{amb:1}:{a:i,b:i+s.length};
+  const L=code.split('\n'),S=s.split('\n').map(function(x){return x.trim()});
+  while(S.length&&!S[0])S.shift();while(S.length&&!S[S.length-1])S.pop();
+  if(!S.length)return null;
+  const T=L.map(function(x){return x.trim()});let hit=-1;
+  for(let k=0;k+S.length<=T.length;k++){
+    let ok=true;for(let j=0;j<S.length;j++){if(T[k+j]!==S[j]){ok=false;break}}
+    if(ok){if(hit>-1)return {amb:1};hit=k}
+  }
+  if(hit<0)return null;
+  let a=0;for(let k=0;k<hit;k++)a+=L[k].length+1;
+  let b=a;for(let k=hit;k<hit+S.length;k++)b+=L[k].length+1;
+  return {a:a,b:Math.min(b-1,code.length)};
+}
+function bal(s){const t=String(s);return [(t.match(/\{/g)||[]).length-(t.match(/\}/g)||[]).length,(t.match(/\(/g)||[]).length-(t.match(/\)/g)||[]).length]}
+function apply(code,B,lang){
+  let c=code;
+  for(const x of B){
+    if(!x.s.trim())return null;
+    const L=locate(c,x.s);if(!L||L.amb)return null;
+    c=c.slice(0,L.a)+x.r+c.slice(L.b);
+  }
+  if(c===code)return null;
+  /* سلامة: نفس توازن الأقواس، وملف HTML لسه كامل */
+  const b0=bal(code),b1=bal(c);
+  if((lang==='dart'||lang==='python'||lang==='html')&&(b0[0]===0&&b1[0]!==0||b0[1]===0&&b1[1]!==0))return null;
+  if(lang==='html'&&/<\/html>/i.test(code)&&!/<\/html>/i.test(c))return null;
+  return c;
+}
+let last=null;
+window._patchAI=async function(p,raw){
+  if(typeof p!=='string')return raw(p);
+  /* مراجعة تنفيذ التعديل: نرسل التغييرات بدل الملف كله لو الكود هو نتيجة آخر تعديل */
+  if(/^\s*أنت مراجع متطلبات صارم/.test(p)&&last&&Date.now()-last.t<180000){
+    const m=p.match(/```[^\n]*\n([\s\S]*?)\n```/);
+    if(m&&m[1].trim().slice(0,300)===last.code.trim().slice(0,300)&&m[1].length<=last.code.length+2000){
+      p=p.replace(m[0],'(هذه التعديلات التي نُفّذت على الكود، بصيغة بحث واستبدال. احكم من خلالها هل المتطلب منفّذ)\n'+last.diff.slice(0,20000));
+    }
+    return raw(p);
+  }
+  const ci=codeIn(p);
+  if(!ci||ci.code.length<MIN||NO_PATCH.test(p)||S.keys.noPatch){if(ci)last=null;return raw(p)}
+  last=null;
+  let out;
+  try{out=await raw(p+RULE)}catch(e){throw e}
+  const B=blocks(out);
+  if(B.length){
+    const nw=apply(ci.code,B,ci.lang);
+    if(nw){
+      last={t:Date.now(),code:nw,diff:B.map(function(x){return '<<<<<<< SEARCH\n'+x.s+'\n=======\n'+x.r+'\n>>>>>>> REPLACE'}).join('\n')};
+      return '```'+ci.lang+'\n'+nw+'\n```';
+    }
+  }else{
+    /* الذكاء تجاهل الصيغة ورجّع الملف كامل: نقبله لو كامل */
+    const m=String(out).match(/```\w*\n([\s\S]*?)```/);
+    if(m&&m[1].length>ci.code.length*0.6)return out;
+  }
+  toast('التعديل بالفرق ما انطبق بأمان، بطلب الملف كامل...');
+  return raw(p);
+};
+
+/* ---------- عدّاد الاستهلاك اليومي ---------- */
+const UK='apk_ai_use';
+function day(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate()}
+function useGet(){try{const u=JSON.parse(localStorage.getItem(UK)||'null');if(u&&u.d===day())return u}catch(e){}return {d:day(),n:0,i:0,o:0}}
+function useAdd(i,o){const u=useGet();u.n++;u.i+=i|0;u.o+=o|0;try{localStorage.setItem(UK,JSON.stringify(u))}catch(e){}}
+const of=window.fetch;
+window.fetch=async function(input,init){
+  const url=typeof input==='string'?input:((input&&input.url)||'');
+  const r=await of.apply(this,arguments);
+  if(/generativelanguage\.googleapis\.com\/.*:generateContent|api\.anthropic\.com\/v1\/messages|openrouter\.ai\/api|api\.groq\.com/.test(url)&&r.ok){
+    r.clone().json().then(function(j){
+      const g=j.usageMetadata,a=j.usage||{};
+      if(g)useAdd(g.promptTokenCount,(g.candidatesTokenCount||0)+(g.thoughtsTokenCount||0));
+      else useAdd(a.input_tokens||a.prompt_tokens,a.output_tokens||a.completion_tokens);
+    }).catch(function(){});
+  }
+  return r;
+};
+function k(n){return n>=1e6?(n/1e6).toFixed(1)+' مليون':n>=1000?Math.round(n/1000)+' ألف':String(n)}
+const _rU=render;
+render=function(){
+  _rU.apply(this,arguments);
+  if(typeof tab==='undefined'||tab!=='keys')return;
+  const m=document.getElementById('main');if(!m||document.getElementById('ui-use'))return;
+  const u=useGet();
+  const c=document.createElement('div');c.className='card';c.id='ui-use';
+  c.innerHTML='<h2>استهلاك الذكاء الاصطناعي اليوم</h2><div class="bd-stat"><div><small>الطلبات</small><b>'+u.n+'</b></div><div><small>التوكنز (داخل + خارج)</small><b>'+k(u.i+u.o)+'</b></div></div>'
+   +'<p class="note" style="margin:10px 0 0">داخل: '+k(u.i)+' · خارج (مع التفكير): '+k(u.o)+'. التعديلات والإصلاحات بترجع التغييرات بس بدل الملف كامل.</p>'
+   +'<label style="display:flex;gap:10px;align-items:center;margin-top:12px"><input type="checkbox" '+(S.keys.noPatch?'':'checked')+' onchange="S.keys.noPatch=!this.checked;save()"> التعديل بالفرق (موصى به)</label>';
+  const th=document.getElementById('ui3-th');if(th)th.after(c);else m.insertBefore(c,m.firstChild);
+};
 })();
 
 </script>
