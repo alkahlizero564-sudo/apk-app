@@ -12267,9 +12267,10 @@ render();
 (function(){
 /* كشف واجهة الدور الآخر داخل تطبيق من نظام (زبون / إدارة) */
 const ROLE_RX={
-  c:[/_?open(Admin|Staff)\w*\s*\(/i,/Admin\s*(Panel|Dashboard|Login)/i,/Staff\s*(Admin\s*)?Login/i,/admin_panel_settings/,
-     /لوحة\s*(تحكم\s*)?(ال)?إدارة/,/دخول\s*(كادر\s*)?(ال)?إدارة/,/تسجيل\s*دخول\s*(كادر\s*|ال)?(إدارة|موظف|الموظفين)/,/(isAdmin|adminMode|isAdminMode|showAdmin)\s*[=:]/],
-  a:[/is(Customer|Client)View/i,/(customer|client)Mode\s*[=:]/i,/switchTo(Customer|Client)/i,/(واجهة|وضع|عرض)\s*(ال)?زبون/,/(Customer|Client)\s*View/]
+  c:[/_?open(Admin|Staff|Manager|Owner)\w*\s*\(/i,/(Admin|Manager|Owner|Staff)\s*(Panel|Dashboard|Login|Mode|Screen|Page)\b/i,/Staff\s*(Admin\s*)?Login/i,/admin_panel_settings/,
+     /لوحة\s*(ال)?(تحكم\s*)?(ال)?(إدارة|مدير|مالك|صاحب)/,/دخول\s*(كادر\s*)?(ال)?(إدارة|مدير|موظفين|موظف)/,/تسجيل\s*دخول\s*(كادر\s*|ال)?(إدارة|مدير|موظف|الموظفين)/,
+     /(وضع|واجهة|شاشة)\s*(ال)?(إدارة|مدير|موظفين)/,/(isAdmin|adminMode|isAdminMode|showAdmin|isManager|isOwner|isStaff|staffMode)\s*[=:]/],
+  a:[/is(Customer|Client)View/i,/(customer|client)Mode\s*[=:]/i,/switchTo(Customer|Client)/i,/(واجهة|وضع|عرض|شاشة)\s*(ال)?(زبون|زبائن|عميل|عملاء)\b/,/(Customer|Client)\s*(View|Mode)\b/,/(عرض|ادخل|تصفح)\s*(ك|بصفة\s*)(زبون|عميل)/]
 };
 function roleHits(code,r){const s=String(code||'');return (ROLE_RX[r]||[]).filter(function(x){return x.test(s)}).map(function(x){const m=s.match(x);return m?m[0]:''})}
 
@@ -12318,10 +12319,14 @@ window.cxRoleHits=function(i){const r=roleOfIdx(i);return r?roleHits(S.apps[i]&&
 /* كل طلب كود لتطبيق في نظام: أضف قاعدة فصل الأدوار، وبعد الرد افحص */
 const _aiR=ai;
 ai=async function(p){
+  if(typeof p==='string'&&p.indexOf('صمم نظاماً من تطبيقين مترابطين')>-1&&p.indexOf(MK)<0){
+    p+='\n\n'+MK+'\nd1 لتطبيق الزبائن فقط وd2 لتطبيق الإدارة فقط. لا تضع في d1 أي دخول للإدارة أو الموظفين أو لوحة تحكم أو إدارة طلبات ومنتجات، ولا تضع في d2 أي واجهة أو وضع زبون. كل ميزة تذهب لتطبيق واحد حسب من يستخدمها.';
+    return _aiR(p);
+  }
   if(typeof p!=='string'||/^\s*(أنت مراجع|أنت محلل|اقرأ كود التطبيق التالي)/.test(p)||!/```(html|dart|python)/.test(p))return _aiR(p);
   const r=roleOfPrompt(p);
   if(!r)return _aiR(p);
-  if(p.indexOf(MK)<0)p+=RULE[r];
+  if(p.indexOf(MK)<0){p+=RULE[r];if(p.indexOf('كود التطبيق الآخر')>-1)p+='\nكود التطبيق الآخر مرفق فقط لتعرف أسماء البيانات والمسارات والحقول وطريقة الاتصال. لا تنسخ منه أي شاشة أو زر أو نافذة.'}
   const out=await _aiR(p);
   try{
     const lang=fenceLang(out),code=codeOf(out);
@@ -12333,6 +12338,25 @@ ai=async function(p){
   }catch(e){}
   return out;
 };
+
+/* بوابة قبل كل بناء: ما يتبني تطبيق زبون فيه واجهة إدارة ولا العكس */
+const _bR=buildAny;
+buildAny=async function(i){
+  const r=roleOfIdx(i),a=S.apps[i];
+  if(r&&has(a)&&roleHits(a.code,r).length){
+    toast('قبل البناء: حذف واجهة '+OTHER[r]+' من '+RN[r]+'...');
+    try{
+      const nw=await strip(String(a.code),r,FENCE[langOf(i)]||'html');
+      setCode(i,nw);save();
+    }catch(e){
+      toast('ما قدرت أحذف واجهة '+OTHER[r]+' تلقائياً، فوقفت البناء. افتح خطوة الكود واضغط زر الحذف.');
+      return;
+    }
+    if(roleHits(S.apps[i].code,r).length){toast('لسه في أجزاء من واجهة '+OTHER[r]+' في '+RN[r]+'. وقفت البناء، افتح خطوة الكود وراجعها.');render();return}
+  }
+  return _bR.apply(this,arguments);
+};
+window.buildAny=buildAny;
 
 /* تنبيه + زر إصلاح للتطبيقات الموجودة */
 window.cxRoleFix=async function(i,btn){
